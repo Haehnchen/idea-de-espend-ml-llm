@@ -34,6 +34,7 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, F
 | **OpenRouter** | OpenRouter via Anthropic Compatible API | - |
 | **Mimo** | Mimo via Anthropic Compatible API | - |
 | **Moonshot** | Moonshot via Anthropic Compatible API | - |
+| **Requesty.ai** | Requesty.ai via Anthropic Compatible API | - |
 
 ## Installation
 

@@ -36,6 +36,7 @@
             <li><b>OpenRouter</b> - OpenRouter via Anthropic Compatible API</li>
             <li><b>Mimo</b> - Mimo via Anthropic Compatible API</li>
             <li><b>Moonshot</b> - Moonshot via Anthropic Compatible API</li>
+            <li><b>Requesty.ai</b> - Requesty.ai via Anthropic Compatible API</li>
         </ul>
 
         <p><b>Installation:</b></p>
