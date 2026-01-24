@@ -126,4 +126,26 @@ object CommandPathUtils {
             .takeIf { it.exists() && it.canExecute() }
             ?.absolutePath
     }
+
+    /**
+     * Finds the droid command (Factory.ai CLI) with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findDroidPath(): String? {
+        findCommandPath("droid")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/droid").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/droid").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/droid")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
 }
