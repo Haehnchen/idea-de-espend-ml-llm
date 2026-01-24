@@ -55,3 +55,8 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRoute
 ![Agent](docs/agent.webp)
 
 ![Agent Chat Model](docs/agent_chat_model.webp)
+
+![Settings](docs/settings.webp)
+
+![Gemini](docs/gemini.webp)
+
