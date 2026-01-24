@@ -1,0 +1,84 @@
+<!-- Plugin Configuration File: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
+    <id>de.espend.ml.llm</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
+    <name>AI Assistant Providers</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor url="https://github.com/espend">espend</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
+    <description><![CDATA[
+        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.</p>
+        <p>This plugin allows you to:</p>
+        <ul>
+            <li>Configure multiple AI providers through a simple settings UI</li>
+            <li>Supports Claude CLI, Gemini CLI, OpenCode CLI, and any Anthropic-compatible API</li>
+            <li>Works with providers like Z.AI, MiniMax, OpenRouter, Mimo, Moonshot, and more</li>
+            <li>Seamlessly integrates with IntelliJ's AI chat features</li>
+        </ul>
+
+        <p><b>Supported Providers:</b></p>
+        <ul>
+            <li><b>Claude CLI</b> - Uses Claude Code's built-in Anthropic integration</li>
+            <li><b>Anthropic Compatible</b> - Any Anthropic-like API (via @zed-industries/claude-code-acp)</li>
+            <li><b>Gemini</b> - Google's Gemini CLI</li>
+            <li><b>OpenCode</b> - The OpenCode CLI</li>
+            <li><b>Z.AI</b> - Z.AI via Anthropic Compatible API (<a href="https://z.ai/subscribe?ic=BCLQG4VJIO">Register</a>)</li>
+            <li><b>MiniMax</b> - MiniMax via Anthropic Compatible API</li>
+            <li><b>OpenRouter</b> - OpenRouter via Anthropic Compatible API</li>
+            <li><b>Mimo</b> - Mimo via Anthropic Compatible API</li>
+            <li><b>Moonshot</b> - Moonshot via Anthropic Compatible API</li>
+        </ul>
+
+        <p><b>Installation:</b></p>
+        <ol>
+            <li>Go to <b>File → Settings → Plugins</b></li>
+            <li>Click the <b>Marketplace</b> tab</li>
+            <li>Search for <b>Agent Providers</b></li>
+            <li>Click <b>Install</b></li>
+            <li>Go to <b>Settings → AI Assistant → Agent Providers</b></li>
+            <li>Configure API keys and base URLs as needed</li>
+            <li>Click <b>Apply</b> to register the agents</li>
+        </ol>
+
+        <p>Requires the AI Assistant plugin to be installed.</p>
+    ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.ml.llm</depends>
+
+    <!-- Extensions defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- AI Provider Agent Registry - dynamic agent registration -->
+        <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
+
+        <!-- Startup Activity for loading AI provider agents -->
+        <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
+
+        <!-- Settings for AI provider agents - placed under AI Assistant -->
+        <applicationConfigurable parentId="ml.llm.LLMConfigurable"
+                                 id="de.espend.ml.llm.AgentSettings"
+                                 instance="de.espend.ml.llm.AgentSettingsConfigurable"
+                                 displayName="Agent Providers"
+                                 groupWeight="10"/>
+    </extensions>
+
+    <!-- Actions for AI Provider plugin -->
+    <actions>
+        <!-- Action to open Agent Providers settings from chat toolbar -->
+        <action id="de.espend.ml.llm.OpenAgentProvidersSettings"
+                class="de.espend.ml.llm.OpenAgentProvidersSettingsAction"
+                text="Agent Providers"
+                description="Open Agent Providers settings">
+            <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
+        </action>
+    </actions>
+</idea-plugin>
