@@ -8,13 +8,14 @@ object ProviderConfig {
     const val PROVIDER_MOONSHOT = "moonshot"
     const val PROVIDER_DROID = "droid"
     const val PROVIDER_REQUESTY = "requesty"
+    const val PROVIDER_NANO_GPT = "nano-gpt"
     const val PROVIDER_ANTHROPIC_DEFAULT = "anthropic-default"
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
 
-    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY)
+    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY, PROVIDER_NANO_GPT)
 
     data class ProviderInfo(
         val label: String,
@@ -136,6 +137,15 @@ object ProviderConfig {
             models = Triple("zai/GLM-4.7", "zai/GLM-4.7", "zai/GLM-4.7"),
             autoDiscoveryText = "zai/GLM-4.7",
             modelsUrl = "https://router.requesty.ai/v1/models"
+        ),
+        PROVIDER_NANO_GPT to ProviderInfo(
+            label = "Nano-GPT",
+            icon = PluginIcons.NANOGPT,
+            description = "Nano-GPT via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
+            baseUrl = "https://nano-gpt.com/api/v1",
+            models = Triple("gemini-3-pro-preview", "gemini-3-pro-preview", "gemini-3-pro-preview"),
+            autoDiscoveryText = "gemini-3-pro-preview",
+            modelsUrl = "https://nano-gpt.com/api/v1/models"
         )
     )
 }
