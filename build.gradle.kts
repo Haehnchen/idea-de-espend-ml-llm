@@ -1,3 +1,5 @@
+fun properties(key: String) = project.findProperty(key).toString()
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
@@ -49,6 +51,11 @@ tasks {
     }
     prepareJarSearchableOptions {
         enabled = false
+    }
+
+    patchPluginXml {
+        version = properties("version")
+        changeNotes.set(file("src/main/resources/META-INF/change-notes.html").readText().replace("<html>", "").replace("</html>", ""))
     }
 }
 
