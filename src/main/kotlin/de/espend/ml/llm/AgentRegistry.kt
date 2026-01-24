@@ -112,11 +112,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val baseUrl = when (config.provider) {
             ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
             ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
-            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR -> ""
+            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_DROID -> ""
             else -> providerInfo.baseUrl ?: ""
         }
         val apiKey = when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT, ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR -> ""
+            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT, ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_DROID -> ""
             else -> config.apiKey
         }
         val models = providerInfo.models
@@ -162,6 +162,20 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = cursorPath,
                 args = emptyList(),
+                env = buildBaseEnv()
+            )
+        }
+
+        // Droid (Factory.ai) uses special command and args
+        if (config.provider == ProviderConfig.PROVIDER_DROID) {
+            val droidPath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findDroidPath() ?: "droid"
+            }
+            return AgentServerConfig(
+                command = droidPath,
+                args = listOf("exec", "--output-format", "acp"),
                 env = buildBaseEnv()
             )
         }

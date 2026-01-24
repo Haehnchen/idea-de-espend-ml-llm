@@ -376,7 +376,8 @@ class AgentSettingsConfigurable : Configurable {
                 }
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
-                ProviderConfig.PROVIDER_CURSOR -> {
+                ProviderConfig.PROVIDER_CURSOR,
+                ProviderConfig.PROVIDER_DROID -> {
                     // Description and executable field for these providers
                     apiKeyField = null
                     baseUrlField = null
@@ -402,6 +403,7 @@ class AgentSettingsConfigurable : Configurable {
                         ProviderConfig.PROVIDER_GEMINI -> "gemini"
                         ProviderConfig.PROVIDER_OPENCODE -> "opencode"
                         ProviderConfig.PROVIDER_CURSOR -> "cursor-agent-acp"
+                        ProviderConfig.PROVIDER_DROID -> "droid"
                         else -> provider
                     }
                     executableField = JBTextField(initialConfig?.executable ?: "", 20).apply {
@@ -418,6 +420,7 @@ class AgentSettingsConfigurable : Configurable {
                                 ProviderConfig.PROVIDER_GEMINI -> CommandPathUtils.findGeminiPath()
                                 ProviderConfig.PROVIDER_OPENCODE -> CommandPathUtils.findOpenCodePath()
                                 ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentAcpPath()
+                                ProviderConfig.PROVIDER_DROID -> CommandPathUtils.findDroidPath()
                                 else -> null
                             }
                             executableField?.text = detected ?: ""

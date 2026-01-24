@@ -30,6 +30,7 @@
             <li><b>Gemini</b> - Google's Gemini CLI</li>
             <li><b>OpenCode</b> - The OpenCode CLI</li>
             <li><b>Cursor</b> - The Cursor Agent CLI (via @blowmage/cursor-agent-acp)</li>
+            <li><b>Factory.ai</b> - Factory.ai Droid CLI (via curl -fsSL https://app.factory.ai/cli | sh)</li>
             <li><b>Z.AI</b> - Z.AI via Anthropic Compatible API (<a href="https://z.ai/subscribe?ic=BCLQG4VJIO">Register</a>)</li>
             <li><b>MiniMax</b> - MiniMax via Anthropic Compatible API</li>
             <li><b>OpenRouter</b> - OpenRouter via Anthropic Compatible API</li>
