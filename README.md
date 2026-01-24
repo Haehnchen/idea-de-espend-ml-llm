@@ -5,6 +5,8 @@
 
 Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.
 
+![Agent Chat Model](docs/agent_chat_model.webp)
+
 ## Features
 
 - **Multiple Provider Support**: Configure and switch between different AI providers through a simple settings UI
