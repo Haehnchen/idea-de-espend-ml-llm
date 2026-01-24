@@ -14,11 +14,11 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.</p>
+        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.</p>
         <p>This plugin allows you to:</p>
         <ul>
             <li>Configure multiple AI providers through a simple settings UI</li>
-            <li>Supports Claude CLI, Gemini CLI, OpenCode CLI, and any Anthropic-compatible API</li>
+            <li>Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API</li>
             <li>Works with providers like Z.AI, MiniMax, OpenRouter, Mimo, Moonshot, and more</li>
             <li>Seamlessly integrates with IntelliJ's AI chat features</li>
         </ul>
@@ -29,6 +29,7 @@
             <li><b>Anthropic Compatible</b> - Any Anthropic-like API (via @zed-industries/claude-code-acp)</li>
             <li><b>Gemini</b> - Google's Gemini CLI</li>
             <li><b>OpenCode</b> - The OpenCode CLI</li>
+            <li><b>Cursor</b> - The Cursor Agent CLI (via @blowmage/cursor-agent-acp)</li>
             <li><b>Z.AI</b> - Z.AI via Anthropic Compatible API (<a href="https://z.ai/subscribe?ic=BCLQG4VJIO">Register</a>)</li>
             <li><b>MiniMax</b> - MiniMax via Anthropic Compatible API</li>
             <li><b>OpenRouter</b> - OpenRouter via Anthropic Compatible API</li>

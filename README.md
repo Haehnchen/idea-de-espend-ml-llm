@@ -5,7 +5,7 @@
 [![Downloads](http://phpstorm.espend.de/badge/29900/downloads)](https://plugins.jetbrains.com/plugin/7219)
 [![Downloads last month](http://phpstorm.espend.de/badge/29900/last-month)](https://plugins.jetbrains.com/plugin/7219)
 
-Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.
+Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.
 
 | Key                  | Value                                      |
 |----------------------|--------------------------------------------|
@@ -16,7 +16,7 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRoute
 
 - **Multiple Provider Support**: Configure and switch between different AI providers through a simple settings UI
 - **Anthropic-Compatible API**: Works with any provider that implements the Anthropic API
-- **Built-in CLI Support**: Native support for Claude CLI, Gemini CLI, and OpenCode CLI
+- **Built-in CLI Support**: Native support for Claude CLI, Gemini CLI, OpenCode CLI, and Cursor CLI
 - **Seamless Integration**: Works directly with IntelliJ IDEA's AI Assistant chat
 
 ## Supported Providers
@@ -27,6 +27,7 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, OpenRoute
 | **Anthropic Compatible** | Any Anthropic-like API (via `@zed-industries/claude-code-acp`) | - |
 | **Gemini** | Google's Gemini CLI | - |
 | **OpenCode** | The OpenCode CLI | - |
+| **Cursor** | The Cursor Agent CLI (via `@blowmage/cursor-agent-acp`) | - |
 | **Z.AI** | Z.AI via Anthropic Compatible API | [Register](https://z.ai/subscribe?ic=BCLQG4VJIO) |
 | **MiniMax** | MiniMax via Anthropic Compatible API | - |
 | **OpenRouter** | OpenRouter via Anthropic Compatible API | - |
