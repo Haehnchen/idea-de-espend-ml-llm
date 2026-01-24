@@ -112,11 +112,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val baseUrl = when (config.provider) {
             ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
             ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
-            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE -> ""
+            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR -> ""
             else -> providerInfo.baseUrl ?: ""
         }
         val apiKey = when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT, ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE -> ""
+            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT, ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR -> ""
             else -> config.apiKey
         }
         val models = providerInfo.models
@@ -130,7 +130,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         // Anthropic Default uses built-in Claude Code integration without any custom env vars
         if (config.provider == ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT) {
-            val acpPath = CommandPathUtils.findClaudeCodeAcpPath()
+            val acpPath = CommandPathUtils.findClaudeCodeAcpPath() ?: "claude-code-acp"
             return AgentServerConfig(
                 command = acpPath,
                 args = emptyList(),
@@ -140,7 +140,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         // OpenCode uses special command and args
         if (config.provider == ProviderConfig.PROVIDER_OPENCODE) {
-            val opencodePath = if (config.executable.isNotEmpty()) config.executable else CommandPathUtils.findOpenCodePath()
+            val opencodePath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findOpenCodePath() ?: "opencode"
+            }
             return AgentServerConfig(
                 command = opencodePath,
                 args = listOf("acp"),
@@ -148,9 +152,27 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             )
         }
 
+        // Cursor uses special command
+        if (config.provider == ProviderConfig.PROVIDER_CURSOR) {
+            val cursorPath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findCursorAgentAcpPath() ?: "cursor-agent-acp"
+            }
+            return AgentServerConfig(
+                command = cursorPath,
+                args = emptyList(),
+                env = buildBaseEnv()
+            )
+        }
+
         // Gemini uses special command
         if (config.provider == ProviderConfig.PROVIDER_GEMINI) {
-            val geminiPath = if (config.executable.isNotEmpty()) config.executable else CommandPathUtils.findGeminiPath()
+            val geminiPath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findGeminiPath() ?: "gemini"
+            }
             return AgentServerConfig(
                 command = geminiPath,
                 args = listOf("--experimental-acp"),
@@ -160,7 +182,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         // Standard Anthropic-based providers
         return AgentServerConfig(
-            command = CommandPathUtils.findClaudeCodeAcpPath(),
+            command = CommandPathUtils.findClaudeCodeAcpPath() ?: "claude-code-acp",
             args = emptyList(),
             env = buildMap {
                 putAll(buildBaseEnv())

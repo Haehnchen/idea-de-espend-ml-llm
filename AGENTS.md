@@ -52,3 +52,16 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 2. Create `ProviderInfo` entry with metadata (label, icon, base URL, models)
 3. Update `AgentSettingsConfigurable.kt` to add UI panel for the provider
 4. Add executable detection logic in `CommandPathUtils.kt` if CLI-based
+
+#### Icon Requirements
+
+- **Location**: `src/main/resources/icons/{provider-name}.png`
+- **Size**: 32x32 pixels
+- **Format**: PNG with transparency support
+- **Add to PluginIcons.kt**: `val PROVIDER_NAME: Icon = IconLoader.getIcon("/icons/provider-name.png", PluginIcons::class.java)`
+
+#### Path Detection for CLI-based Providers
+
+For CLI-based providers (like Gemini, OpenCode, Cursor), add a detection function to `CommandPathUtils.kt`:
+
+**Search order**: PATH → `/usr/bin` → `$HOME/bin` → `$HOME/.local/bin` → provider-specific directory (e.g., `$HOME/.gemini/bin`)

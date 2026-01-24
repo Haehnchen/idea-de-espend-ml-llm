@@ -15,6 +15,7 @@ object PluginIcons {
     val CLAUDE: Icon = IconLoader.getIcon("/icons/claude.png", PluginIcons::class.java)
     val GEMINI: Icon = IconLoader.getIcon("/icons/gemini.png", PluginIcons::class.java)
     val OPENCODE: Icon = IconLoader.getIcon("/icons/opencode.png", PluginIcons::class.java)
+    val CURSOR: Icon = IconLoader.getIcon("/icons/cursor.png", PluginIcons::class.java)
     val MOONSHOT: Icon = IconLoader.getIcon("/icons/moonshot.png", PluginIcons::class.java)
 
     // Plugin icon

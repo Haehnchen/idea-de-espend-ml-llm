@@ -9,10 +9,10 @@ object CommandPathUtils {
 
     /**
      * Finds the absolute path of a command in PATH.
-     * Searches all directories in PATH for the command.
+     * Returns null if not found.
      */
-    fun findCommandPath(command: String): String {
-        val pathEnv = System.getenv("PATH") ?: return command
+    fun findCommandPath(command: String): String? {
+        val pathEnv = System.getenv("PATH") ?: return null
         val pathSeparator = System.getProperty("path.separator", ":")
 
         val directories = pathEnv.split(pathSeparator)
@@ -23,141 +23,107 @@ object CommandPathUtils {
             }
         }
 
-        // Fallback to command name
-        return command
+        return null
     }
 
     /**
      * Finds the opencode command with specific fallback paths.
-     * Order: PATH -> $HOME/bin -> $HOME/.opencode/bin -> "opencode"
+     * Order: PATH -> $HOME/bin -> $HOME/.opencode/bin
+     * Returns null if not found.
      */
-    fun findOpenCodePath(): String {
-        // First try PATH
-        val pathResult = findCommandPath("opencode")
-        if (pathResult != "opencode") {
-            return pathResult
-        }
+    fun findOpenCodePath(): String? {
+        findCommandPath("opencode")?.let { return it }
 
-        val userHome = System.getProperty("user.home")
-        if (userHome != null) {
-            // Check $HOME/bin
-            val homeBin = File(userHome, "bin")
-            val opencodeInHomeBin = File(homeBin, "opencode")
-            if (opencodeInHomeBin.exists() && opencodeInHomeBin.canExecute()) {
-                return opencodeInHomeBin.absolutePath
-            }
+        val userHome = System.getProperty("user.home") ?: return null
 
-            // Check $HOME/.opencode/bin (default fallback)
-            val opencodeBin = File(userHome, ".opencode/bin")
-            val opencodeInOpencodeBin = File(opencodeBin, "opencode")
-            if (opencodeInOpencodeBin.exists() && opencodeInOpencodeBin.canExecute()) {
-                return opencodeInOpencodeBin.absolutePath
-            }
-        }
+        // Check $HOME/bin
+        File(userHome, "bin/opencode").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
-        // Final fallback to command name
-        return "opencode"
+        // Check $HOME/.opencode/bin
+        return File(userHome, ".opencode/bin/opencode")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
     }
 
     /**
      * Finds the gemini command with specific fallback paths.
-     * Order: PATH -> $HOME/bin -> $HOME/.gemini/bin -> "gemini"
+     * Order: PATH -> $HOME/bin -> $HOME/.gemini/bin
+     * Returns null if not found.
      */
-    fun findGeminiPath(): String {
-        // First try PATH
-        val pathResult = findCommandPath("gemini")
-        if (pathResult != "gemini") {
-            return pathResult
-        }
+    fun findGeminiPath(): String? {
+        findCommandPath("gemini")?.let { return it }
 
-        val userHome = System.getProperty("user.home")
-        if (userHome != null) {
-            // Check $HOME/bin
-            val homeBin = File(userHome, "bin")
-            val geminiInHomeBin = File(homeBin, "gemini")
-            if (geminiInHomeBin.exists() && geminiInHomeBin.canExecute()) {
-                return geminiInHomeBin.absolutePath
-            }
+        val userHome = System.getProperty("user.home") ?: return null
 
-            // Check $HOME/.gemini/bin (default fallback)
-            val geminiBin = File(userHome, ".gemini/bin")
-            val geminiInGeminiBin = File(geminiBin, "gemini")
-            if (geminiInGeminiBin.exists() && geminiInGeminiBin.canExecute()) {
-                return geminiInGeminiBin.absolutePath
-            }
-        }
+        // Check $HOME/bin
+        File(userHome, "bin/gemini").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
-        // Final fallback to command name
-        return "gemini"
+        // Check $HOME/.gemini/bin
+        return File(userHome, ".gemini/bin/gemini")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
     }
 
     /**
      * Finds the claude-code-acp command with specific fallback paths.
-     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin -> "claude-code-acp"
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
      */
-    fun findClaudeCodeAcpPath(): String {
-        // First try PATH
-        val pathResult = findCommandPath("claude-code-acp")
-        if (pathResult != "claude-code-acp") {
-            return pathResult
-        }
+    fun findClaudeCodeAcpPath(): String? {
+        findCommandPath("claude-code-acp")?.let { return it }
 
-        // Check /usr/bin (standard path)
-        val usrBinClaude = File("/usr/bin/claude-code-acp")
-        if (usrBinClaude.exists() && usrBinClaude.canExecute()) {
-            return usrBinClaude.absolutePath
-        }
+        // Check /usr/bin
+        File("/usr/bin/claude-code-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
-        val userHome = System.getProperty("user.home")
-        if (userHome != null) {
-            // Check $HOME/bin
-            val homeBin = File(userHome, "bin")
-            val claudeInHomeBin = File(homeBin, "claude-code-acp")
-            if (claudeInHomeBin.exists() && claudeInHomeBin.canExecute()) {
-                return claudeInHomeBin.absolutePath
-            }
+        val userHome = System.getProperty("user.home") ?: return null
 
-            // Check $HOME/.local/bin
-            val localBin = File(userHome, ".local/bin")
-            val claudeInLocalBin = File(localBin, "claude-code-acp")
-            if (claudeInLocalBin.exists() && claudeInLocalBin.canExecute()) {
-                return claudeInLocalBin.absolutePath
-            }
-        }
+        // Check $HOME/bin
+        File(userHome, "bin/claude-code-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
-        // Final fallback to command name
-        return "claude-code-acp"
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/claude-code-acp")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
+
+    /**
+     * Finds the cursor-agent-acp command with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findCursorAgentAcpPath(): String? {
+        findCommandPath("cursor-agent-acp")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/cursor-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/cursor-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/cursor-agent-acp")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
     }
 
     /**
      * Finds the claude command with specific fallback paths.
-     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin -> "claude"
+     * Order: PATH -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found (user can manually specify).
      */
     fun findClaudePath(): String? {
-        // First try PATH
-        val pathResult = findCommandPath("claude")
-        if (pathResult != "claude") {
-            return pathResult
-        }
+        findCommandPath("claude")?.let { return it }
 
-        val userHome = System.getProperty("user.home")
-        if (userHome != null) {
-            // Check $HOME/bin
-            val homeBin = File(userHome, "bin")
-            val claudeInHomeBin = File(homeBin, "claude")
-            if (claudeInHomeBin.exists() && claudeInHomeBin.canExecute()) {
-                return claudeInHomeBin.absolutePath
-            }
+        val userHome = System.getProperty("user.home") ?: return null
 
-            // Check $HOME/.local/bin
-            val localBin = File(userHome, ".local/bin")
-            val claudeInLocalBin = File(localBin, "claude")
-            if (claudeInLocalBin.exists() && claudeInLocalBin.canExecute()) {
-                return claudeInLocalBin.absolutePath
-            }
-        }
+        // Check $HOME/bin
+        File(userHome, "bin/claude").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
-        // Return null if not found (user can manually specify)
-        return null
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/claude")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
     }
 }

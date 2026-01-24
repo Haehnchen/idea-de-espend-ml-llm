@@ -10,8 +10,9 @@ object ProviderConfig {
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
+    const val PROVIDER_CURSOR = "cursor"
 
-    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT)
+    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT)
 
     data class ProviderInfo(
         val label: String,
@@ -56,6 +57,15 @@ object ProviderConfig {
             label = "OpenCode",
             icon = PluginIcons.OPENCODE,
             description = "Uses the OpenCode CLI. Install: npm install -g opencode-cli",
+            baseUrl = null,
+            models = Triple("", "", ""),
+            autoDiscoveryText = "",
+            modelsUrl = null
+        ),
+        PROVIDER_CURSOR to ProviderInfo(
+            label = "Cursor",
+            icon = PluginIcons.CURSOR,
+            description = "Uses the Cursor Agent CLI. Install: npm install -g @blowmage/cursor-agent-acp and curl https://cursor.com/install -fsSL | bash",
             baseUrl = null,
             models = Triple("", "", ""),
             autoDiscoveryText = "",

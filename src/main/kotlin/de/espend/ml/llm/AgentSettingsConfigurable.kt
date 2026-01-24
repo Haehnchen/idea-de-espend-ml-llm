@@ -383,7 +383,8 @@ class AgentSettingsConfigurable : Configurable {
                     this.modelField = modelField
                 }
                 ProviderConfig.PROVIDER_GEMINI,
-                ProviderConfig.PROVIDER_OPENCODE -> {
+                ProviderConfig.PROVIDER_OPENCODE,
+                ProviderConfig.PROVIDER_CURSOR -> {
                     // Description and executable field for these providers
                     apiKeyField = null
                     baseUrlField = null
@@ -405,7 +406,12 @@ class AgentSettingsConfigurable : Configurable {
                     })
 
                     // Executable field
-                    val commandName = if (provider == ProviderConfig.PROVIDER_GEMINI) "gemini" else "opencode"
+                    val commandName = when (provider) {
+                        ProviderConfig.PROVIDER_GEMINI -> "gemini"
+                        ProviderConfig.PROVIDER_OPENCODE -> "opencode"
+                        ProviderConfig.PROVIDER_CURSOR -> "cursor-agent-acp"
+                        else -> provider
+                    }
                     executableField = JBTextField(initialConfig?.executable ?: "", 20).apply {
                         emptyText.setText("Auto-detection ($commandName)")
                     }
@@ -415,18 +421,14 @@ class AgentSettingsConfigurable : Configurable {
 
                     // Auto-detect button
                     val autoDetectButton = JButton("Auto-Detect").apply {
-                        val detectFun = if (provider == ProviderConfig.PROVIDER_GEMINI) {
-                            { CommandPathUtils.findGeminiPath() }
-                        } else {
-                            { CommandPathUtils.findOpenCodePath() }
-                        }
                         addActionListener {
-                            val detected = detectFun()
-                            if (detected != commandName) {
-                                executableField?.text = detected
-                            } else {
-                                executableField?.text = ""
+                            val detected = when (provider) {
+                                ProviderConfig.PROVIDER_GEMINI -> CommandPathUtils.findGeminiPath()
+                                ProviderConfig.PROVIDER_OPENCODE -> CommandPathUtils.findOpenCodePath()
+                                ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentAcpPath()
+                                else -> null
                             }
+                            executableField?.text = detected ?: ""
                         }
                     }
                     inputsPanel.add(autoDetectButton, GridBagConstraints().apply {
