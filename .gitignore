@@ -46,4 +46,4 @@ bin/
 /.claude
 /.junie
 /.intellijPlatform
-/.decompiled
+/decompiled
