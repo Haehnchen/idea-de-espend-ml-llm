@@ -71,3 +71,9 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, F
 
 ![Gemini](docs/gemini.webp)
 
+![AI Assistant](docs/ai_assistant.webp)
+
+![AI Assistant Chat](docs/ai_assistant_2.webp)
+
+![AI Assistant Settings](docs/ai_assistant_settings.webp)
+
