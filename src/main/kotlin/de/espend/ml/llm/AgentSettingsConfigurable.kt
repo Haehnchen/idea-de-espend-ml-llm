@@ -233,6 +233,14 @@ class AgentSettingsConfigurable : Configurable {
                 }
             }
 
+            // Helper to create activation instructions label
+            fun createActivationInstructionsLabel(): JBLabel {
+                return JBLabel("To use for commit messages and AI features: Go to Settings → Tools → AI Assistant → \"Models & API keys\", select \"Agent Providers\", and select a model.").apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                    font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                }
+            }
+
             // Create header with checkbox, icon, and text
             enabledCheckbox = JBCheckBox("", initialConfig?.isEnabled ?: false)
             val headerPanel = JPanel(GridBagLayout()).apply {
@@ -377,6 +385,11 @@ class AgentSettingsConfigurable : Configurable {
 
                     // Store modelField reference for getConfig()
                     this.modelField = modelField
+
+                    // Activation instructions below model field
+                    inputsPanel.add(createActivationInstructionsLabel(), GridBagConstraints().apply {
+                        gridx = 0; gridy = 4; gridwidth = 3; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
+                    })
                 }
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
@@ -502,6 +515,11 @@ class AgentSettingsConfigurable : Configurable {
                             gridx = 2; gridy = 2; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
                         })
                     }
+
+                    // Activation instructions below model field
+                    inputsPanel.add(createActivationInstructionsLabel(), GridBagConstraints().apply {
+                        gridx = 0; gridy = 3; gridwidth = 3; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
+                    })
                 }
             }
 
