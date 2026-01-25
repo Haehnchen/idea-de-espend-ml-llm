@@ -37,6 +37,7 @@
             <li><b>Mimo</b> - Mimo via Anthropic Compatible API</li>
             <li><b>Moonshot</b> - Moonshot via Anthropic Compatible API</li>
             <li><b>Requesty.ai</b> - Requesty.ai via Anthropic Compatible API</li>
+            <li><b>Nano-GPT</b> - Nano-GPT via Anthropic Compatible API</li>
         </ul>
 
         <p><b>Installation:</b></p>
