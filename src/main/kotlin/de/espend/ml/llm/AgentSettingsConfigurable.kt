@@ -11,6 +11,7 @@ import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import javax.swing.*
+import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 
 /**
@@ -228,22 +229,89 @@ class AgentSettingsConfigurable : Configurable {
             val providerName = providerInfo?.label ?: provider
             val providerIcon = providerInfo?.icon?.let { PluginIcons.scaleIcon(it, 16) }
 
-            // Helper to create register link
-            fun createRegisterLink(url: String): ActionLink {
-                return ActionLink("Register") { BrowserUtil.browse(url) }.apply {
-                    setExternalLinkIcon()
+            // Helper to create description panel with optional register link after provider name
+            // Format: "$providerName (Register) rest of description..." where Register is clickable
+            fun createDescriptionPanel(description: String, registerUrl: String?): JPanel {
+                return JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
+                    isOpaque = false
+                    
+                    if (registerUrl != null) {
+                        // Show: "ProviderName (Register) rest of description"
+                        add(JBLabel("$providerName ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(JBLabel("(").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        val registerLink = ActionLink("Register") { BrowserUtil.browse(registerUrl) }.apply {
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        }
+                        add(registerLink)
+                        add(JBLabel(") ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        // Add the rest of description without the provider name prefix
+                        val restOfDesc = description.removePrefix(providerName).trimStart()
+                        add(JBLabel(restOfDesc).apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                    } else {
+                        // No register URL, just show the full description
+                        add(JBLabel(description).apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                    }
                 }
             }
 
-            // Helper to create activation instructions label (wrapping text)
-            fun createActivationInstructionsLabel(): JTextArea {
-                return JTextArea("To use for commit messages and AI features: Go to Settings → Tools → AI Assistant → \"Models & API keys\", select \"Agent Providers\", and select a model.").apply {
-                    isEditable = false
-                    lineWrap = true
-                    wrapStyleWord = true
+            // Helper to create activation panel with clickable link
+            // Format: "Active for core AI features" (clickable) like commit generation, AI actions...
+            fun createActivationPanel(): JPanel {
+                return JPanel(GridBagLayout()).apply {
                     isOpaque = false
-                    foreground = UIUtil.getContextHelpForeground()
-                    font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                    
+                    val activateLink = ActionLink("Activate for core AI features") {
+                        val model = ActiveModelSetter.resolveModel(modelField?.text, providerInfo)
+                        val parentWindow = SwingUtilities.getWindowAncestor(this)
+                        
+                        if (model == null) {
+                            JOptionPane.showMessageDialog(
+                                parentWindow,
+                                "Please enter a model name first.",
+                                "Model Required",
+                                JOptionPane.WARNING_MESSAGE
+                            )
+                            return@ActionLink
+                        }
+                        
+                        ActiveModelSetter.setActiveModel(provider, model)
+                        
+                        JOptionPane.showMessageDialog(
+                            parentWindow,
+                            "Model '$model' has been set as the active model for AI Assistant.",
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE
+                        )
+                    }.apply {
+                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                    }
+                    add(activateLink, GridBagConstraints().apply {
+                        gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
+                    })
+                    
+                    // Rest of text
+                    val suffixLabel = JBLabel(" like commit message, AI actions. (sets configurations \"Models & API keys\").").apply {
+                        foreground = UIUtil.getContextHelpForeground()
+                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                    }
+                    add(suffixLabel, GridBagConstraints().apply {
+                        gridx = 1; gridy = 0; anchor = GridBagConstraints.WEST; weightx = 1.0
+                    })
                 }
             }
 
@@ -397,9 +465,9 @@ class AgentSettingsConfigurable : Configurable {
                     // Store modelField reference for getConfig()
                     this.modelField = modelField
 
-                    // Activation instructions below model field
-                    inputsPanel.add(createActivationInstructionsLabel(), GridBagConstraints().apply {
-                        gridx = 0; gridy = 4; gridwidth = 3; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
+                    // Activation link below model field
+                    inputsPanel.add(createActivationPanel(), GridBagConstraints().apply {
+                        gridx = 0; gridy = 4; gridwidth = 3; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
                     })
                 }
                 ProviderConfig.PROVIDER_GEMINI,
@@ -470,15 +538,8 @@ class AgentSettingsConfigurable : Configurable {
 
                     val fullDesc = providerInfo?.description
                         ?: "$providerName via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp"
-                    val descLabel = JTextArea(fullDesc).apply {
-                        isEditable = false
-                        lineWrap = true
-                        wrapStyleWord = true
-                        isOpaque = false
-                        foreground = UIUtil.getContextHelpForeground()
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                    }
-                    inputsPanel.add(descLabel, GridBagConstraints().apply {
+                    val descPanel = createDescriptionPanel(fullDesc, providerInfo?.registerUrl)
+                    inputsPanel.add(descPanel, GridBagConstraints().apply {
                         gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
                         anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
                     })
@@ -536,18 +597,11 @@ class AgentSettingsConfigurable : Configurable {
                         })
                     }
 
-                    // Activation instructions below model field
-                    inputsPanel.add(createActivationInstructionsLabel(), GridBagConstraints().apply {
-                        gridx = 0; gridy = 3; gridwidth = 3; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
+                    // Activation link below model field
+                    inputsPanel.add(createActivationPanel(), GridBagConstraints().apply {
+                        gridx = 0; gridy = 3; gridwidth = 3; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
                     })
                 }
-            }
-
-            // Add register link if provider has one
-            providerInfo?.registerUrl?.let { url ->
-                inputsPanel.add(createRegisterLink(url), GridBagConstraints().apply {
-                    gridx = 0; gridy = 99; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(8)
-                })
             }
 
             // Wrapper to limit inputsPanel width to 600px
