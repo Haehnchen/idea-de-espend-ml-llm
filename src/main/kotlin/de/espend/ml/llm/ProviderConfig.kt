@@ -9,6 +9,16 @@ object ProviderConfig {
     const val PROVIDER_DROID = "droid"
     const val PROVIDER_ZAI = "zai"
 
+    /**
+     * Model IDs for different AI Assistant contexts.
+     * @param smart Model ID for core features (e.g., code generation, commit message)
+     * @param quick Model ID for instant helpers (e.g., chat title, name suggestions)
+     */
+    data class ModelIds(
+        val smart: String,
+        val quick: String
+    )
+
     data class ProviderInfo(
         val provider: String,
         val label: String,
@@ -16,6 +26,7 @@ object ProviderConfig {
         val description: String,
         val baseUrl: String?,
         val models: Triple<String, String, String>,
+        val modelIds: ModelIds,
         val autoDiscoveryText: String,
         val modelsUrl: String?,
         val registerUrl: String? = null
@@ -29,6 +40,7 @@ object ProviderConfig {
             description = "Uses Claude Code's built-in Anthropic integration by default.",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "claude-sonnet-4-20250514", quick = "claude-sonnet-4-20250514"),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -39,6 +51,7 @@ object ProviderConfig {
             description = "Supports any Anthropic-like API via npm install -g @zed-industries/claude-code-acp",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -49,6 +62,7 @@ object ProviderConfig {
             description = "Uses the Gemini CLI. Install: npm install -g @google/generative-ai-cli",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "gemini-2.5-pro", quick = "gemini-2.5-pro"),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -59,6 +73,7 @@ object ProviderConfig {
             description = "Uses the OpenCode CLI. Install: npm install -g opencode-cli",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -69,6 +84,7 @@ object ProviderConfig {
             description = "Uses the Cursor Agent CLI. Install: npm install -g @blowmage/cursor-agent-acp and curl https://cursor.com/install -fsSL | bash",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -79,6 +95,7 @@ object ProviderConfig {
             description = "Uses the Factory.ai Droid CLI. Install: curl -fsSL https://app.factory.ai/cli | sh",
             baseUrl = null,
             models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
             autoDiscoveryText = "",
             modelsUrl = null
         ),
@@ -89,6 +106,7 @@ object ProviderConfig {
             description = "Z.AI via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://api.z.ai/api/anthropic",
             models = Triple("glm-4.7", "glm-4.7", "glm-4.5-air"),
+            modelIds = ModelIds(smart = "glm-4.7", quick = "glm-4.5-air"),
             autoDiscoveryText = "glm-4.7",
             modelsUrl = "https://api.z.ai/api/anthropic/v1/models",
             registerUrl = "https://z.ai/subscribe?ic=BCLQG4VJIO"
@@ -100,6 +118,7 @@ object ProviderConfig {
             description = "MiniMax via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://api.minimax.io/anthropic",
             models = Triple("MiniMax-M2.1", "MiniMax-M2.1", "MiniMax-M2.1"),
+            modelIds = ModelIds(smart = "MiniMax-M2.1", quick = "MiniMax-M2.1"),
             autoDiscoveryText = "MiniMax-M2.1",
             modelsUrl = null
         ),
@@ -110,6 +129,7 @@ object ProviderConfig {
             description = "OpenRouter via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://openrouter.ai/api",
             models = Triple("z-ai/glm-4.5-air:free", "z-ai/glm-4.5-air:free", "z-ai/glm-4.5-air:free"),
+            modelIds = ModelIds(smart = "z-ai/glm-4.5-air:free", quick = "z-ai/glm-4.5-air:free"),
             autoDiscoveryText = "z-ai/glm-4.5-air:free",
             modelsUrl = "https://openrouter.ai/api/v1/models"
         ),
@@ -120,6 +140,7 @@ object ProviderConfig {
             description = "Mimo via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://api.xiaomimimo.com/anthropic",
             models = Triple("mimo-v2-flash", "mimo-v2-flash", "mimo-v2-flash"),
+            modelIds = ModelIds(smart = "mimo-v2-flash", quick = "mimo-v2-flash"),
             autoDiscoveryText = "mimo-v2-flash",
             modelsUrl = null
         ),
@@ -130,6 +151,7 @@ object ProviderConfig {
             description = "Moonshot via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://api.moonshot.ai/anthropic",
             models = Triple("kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo"),
+            modelIds = ModelIds(smart = "kimi-k2-thinking-turbo", quick = "kimi-k2-thinking-turbo"),
             autoDiscoveryText = "kimi-k2-thinking-turbo",
             modelsUrl = null
         ),
@@ -140,6 +162,7 @@ object ProviderConfig {
             description = "Requesty.ai via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://router.requesty.ai/",
             models = Triple("zai/GLM-4.7", "zai/GLM-4.7", "zai/GLM-4.7"),
+            modelIds = ModelIds(smart = "zai/GLM-4.7", quick = "zai/GLM-4.7"),
             autoDiscoveryText = "zai/GLM-4.7",
             modelsUrl = "https://router.requesty.ai/v1/models"
         ),
@@ -150,6 +173,7 @@ object ProviderConfig {
             description = "Nano-GPT via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://nano-gpt.com/api/v1",
             models = Triple("gemini-3-pro-preview", "gemini-3-pro-preview", "gemini-3-pro-preview"),
+            modelIds = ModelIds(smart = "gemini-3-pro-preview", quick = "gemini-3-pro-preview"),
             autoDiscoveryText = "gemini-3-pro-preview",
             modelsUrl = "https://nano-gpt.com/api/v1/models"
         ),
@@ -160,6 +184,7 @@ object ProviderConfig {
             description = "AIHubMix via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
             baseUrl = "https://aihubmix.com",
             models = Triple("gemini-3-flash-preview-free", "gemini-3-flash-preview-free", "gemini-3-flash-preview-free"),
+            modelIds = ModelIds(smart = "gemini-3-flash-preview-free", quick = "gemini-3-flash-preview-free"),
             autoDiscoveryText = "gemini-3-flash-preview-free",
             modelsUrl = "https://aihubmix.com/v1/models"
         )

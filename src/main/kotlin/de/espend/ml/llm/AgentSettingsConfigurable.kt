@@ -276,10 +276,11 @@ class AgentSettingsConfigurable : Configurable {
                     isOpaque = false
                     
                     val activateLink = ActionLink("Activate for core AI features") {
-                        val model = ActiveModelSetter.resolveModel(modelField?.text, providerInfo)
                         val parentWindow = SwingUtilities.getWindowAncestor(this)
+                        val customModel = modelField?.text?.trim()?.takeIf { it.isNotEmpty() }
+                        val hasModel = ActiveModelSetter.hasModel(customModel, providerInfo)
                         
-                        if (model == null) {
+                        if (!hasModel) {
                             JOptionPane.showMessageDialog(
                                 parentWindow,
                                 "Please enter a model name first.",
@@ -289,11 +290,11 @@ class AgentSettingsConfigurable : Configurable {
                             return@ActionLink
                         }
                         
-                        ActiveModelSetter.setActiveModel(provider, model)
+                        ActiveModelSetter.setActiveModel(providerInfo!!, customModel)
                         
                         JOptionPane.showMessageDialog(
                             parentWindow,
-                            "Model '$model' has been set as the active model for AI Assistant.",
+                            "Provider has been set as the active model for AI Assistant.",
                             "Success",
                             JOptionPane.INFORMATION_MESSAGE
                         )
