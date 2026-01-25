@@ -74,9 +74,6 @@
         <!-- AI Provider Agent Registry - dynamic agent registration -->
         <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
 
-        <!-- Agent Providers AI Provider Settings Service -->
-        <applicationService serviceImplementation="de.espend.ml.llm.chat.AgentProvidersSettingsManager"/>
-
         <!-- Settings for AI provider agents - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
                                  id="de.espend.ml.llm.AgentSettings"

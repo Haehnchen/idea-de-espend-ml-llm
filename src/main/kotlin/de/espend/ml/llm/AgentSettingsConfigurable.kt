@@ -6,6 +6,7 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.*
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -219,6 +220,7 @@ class AgentSettingsConfigurable : Configurable {
         private var modelField: JBTextField? = null
         private val descriptionArea: JTextArea?
         private val inputsPanel: JPanel
+        private lateinit var inputsWrapper: JPanel
         private var executableField: JBTextField? = null
 
         init {
@@ -233,9 +235,13 @@ class AgentSettingsConfigurable : Configurable {
                 }
             }
 
-            // Helper to create activation instructions label
-            fun createActivationInstructionsLabel(): JBLabel {
-                return JBLabel("To use for commit messages and AI features: Go to Settings → Tools → AI Assistant → \"Models & API keys\", select \"Agent Providers\", and select a model.").apply {
+            // Helper to create activation instructions label (wrapping text)
+            fun createActivationInstructionsLabel(): JTextArea {
+                return JTextArea("To use for commit messages and AI features: Go to Settings → Tools → AI Assistant → \"Models & API keys\", select \"Agent Providers\", and select a model.").apply {
+                    isEditable = false
+                    lineWrap = true
+                    wrapStyleWord = true
+                    isOpaque = false
                     foreground = UIUtil.getContextHelpForeground()
                     font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
                 }
@@ -320,7 +326,11 @@ class AgentSettingsConfigurable : Configurable {
                     descriptionArea = null
 
                     // Install command label
-                    val installLabel = JBLabel("Supports any Anthropic-like API via npm install -g @zed-industries/claude-code-acp").apply {
+                    val installLabel = JTextArea("Supports any Anthropic-like API via npm install -g @zed-industries/claude-code-acp").apply {
+                        isEditable = false
+                        lineWrap = true
+                        wrapStyleWord = true
+                        isOpaque = false
                         foreground = UIUtil.getContextHelpForeground()
                         font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
                     }
@@ -347,6 +357,7 @@ class AgentSettingsConfigurable : Configurable {
 
                     // Model with browse button
                     val browseButton = JButton("...").apply {
+                        minimumSize = Dimension(30, modelField.preferredSize.height)
                         preferredSize = Dimension(30, modelField.preferredSize.height)
                         addActionListener {
                             val baseUrl = baseUrlField.text.trim()
@@ -401,7 +412,11 @@ class AgentSettingsConfigurable : Configurable {
                     descriptionArea = null
 
                     // Description label (like installLabel in Anthropic Compatible)
-                    val descLabel = JBLabel(providerInfo?.description ?: "").apply {
+                    val descLabel = JTextArea(providerInfo?.description ?: "").apply {
+                        isEditable = false
+                        lineWrap = true
+                        wrapStyleWord = true
+                        isOpaque = false
                         foreground = UIUtil.getContextHelpForeground()
                         font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
                     }
@@ -455,7 +470,11 @@ class AgentSettingsConfigurable : Configurable {
 
                     val fullDesc = providerInfo?.description
                         ?: "$providerName via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp"
-                    val descLabel = JBLabel(fullDesc).apply {
+                    val descLabel = JTextArea(fullDesc).apply {
+                        isEditable = false
+                        lineWrap = true
+                        wrapStyleWord = true
+                        isOpaque = false
                         foreground = UIUtil.getContextHelpForeground()
                         font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
                     }
@@ -488,6 +507,7 @@ class AgentSettingsConfigurable : Configurable {
                     val modelsUrl = providerInfo?.modelsUrl
                     if (modelsUrl != null) {
                         val browseButton = JButton("...").apply {
+                            minimumSize = Dimension(30, modelField.preferredSize.height)
                             preferredSize = Dimension(30, modelField.preferredSize.height)
                             addActionListener {
                                 val apiKey = apiKeyField.text.trim()
@@ -530,15 +550,20 @@ class AgentSettingsConfigurable : Configurable {
                 })
             }
 
-            // Filler to push content left
-            inputsPanel.add(Box.createHorizontalGlue(), GridBagConstraints().apply {
-                gridx = 3; gridy = 0; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL
-            })
+            // Wrapper to limit inputsPanel width to 600px
+            inputsWrapper = object : JPanel(BorderLayout()) {
+                override fun getPreferredSize(): Dimension {
+                    val pref = super.getPreferredSize()
+                    return Dimension(600, pref.height)
+                }
+            }.apply {
+                add(inputsPanel, BorderLayout.CENTER)
+            }
 
             // Inputs container (hidden when disabled) - with left margin for nested content
-            add(inputsPanel, GridBagConstraints().apply {
-                gridx = 0; gridy = 1; weightx = 1.0
-                anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insets(2, 24, 2, 0)
+            add(inputsWrapper, GridBagConstraints().apply {
+                gridx = 0; gridy = 1; gridwidth = 2; weightx = 0.0
+                anchor = GridBagConstraints.NORTHWEST; fill = GridBagConstraints.NONE; insets = JBUI.insets(2, 24, 2, 0)
             })
 
             // Toggle visibility
@@ -547,7 +572,7 @@ class AgentSettingsConfigurable : Configurable {
         }
 
         fun updateInputsVisibility() {
-            inputsPanel.isVisible = enabledCheckbox.isSelected
+            inputsWrapper.isVisible = enabledCheckbox.isSelected
         }
 
         fun getConfig(): AgentConfig {
