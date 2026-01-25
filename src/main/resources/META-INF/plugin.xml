@@ -14,12 +14,13 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, OpenRouter, and more) as chat Agent in IntelliJ IDEA's AI Assistant chat.</p>
+        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, OpenRouter, and more) with IntelliJ IDEA's AI Assistant.</p>
         <p>This plugin allows you to:</p>
         <ul>
             <li>Configure multiple AI providers through a simple settings UI</li>
             <li>Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API</li>
             <li>Works with providers like Z.AI, MiniMax, OpenRouter, Mimo, Moonshot, and more</li>
+            <li>Use configured providers for commit message generation, AI actions, code explanation, and more</li>
             <li>Seamlessly integrates with IntelliJ's AI chat features</li>
         </ul>
 
@@ -50,6 +51,13 @@
             <li>Go to <b>Settings → AI Assistant → Agent Providers</b></li>
             <li>Configure API keys and base URLs as needed</li>
             <li>Click <b>Apply</b> to register the agents</li>
+            <li><b>Important</b>: To use providers for core AI features (commit generation, AI actions):
+                <ul>
+                    <li>Go to <b>Settings → Tools → AI Assistant → "Models & API keys"</b></li>
+                    <li>Select <b>"Agent Providers"</b> from the provider dropdown</li>
+                    <li>Select a model from the model dropdown</li>
+                </ul>
+            </li>
         </ol>
 
         <p>Requires the AI Assistant plugin to be installed.</p>
@@ -66,8 +74,8 @@
         <!-- AI Provider Agent Registry - dynamic agent registration -->
         <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
 
-        <!-- Startup Activity for loading AI provider agents -->
-        <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
+        <!-- Agent Providers AI Provider Settings Service -->
+        <applicationService serviceImplementation="de.espend.ml.llm.chat.AgentProvidersSettingsManager"/>
 
         <!-- Settings for AI provider agents - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
@@ -75,6 +83,11 @@
                                  instance="de.espend.ml.llm.AgentSettingsConfigurable"
                                  displayName="Agent Providers"
                                  groupWeight="10"/>
+    </extensions>
+
+    <!-- Third-party AI Provider extension -->
+    <extensions defaultExtensionNs="com.intellij.ml.llm">
+        <thirdPartyAIProvider implementation="de.espend.ml.llm.chat.AgentProvidersAIProvider"/>
     </extensions>
 
     <!-- Actions for AI Provider plugin -->

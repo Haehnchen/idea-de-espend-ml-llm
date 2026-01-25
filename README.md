@@ -18,6 +18,7 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, F
 - **Anthropic-Compatible API**: Works with any provider that implements the Anthropic API
 - **Built-in CLI Support**: Native support for Claude CLI, Gemini CLI, OpenCode CLI, and Cursor CLI
 - **Seamless Integration**: Works directly with IntelliJ IDEA's AI Assistant chat
+- **Core AI Features**: Use configured providers for commit message generation, AI actions, code explanation, and more
 
 ## Supported Providers
 
@@ -47,6 +48,11 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, F
 5. Go to **Settings → AI Assistant → Agent Providers**
 6. Configure API keys and base URLs as needed
 7. Click **Apply** to register the agents
+8. Install provider-related packages: eg <pre>npm install -g @zed-industries/claude-code-acp</pre>
+9. **Important**: To use providers for core AI features (commit generation, AI actions):
+   - Go to **Settings → Tools → AI Assistant → "Models & API keys"**
+   - Select **"Agent Providers"** from the provider dropdown
+   - Select a model from the model dropdown (e.g., "glm-4.7 (Z.AI)")
 
 ## Requirements
 
