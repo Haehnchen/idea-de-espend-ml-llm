@@ -108,7 +108,8 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
      * Creates an AgentServerConfig based on the provider.
      */
     private fun createAgentServerConfig(config: AgentConfig): AgentServerConfig {
-        val providerInfo = ProviderConfig.PROVIDER_INFOS[config.provider] ?: ProviderConfig.PROVIDER_INFOS[ProviderConfig.PROVIDER_ZAI]!!
+        val providerInfo = ProviderConfig.findProviderInfo(config.provider)
+            ?: ProviderConfig.findProviderInfo(ProviderConfig.PROVIDER_ZAI)!!
         val baseUrl = when (config.provider) {
             ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
             ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
@@ -116,7 +117,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             else -> providerInfo.baseUrl ?: ""
         }
         val apiKey = when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT, ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_DROID -> ""
+            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT,
+            ProviderConfig.PROVIDER_GEMINI,
+            ProviderConfig.PROVIDER_OPENCODE,
+            ProviderConfig.PROVIDER_CURSOR,
+            ProviderConfig.PROVIDER_DROID -> ""
             else -> config.apiKey
         }
         val models = providerInfo.models
@@ -227,7 +232,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         val serverConfig = createAgentServerConfig(config)
         val defaultMcpSettings = DefaultMcpSettings(true, true)
-        val providerName = ProviderConfig.PROVIDER_INFOS[config.provider]?.label ?: config.provider
+        val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
         val acpAgentConfig = LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
         val delegate = DynamicAcpChatAgent(config.id, providerName, acpAgentConfig)
         val agent = ProviderChatAgent(delegate, PluginIcons.getIconForProvider(config.provider))

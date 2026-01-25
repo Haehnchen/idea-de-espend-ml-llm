@@ -35,7 +35,7 @@ object PluginIcons {
     }
 
     fun getIconForProvider(provider: String): Icon {
-        val icon = ProviderConfig.PROVIDER_INFOS[provider]?.icon ?: AI_PROVIDER
+        val icon = ProviderConfig.findProviderInfo(provider)?.icon ?: AI_PROVIDER
         return scaleIcon(icon, 16)
     }
 }

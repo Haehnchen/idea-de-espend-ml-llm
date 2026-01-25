@@ -1,24 +1,16 @@
 package de.espend.ml.llm
 
 object ProviderConfig {
-    const val PROVIDER_ZAI = "z.ai"
-    const val PROVIDER_MINIMAX = "minimax"
-    const val PROVIDER_OPENROUTER = "openrouter"
-    const val PROVIDER_MIMO = "mimo"
-    const val PROVIDER_MOONSHOT = "moonshot"
-    const val PROVIDER_DROID = "droid"
-    const val PROVIDER_REQUESTY = "requesty"
-    const val PROVIDER_NANO_GPT = "nano-gpt"
-    const val PROVIDER_AIHUBMIX = "aihubmix"
     const val PROVIDER_ANTHROPIC_DEFAULT = "anthropic-default"
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
-
-    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY, PROVIDER_NANO_GPT, PROVIDER_AIHUBMIX)
+    const val PROVIDER_DROID = "droid"
+    const val PROVIDER_ZAI = "zai"
 
     data class ProviderInfo(
+        val provider: String,
         val label: String,
         val icon: javax.swing.Icon,
         val description: String,
@@ -29,8 +21,9 @@ object ProviderConfig {
         val registerUrl: String? = null
     )
 
-    val PROVIDER_INFOS = mapOf(
-        PROVIDER_ANTHROPIC_DEFAULT to ProviderInfo(
+    val PROVIDER_INFOS = arrayListOf(
+        ProviderInfo(
+            provider = PROVIDER_ANTHROPIC_DEFAULT,
             label = "Claude CLI",
             icon = PluginIcons.CLAUDE,
             description = "Uses Claude Code's built-in Anthropic integration by default.",
@@ -39,7 +32,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_ANTHROPIC_COMPATIBLE to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_ANTHROPIC_COMPATIBLE,
             label = "Anthropic Like",
             icon = PluginIcons.ANTHROPIC,
             description = "Supports any Anthropic-like API via npm install -g @zed-industries/claude-code-acp",
@@ -48,7 +42,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_GEMINI to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_GEMINI,
             label = "Gemini",
             icon = PluginIcons.GEMINI,
             description = "Uses the Gemini CLI. Install: npm install -g @google/generative-ai-cli",
@@ -57,7 +52,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_OPENCODE to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_OPENCODE,
             label = "OpenCode",
             icon = PluginIcons.OPENCODE,
             description = "Uses the OpenCode CLI. Install: npm install -g opencode-cli",
@@ -66,7 +62,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_CURSOR to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_CURSOR,
             label = "Cursor",
             icon = PluginIcons.CURSOR,
             description = "Uses the Cursor Agent CLI. Install: npm install -g @blowmage/cursor-agent-acp and curl https://cursor.com/install -fsSL | bash",
@@ -75,7 +72,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_DROID to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_DROID,
             label = "Factory.ai",
             icon = PluginIcons.DROID,
             description = "Uses the Factory.ai Droid CLI. Install: curl -fsSL https://app.factory.ai/cli | sh",
@@ -84,7 +82,8 @@ object ProviderConfig {
             autoDiscoveryText = "",
             modelsUrl = null
         ),
-        PROVIDER_ZAI to ProviderInfo(
+        ProviderInfo(
+            provider = PROVIDER_ZAI,
             label = "Z.AI",
             icon = PluginIcons.ZAI,
             description = "Z.AI via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -94,7 +93,8 @@ object ProviderConfig {
             modelsUrl = "https://api.z.ai/api/anthropic/v1/models",
             registerUrl = "https://z.ai/subscribe?ic=BCLQG4VJIO"
         ),
-        PROVIDER_MINIMAX to ProviderInfo(
+        ProviderInfo(
+            provider = "minimax",
             label = "MiniMax",
             icon = PluginIcons.MINIMAX,
             description = "MiniMax via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -103,7 +103,8 @@ object ProviderConfig {
             autoDiscoveryText = "MiniMax-M2.1",
             modelsUrl = null
         ),
-        PROVIDER_OPENROUTER to ProviderInfo(
+        ProviderInfo(
+            provider = "openrouter",
             label = "OpenRouter",
             icon = PluginIcons.OPENROUTER,
             description = "OpenRouter via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -112,7 +113,8 @@ object ProviderConfig {
             autoDiscoveryText = "z-ai/glm-4.5-air:free",
             modelsUrl = "https://openrouter.ai/api/v1/models"
         ),
-        PROVIDER_MIMO to ProviderInfo(
+        ProviderInfo(
+            provider = "mimo",
             label = "Mimo",
             icon = PluginIcons.MIMO,
             description = "Mimo via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -121,7 +123,8 @@ object ProviderConfig {
             autoDiscoveryText = "mimo-v2-flash",
             modelsUrl = null
         ),
-        PROVIDER_MOONSHOT to ProviderInfo(
+        ProviderInfo(
+            provider = "moonshot",
             label = "Moonshot",
             icon = PluginIcons.MOONSHOT,
             description = "Moonshot via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -130,7 +133,8 @@ object ProviderConfig {
             autoDiscoveryText = "kimi-k2-thinking-turbo",
             modelsUrl = null
         ),
-        PROVIDER_REQUESTY to ProviderInfo(
+        ProviderInfo(
+            provider = "requesty",
             label = "Requesty.ai",
             icon = PluginIcons.REQUESTY,
             description = "Requesty.ai via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -139,7 +143,8 @@ object ProviderConfig {
             autoDiscoveryText = "zai/GLM-4.7",
             modelsUrl = "https://router.requesty.ai/v1/models"
         ),
-        PROVIDER_NANO_GPT to ProviderInfo(
+        ProviderInfo(
+            provider = "nano-gpt",
             label = "Nano-GPT",
             icon = PluginIcons.NANOGPT,
             description = "Nano-GPT via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -148,7 +153,8 @@ object ProviderConfig {
             autoDiscoveryText = "gemini-3-pro-preview",
             modelsUrl = "https://nano-gpt.com/api/v1/models"
         ),
-        PROVIDER_AIHUBMIX to ProviderInfo(
+        ProviderInfo(
+            provider = "aihubmix",
             label = "AIHubMix",
             icon = PluginIcons.AIHUBMIX,
             description = "AIHubMix via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
@@ -158,4 +164,8 @@ object ProviderConfig {
             modelsUrl = "https://aihubmix.com/v1/models"
         )
     )
+
+    fun findProviderInfo(provider: String): ProviderInfo? {
+        return PROVIDER_INFOS.firstOrNull { it.provider == provider }
+    }
 }

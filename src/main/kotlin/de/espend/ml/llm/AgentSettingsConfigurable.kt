@@ -118,7 +118,8 @@ class AgentSettingsConfigurable : Configurable {
             gridx = 0; gridy = 1; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsTop(10)
         })
 
-        ProviderConfig.PROVIDERS.forEachIndexed { index, provider ->
+        ProviderConfig.PROVIDER_INFOS.forEachIndexed { index, providerInfo ->
+            val provider = providerInfo.provider
             val existingConfig = registry.agentConfigs.find { it.provider == provider }
             val panel = ProviderPanel(provider, existingConfig)
             providerPanels[provider] = panel
@@ -136,7 +137,7 @@ class AgentSettingsConfigurable : Configurable {
         // Filler
         val gbc = GridBagConstraints().apply {
             gridx = 0
-            gridy = ProviderConfig.PROVIDERS.size + 2  // +2 because settings panel and providers header are at rows 0-1
+            gridy = ProviderConfig.PROVIDER_INFOS.size + 2  // +2 because settings panel and providers header are at rows 0-1
             weightx = 1.0
             weighty = 1.0
             fill = GridBagConstraints.BOTH
@@ -153,7 +154,8 @@ class AgentSettingsConfigurable : Configurable {
         val currentClaude = claudeExecutableField.text.trim().ifEmpty { null }
         if (registry.state.claudeCodeExecutable != currentClaude) return true
 
-        for (provider in ProviderConfig.PROVIDERS) {
+        for (providerInfo in ProviderConfig.PROVIDER_INFOS) {
+            val provider = providerInfo.provider
             val panel = providerPanels[provider] ?: continue
             val existingConfig = registry.agentConfigs.find { it.provider == provider }
             val panelConfig = panel.getConfig()
@@ -174,7 +176,8 @@ class AgentSettingsConfigurable : Configurable {
         registry.agentConfigs.forEach { registry.removeAgent(it.id) }
 
         // Register new agents from the panels
-        for (provider in ProviderConfig.PROVIDERS) {
+        for (providerInfo in ProviderConfig.PROVIDER_INFOS) {
+            val provider = providerInfo.provider
             val panel = providerPanels[provider] ?: continue
             val config = panel.getConfig()
             if (config.isEnabled) {
@@ -189,7 +192,8 @@ class AgentSettingsConfigurable : Configurable {
         // Reset Claude executable path
         claudeExecutableField.text = registry.state.claudeCodeExecutable ?: ""
 
-        for (provider in ProviderConfig.PROVIDERS) {
+        for (providerInfo in ProviderConfig.PROVIDER_INFOS) {
+            val provider = providerInfo.provider
             val panel = providerPanels[provider] ?: continue
             val existingConfig = registry.agentConfigs.find { it.provider == provider }
             panel.loadConfig(existingConfig)
@@ -218,7 +222,7 @@ class AgentSettingsConfigurable : Configurable {
         private var executableField: JBTextField? = null
 
         init {
-            val providerInfo = ProviderConfig.PROVIDER_INFOS[provider]
+            val providerInfo = ProviderConfig.findProviderInfo(provider)
             val providerName = providerInfo?.label ?: provider
             val providerIcon = providerInfo?.icon?.let { PluginIcons.scaleIcon(it, 16) }
 
