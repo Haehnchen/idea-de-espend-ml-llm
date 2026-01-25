@@ -7,13 +7,14 @@ object ProviderConfig {
     const val PROVIDER_MIMO = "mimo"
     const val PROVIDER_MOONSHOT = "moonshot"
     const val PROVIDER_DROID = "droid"
+    const val PROVIDER_REQUESTY = "requesty"
     const val PROVIDER_ANTHROPIC_DEFAULT = "anthropic-default"
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
 
-    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT)
+    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY)
 
     data class ProviderInfo(
         val label: String,
@@ -126,6 +127,15 @@ object ProviderConfig {
             models = Triple("kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo"),
             autoDiscoveryText = "kimi-k2-thinking-turbo",
             modelsUrl = null
+        ),
+        PROVIDER_REQUESTY to ProviderInfo(
+            label = "Requesty.ai",
+            icon = PluginIcons.REQUESTY,
+            description = "Requesty.ai via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
+            baseUrl = "https://router.requesty.ai/",
+            models = Triple("zai/GLM-4.7", "zai/GLM-4.7", "zai/GLM-4.7"),
+            autoDiscoveryText = "zai/GLM-4.7",
+            modelsUrl = "https://router.requesty.ai/v1/models"
         )
     )
 }
