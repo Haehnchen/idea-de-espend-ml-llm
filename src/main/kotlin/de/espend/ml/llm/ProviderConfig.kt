@@ -9,13 +9,14 @@ object ProviderConfig {
     const val PROVIDER_DROID = "droid"
     const val PROVIDER_REQUESTY = "requesty"
     const val PROVIDER_NANO_GPT = "nano-gpt"
+    const val PROVIDER_AIHUBMIX = "aihubmix"
     const val PROVIDER_ANTHROPIC_DEFAULT = "anthropic-default"
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
 
-    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY, PROVIDER_NANO_GPT)
+    val PROVIDERS = listOf(PROVIDER_ANTHROPIC_DEFAULT, PROVIDER_ANTHROPIC_COMPATIBLE, PROVIDER_GEMINI, PROVIDER_OPENCODE, PROVIDER_CURSOR, PROVIDER_DROID, PROVIDER_ZAI, PROVIDER_MINIMAX, PROVIDER_OPENROUTER, PROVIDER_MIMO, PROVIDER_MOONSHOT, PROVIDER_REQUESTY, PROVIDER_NANO_GPT, PROVIDER_AIHUBMIX)
 
     data class ProviderInfo(
         val label: String,
@@ -146,6 +147,15 @@ object ProviderConfig {
             models = Triple("gemini-3-pro-preview", "gemini-3-pro-preview", "gemini-3-pro-preview"),
             autoDiscoveryText = "gemini-3-pro-preview",
             modelsUrl = "https://nano-gpt.com/api/v1/models"
+        ),
+        PROVIDER_AIHUBMIX to ProviderInfo(
+            label = "AIHubMix",
+            icon = PluginIcons.AIHUBMIX,
+            description = "AIHubMix via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp",
+            baseUrl = "https://aihubmix.com",
+            models = Triple("gemini-3-flash-preview-free", "gemini-3-flash-preview-free", "gemini-3-flash-preview-free"),
+            autoDiscoveryText = "gemini-3-flash-preview-free",
+            modelsUrl = "https://aihubmix.com/v1/models"
         )
     )
 }

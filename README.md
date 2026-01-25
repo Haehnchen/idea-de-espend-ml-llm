@@ -36,6 +36,7 @@ Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, F
 | **Moonshot** | Moonshot via Anthropic Compatible API | - |
 | **Requesty.ai** | Requesty.ai via Anthropic Compatible API | - |
 | **Nano-GPT** | Nano-GPT via Anthropic Compatible API | - |
+| **AIHubMix** | AIHubMix via Anthropic Compatible API | - |
 
 ## Installation
 
