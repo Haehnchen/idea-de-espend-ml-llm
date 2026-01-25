@@ -20,7 +20,7 @@ class LLMModelInitializer : StartupActivity {
         try {
             @Suppress("UNCHECKED_CAST")
             val settingsManager = ApplicationManager.getApplication()
-                .getService(LlmCustomModelsSettingsManager::class.java) as? LlmCustomModelsSettingsManager ?: return
+                .getService(LlmCustomModelsSettingsManager::class.java) ?: return
 
             // Only set if no custom model is already configured
             val smartModelId = settingsManager.smartModelId

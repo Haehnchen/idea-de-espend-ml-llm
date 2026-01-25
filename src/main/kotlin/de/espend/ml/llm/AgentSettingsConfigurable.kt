@@ -221,7 +221,7 @@ class AgentSettingsConfigurable : Configurable {
         private var modelField: JBTextField? = null
         private val descriptionArea: JTextArea?
         private val inputsPanel: JPanel
-        private lateinit var inputsWrapper: JPanel
+        private var inputsWrapper: JPanel
         private var executableField: JBTextField? = null
 
         init {

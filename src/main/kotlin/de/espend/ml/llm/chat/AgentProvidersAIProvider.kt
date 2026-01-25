@@ -97,7 +97,7 @@ class AgentProvidersAIProvider : ThirdPartyAIProvider {
 
             for (model in models) {
                 if (model.isEmpty()) continue
-                val providerLabel = providerInfo.label ?: config.provider
+                val providerLabel = providerInfo.label
                 val displayName = "$model ($providerLabel)"
                 val profileIdString = "${config.provider}:$model"
                 val profileId = ThirdPartyLLMProfileId(providerId, profileIdString)

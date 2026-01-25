@@ -54,8 +54,12 @@ tasks {
     }
 
     patchPluginXml {
-        version = properties("version")
+        version = properties("pluginVersion")
         changeNotes.set(file("src/main/resources/META-INF/change-notes.html").readText().replace("<html>", "").replace("</html>", ""))
+    }
+
+    publishPlugin {
+        token.set(System.getenv("PUBLISH_TOKEN"))
     }
 }
 
@@ -64,3 +68,5 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
+
+
