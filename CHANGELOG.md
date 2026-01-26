@@ -1,6 +1,9 @@
 Changelog
 =========
 
+## 0.2.1
+* Register AgentStartupActivity for post-startup execution in plugin.xml (Daniel Espendiller)
+
 ## 0.2.0
 * Add support for auto-registering profiles in providers for core AI feature activation. (Daniel Espendiller)
 * Add activation panel with clickable link for AI model configuration and `ActiveModelSetter` utility for easier model management (Daniel Espendiller)
