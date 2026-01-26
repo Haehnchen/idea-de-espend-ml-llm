@@ -80,6 +80,8 @@
                                  instance="de.espend.ml.llm.AgentSettingsConfigurable"
                                  displayName="Agent Providers"
                                  groupWeight="10"/>
+
+        <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
     </extensions>
 
     <!-- Third-party AI Provider extension -->
