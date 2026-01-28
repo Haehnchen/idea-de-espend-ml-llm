@@ -2,8 +2,10 @@ package de.espend.ml.llm
 
 import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
+import com.intellij.ml.llm.agents.acp.config.AcpAgentConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
+import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.DynamicAcpChatAgent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -234,7 +236,12 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val defaultMcpSettings = DefaultMcpSettings(true, true)
         val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
         val acpAgentConfig = LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
-        val delegate = DynamicAcpChatAgent(config.id, providerName, acpAgentConfig)
+        val acpAgentId = AcpCustomAgentId(config.id)
+        val delegate = DynamicAcpChatAgent(
+            providerName,
+            acpAgentConfig,
+            acpAgentId
+        )
         val agent = ProviderChatAgent(delegate, PluginIcons.getIconForProvider(config.provider))
 
         // Register dynamically via Extension Point
