@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package de.espend.ml.llm
 
 import com.intellij.ml.llm.core.providers.LlmCustomModelsSettingsManager

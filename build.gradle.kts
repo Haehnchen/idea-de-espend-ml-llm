@@ -30,11 +30,18 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "253"
+            untilBuild = "253.*"
         }
 
         changeNotes = """
             Initial version
         """.trimIndent()
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
     }
 }
 
