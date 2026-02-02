@@ -25,6 +25,9 @@ object PluginIcons {
     // Plugin icon
     val AI_PROVIDER: Icon = IconLoader.getIcon("/icons/ai-provider.svg", PluginIcons::class.java)
 
+    // Tool window icon (auto-switches between light/dark based on theme)
+    val PLUGIN_SIMPLE: Icon = IconLoader.getIcon("/icons/plugin-simple.svg", PluginIcons::class.java)
+
     // Scaled icons (16x16 for menus/actions)
     val AI_PROVIDER_16: Icon = scaleIcon(AI_PROVIDER, 16)
 

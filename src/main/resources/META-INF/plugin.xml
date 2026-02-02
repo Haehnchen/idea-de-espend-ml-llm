@@ -6,7 +6,7 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
-    <name>AI Assistant Providers</name>
+    <name>AI Assistant Providers / Sessions</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor url="https://github.com/espend">espend</vendor>
@@ -14,43 +14,28 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers (Claude CLI, Gemini, OpenCode, Cursor, OpenRouter, and more) with IntelliJ IDEA's AI Assistant.</p>
-        <p>This plugin allows you to:</p>
-        <ul>
-            <li>Configure multiple AI providers through a simple settings UI</li>
-            <li>Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API</li>
-            <li>Works with providers like Z.AI, MiniMax, OpenRouter, Mimo, Moonshot, and more</li>
-            <li>Use configured providers for commit message generation, AI actions, code explanation, and more</li>
-            <li>Seamlessly integrates with IntelliJ's AI chat features</li>
-        </ul>
+        <p>Configure and use multiple AI providers as chat Agent in IntelliJ IDEA's AI Assistant chat. Includes a Session Browser for viewing chat sessions from external AI tools.</p>
 
-        <p><b>Supported Providers:</b></p>
-        <ul>
-            <li><b>Claude CLI</b> - Uses Claude Code's built-in Anthropic integration</li>
-            <li><b>Anthropic Compatible</b> - Any Anthropic-like API (via @zed-industries/claude-code-acp)</li>
-            <li><b>Gemini</b> - Google's Gemini CLI</li>
-            <li><b>OpenCode</b> - The OpenCode CLI</li>
-            <li><b>Cursor</b> - The Cursor Agent CLI (via @blowmage/cursor-agent-acp)</li>
-            <li><b>Factory.ai</b> - Factory.ai Droid CLI (via curl -fsSL https://app.factory.ai/cli | sh)</li>
-            <li><b>Z.AI</b> - Z.AI via Anthropic Compatible API (<a href="https://z.ai/subscribe?ic=BCLQG4VJIO">Register</a>)</li>
-            <li><b>MiniMax</b> - MiniMax via Anthropic Compatible API</li>
-            <li><b>OpenRouter</b> - OpenRouter via Anthropic Compatible API</li>
-            <li><b>Mimo</b> - Mimo via Anthropic Compatible API</li>
-            <li><b>Moonshot</b> - Moonshot via Anthropic Compatible API</li>
-            <li><b>Requesty.ai</b> - Requesty.ai via Anthropic Compatible API</li>
-            <li><b>Nano-GPT</b> - Nano-GPT via Anthropic Compatible API</li>
-            <li><b>AIHubMix</b> - AIHubMix via Anthropic Compatible API</li>
-        </ul>
+        <h2>AI Providers</h2>
+        <p>This plugin allows you to configure multiple AI providers through a simple settings UI. Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API.</p>
 
-        <p><b>Installation:</b></p>
+        <h2>Session Browser</h2>
+        <p>Browse and view chat sessions from external AI tools directly in the IDE.</p>
+
+        <h3>Supported Session Sources</h3>
+        <table>
+            <tr><th>Source</th><th>Description</th></tr>
+            <tr><td><b>Claude Code</b></td><td>Chat sessions from Claude Code CLI</td></tr>
+            <tr><td><b>Codex CLI</b></td><td>Chat sessions from JetBrains AI Assistant CLI</td></tr>
+            <tr><td><b>OpenCode</b></td><td>Chat sessions from OpenCode CLI</td></tr>
+        </table>
+
+        <h3>Using AI Providers</h3>
         <ol>
-            <li>Go to <b>File → Settings → Plugins</b></li>
-            <li>Click the <b>Marketplace</b> tab</li>
-            <li>Search for <b>Agent Providers</b></li>
-            <li>Click <b>Install</b></li>
-            <li>Go to <b>Settings → AI Assistant → Agent Providers</b></li>
+            <li>Go to <b>File → Settings → AI Assistant → Agent Providers</b></li>
             <li>Configure API keys and base URLs as needed</li>
             <li>Click <b>Apply</b> to register the agents</li>
+            <li>For CLI-based providers: install the corresponding npm package</li>
             <li><b>Important</b>: To use providers for core AI features (commit generation, AI actions):
                 <ul>
                     <li>Go to <b>Settings → Tools → AI Assistant → "Models & API keys"</b></li>
@@ -59,6 +44,9 @@
                 </ul>
             </li>
         </ol>
+
+        <h3>Finding the Session Browser</h3>
+        <p>The Session Browser is available in the AI Assistant chat toolbar and in the right sidebar.</p>
 
         <p>Requires the AI Assistant plugin to be installed.</p>
     ]]></description>
@@ -82,6 +70,12 @@
                                  groupWeight="10"/>
 
         <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
+
+        <!-- Session Browser Tool Window -->
+        <toolWindow id="Session Browser"
+                    factoryClass="de.espend.ml.llm.session.SessionBrowserToolWindowFactory"
+                    anchor="right"
+                    icon="/icons/ai-provider.svg"/>
     </extensions>
 
     <!-- Third-party AI Provider extension -->
@@ -96,6 +90,14 @@
                 class="de.espend.ml.llm.OpenAgentProvidersSettingsAction"
                 text="Agent Providers"
                 description="Open Agent Providers settings">
+            <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
+        </action>
+
+        <!-- Action to open Session Browser from Tools menu -->
+        <action id="de.espend.ml.llm.OpenSessionBrowser"
+                class="de.espend.ml.llm.session.OpenSessionBrowserAction"
+                text="AI Session Browser"
+                description="Browse AI chat sessions">
             <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
         </action>
     </actions>
