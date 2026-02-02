@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.3.0
+* Add Session Browser for viewing Claude Code, OpenCode and Codex sessions (Daniel Espendiller)
+* fix api changes (Daniel Espendiller)
+
 ## 0.2.1
 * Register AgentStartupActivity for post-startup execution in plugin.xml (Daniel Espendiller)
 
