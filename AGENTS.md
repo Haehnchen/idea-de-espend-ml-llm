@@ -65,3 +65,116 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 For CLI-based providers (like Gemini, OpenCode, Cursor), add a detection function to `CommandPathUtils.kt`:
 
 **Search order**: PATH → `/usr/bin` → `$HOME/bin` → `$HOME/.local/bin` → provider-specific directory (e.g., `$HOME/.gemini/bin`)
+
+### Session Explorer
+
+The plugin includes a **Session Explorer** tool for browsing and viewing chat sessions from external AI tools (Claude Code, OpenCode, Codex). This is useful for debugging, reviewing conversations, and understanding AI interactions.
+
+**Location**: `src/main/kotlin/de/espend/ml/llm/session/`
+
+#### Architecture
+
+```
+session/
+├── adapter/
+│   ├── claude/
+│   │   ├── ClaudeSessionFinder.kt    # Standalone file finder
+│   │   └── ClaudeSessionParser.kt    # Standalone JSONL parser
+│   ├── codex/
+│   │   ├── CodexSessionFinder.kt     # Standalone file finder (JetBrains AI)
+│   │   └── CodexSessionParser.kt     # Standalone JSONL parser
+│   ├── opencode/
+│   │   ├── OpenCodeSessionFinder.kt  # Standalone file finder
+│   │   └── OpenCodeSessionParser.kt  # Standalone JSON parser
+│   ├── ClaudeSessionAdapter.kt       # IntelliJ integration
+│   ├── CodexSessionAdapter.kt        # IntelliJ integration
+│   └── OpenCodeSessionAdapter.kt     # IntelliJ integration
+├── cli/
+│   └── SessionHtmlDumperCli.kt       # Standalone CLI tool
+├── view/
+│   ├── SessionListView.kt            # Session list UI
+│   └── SessionDetailView.kt           # Session detail HTML view
+└── util/
+    ├── HtmlBuilder.kt                 # HTML generation
+    ├── JsHandlers.kt                  # JavaScript handlers
+    └── ThemeColors.kt                 # Theme utilities
+```
+
+#### Key Design Principles
+
+1. **Standalone Parsers**: All parsing logic is in `adapter/claude/`, `adapter/codex/`, and `adapter/opencode/` with no IntelliJ dependencies
+2. **Reusability**: The same parsers are used by the IDE plugin and the CLI tool
+3. **Testability**: Standalone code can be tested without IntelliJ test infrastructure
+
+#### Running Tests
+
+```bash
+# Run all session-related tests
+./gradlew test --tests "*Session*"
+
+# Run specific adapter tests
+./gradlew test --tests "*ClaudeSessionAdapterTest*"
+./gradlew test --tests "*CodexSessionAdapterTest*"
+./gradlew test --tests "*OpenCodeSessionAdapterTest*"
+```
+
+#### CLI Tool (Integration Testing)
+
+A standalone CLI tool is available for dumping session HTML without running IntelliJ. This is useful for:
+
+- Debugging session parsing issues
+- Testing HTML rendering
+- Integration testing without IDE overhead
+- Generating session exports
+
+```bash
+# List all available sessions (Claude + Codex + OpenCode)
+./gradlew dumpSession --args="--list"
+
+# Dump a specific session to HTML
+./gradlew dumpSession --args="--id=<session-id>"
+
+# Specify output file
+./gradlew dumpSession --args="--id=<session-id> --output=session.html"
+
+# Show help
+./gradlew dumpSession --args="--help"
+```
+
+**Examples:**
+```bash
+# Claude Code session
+./gradlew dumpSession --args="--id=7b278ef6-073a-4de5-a789-2f9fd5500a45"
+
+# Codex session (JetBrains AI Assistant)
+./gradlew dumpSession --args="--id=019bfa0e-ec98-70e0-8575-5132b767abff"
+
+# OpenCode session
+./gradlew dumpSession --args="--id=ses_401025e79ffeZYWrUQDpBmW7Cp"
+```
+
+#### Adding Support for a New AI Tool
+
+To add session viewing for a new AI tool (e.g., Cursor, Gemini):
+
+1. **Create adapter package**: `src/main/kotlin/de/espend/ml/llm/session/adapter/{toolname}/`
+
+2. **Create `SessionFinder.kt`**: Standalone utility to find session files
+   - Must implement `findSessionFile(sessionId: String)` returning `File?` or `Path?`
+   - Must implement `listSessions()` returning list of available sessions
+   - No IntelliJ dependencies
+
+3. **Create `SessionParser.kt`**: Standalone parser for session data
+   - Must implement `parseSession(sessionId: String)` returning `SessionDetail?`
+   - Converts tool-specific format to common `Message` and `SessionMetadata` types
+   - No IntelliJ dependencies
+
+4. **Create `{ToolName}SessionAdapter.kt`**: IntelliJ integration layer
+   - Uses the standalone finder/parser
+   - Adds Project/Logger integration
+   - Implements IDE-specific features
+
+5. **Update CLI**: Add the new tool to `SessionHtmlDumperCli.kt`
+   - Import finder/parser
+   - Add to `findAndParseSession()` function
+   - Add to `listSessions()` output

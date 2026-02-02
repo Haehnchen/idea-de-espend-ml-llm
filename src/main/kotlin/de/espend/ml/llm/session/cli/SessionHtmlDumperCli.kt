@@ -1,0 +1,199 @@
+@file:JvmName("SessionHtmlDumper")
+
+package de.espend.ml.llm.session.cli
+
+import de.espend.ml.llm.session.SessionDetail
+import de.espend.ml.llm.session.adapter.claude.ClaudeSessionFinder
+import de.espend.ml.llm.session.adapter.claude.ClaudeSessionParser
+import de.espend.ml.llm.session.adapter.codex.CodexSessionFinder
+import de.espend.ml.llm.session.adapter.codex.CodexSessionParser
+import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionFinder
+import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionParser
+import de.espend.ml.llm.session.view.SessionDetailView
+import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+/**
+ * Standalone CLI tool to dump session HTML.
+ * Reuses the same SessionDetailView as the IDE plugin.
+ *
+ * Usage:
+ *   ./gradlew dumpSession --args="--id=SESSION_ID"
+ *   ./gradlew dumpSession --args="--list"
+ *   ./gradlew dumpSession --args="--help"
+ */
+fun main(args: Array<String>) {
+    val params = parseArgs(args)
+
+    when {
+        params["help"] == "true" || args.isEmpty() -> printUsage()
+        params["list"] == "true" -> listSessions()
+        else -> dumpSession(params)
+    }
+}
+
+private fun dumpSession(params: Map<String, String>) {
+    val sessionId = params["id"]
+    val outputPath = params["output"]
+
+    if (sessionId == null) {
+        println("Error: --id is required")
+        printUsage()
+        return
+    }
+
+    // Try to find session in both providers
+    val result = findAndParseSession(sessionId)
+
+    if (result == null) {
+        println("Error: Session file not found for id=$sessionId")
+        return
+    }
+
+    val (provider, sessionDetail, fileLocation) = result
+    println("Found session file ($provider): $fileLocation")
+
+    // Use existing SessionDetailView (standalone mode)
+    val detailView = SessionDetailView()
+    val html = detailView.generateSessionDetail(sessionId, sessionDetail)
+
+    val outputFile = if (outputPath != null) {
+        File(outputPath)
+    } else {
+        File("session-$provider-${sessionId.take(8)}.html")
+    }
+
+    outputFile.writeText(html)
+    println("✓ HTML dumped to: ${outputFile.absolutePath}")
+}
+
+/**
+ * Tries to find and parse a session by ID across all providers.
+ */
+private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail, String>? {
+    // Try Claude first
+    val claudeFile = ClaudeSessionFinder.findSessionFile(sessionId)
+    if (claudeFile != null) {
+        val detail = ClaudeSessionParser.parseFile(claudeFile)
+        if (detail != null) {
+            return Triple("claude", detail, claudeFile.absolutePath)
+        }
+    }
+
+    // Try OpenCode
+    val openCodeFile = OpenCodeSessionFinder.findSessionFile(sessionId)
+    if (openCodeFile != null) {
+        val detail = OpenCodeSessionParser.parseSession(sessionId)
+        if (detail != null) {
+            return Triple("opencode", detail, openCodeFile.toString())
+        }
+    }
+
+    // Try Codex
+    val codexFile = CodexSessionFinder.findSessionFile(sessionId)
+    if (codexFile != null) {
+        val detail = CodexSessionParser.parseFile(codexFile)
+        if (detail != null) {
+            return Triple("codex", detail, codexFile.absolutePath)
+        }
+    }
+
+    return null
+}
+
+private fun listSessions() {
+    println("\n=== Available Sessions ===\n")
+
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+    // List Claude sessions
+    println("Claude Sessions:")
+    val claudeFiles = ClaudeSessionFinder.listSessionFiles()
+    if (claudeFiles.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        claudeFiles.sortedByDescending { it.lastModified() }.take(50).forEach { file ->
+            val modified = Instant.ofEpochMilli(file.lastModified())
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            println("  [$modified] ${file.nameWithoutExtension}")
+        }
+    }
+
+    println()
+
+    // List OpenCode sessions
+    println("OpenCode Sessions:")
+    val openCodeSessions = OpenCodeSessionFinder.listSessions()
+    if (openCodeSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        openCodeSessions.take(50).forEach { session ->
+            val created = Instant.ofEpochMilli(session.created)
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            println("  [$created] ${session.sessionId} - ${session.title.take(60)}")
+        }
+        if (openCodeSessions.size > 50) {
+            println("  ... and ${openCodeSessions.size - 50} more")
+        }
+    }
+
+    println()
+
+    // List Codex sessions
+    println("Codex Sessions:")
+    val codexFiles = CodexSessionFinder.listSessionFiles()
+    if (codexFiles.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        codexFiles.take(50).forEach { file ->
+            val sessionId = CodexSessionFinder.extractSessionId(file) ?: file.nameWithoutExtension
+            val modified = Instant.ofEpochMilli(file.lastModified())
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            println("  [$modified] $sessionId")
+        }
+        if (codexFiles.size > 50) {
+            println("  ... and ${codexFiles.size - 50} more")
+        }
+    }
+    println()
+}
+
+private fun parseArgs(args: Array<String>): Map<String, String> {
+    val params = mutableMapOf<String, String>()
+    for (arg in args) {
+        when {
+            arg == "--help" || arg == "-h" -> params["help"] = "true"
+            arg == "--list" || arg == "-l" -> params["list"] = "true"
+            arg.startsWith("--") -> {
+                val parts = arg.removePrefix("--").split("=", limit = 2)
+                if (parts.size == 2) params[parts[0]] = parts[1]
+            }
+        }
+    }
+    return params
+}
+
+private fun printUsage() {
+    println("""
+        Session HTML Dumper - Standalone CLI
+
+        Usage:
+          ./gradlew dumpSession --args="--id=<session-id> [options]"
+
+        Options:
+          --id=<session-id>   The session ID to dump (required)
+          --output=<file>     Output file path
+          --list              List available sessions
+          --help              Show this help
+
+        Examples:
+          ./gradlew dumpSession --args="--list"
+          ./gradlew dumpSession --args="--id=abc123"
+          ./gradlew dumpSession --args="--id=xyz789 --output=my-session.html"
+    """.trimIndent())
+}

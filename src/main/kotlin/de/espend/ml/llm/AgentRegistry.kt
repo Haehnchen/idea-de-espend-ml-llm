@@ -2,7 +2,6 @@ package de.espend.ml.llm
 
 import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
-import com.intellij.ml.llm.agents.acp.config.AcpAgentConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId

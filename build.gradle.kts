@@ -3,6 +3,7 @@ fun properties(key: String) = project.findProperty(key).toString()
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.11.0"
 }
 
@@ -24,6 +25,15 @@ dependencies {
         // AI Assistant plugin (ml.llm) from marketplace
         compatiblePlugins("com.intellij.ml.llm")
     }
+
+    // Kotlinx Serialization for JSON parsing
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // Markdown to HTML conversion
+    implementation("org.jetbrains:markdown:0.7.3")
+
+    // Test dependencies
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -74,6 +84,17 @@ kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
+}
+
+// CLI tool for dumping session HTML
+tasks.register<JavaExec>("dumpSession") {
+    group = "session"
+    description = "Dump session HTML to file for debugging"
+    mainClass.set("de.espend.ml.llm.session.cli.SessionHtmlDumper")
+    classpath = sourceSets["main"].runtimeClasspath
+
+    // Pass all args after -- to the application
+    // Usage: ./gradlew dumpSession --args="--provider=claude --id=SESSION_ID"
 }
 
 

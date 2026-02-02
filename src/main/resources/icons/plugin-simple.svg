@@ -1,0 +1,44 @@
+<svg width="48" height="48" viewBox="0 0 48 48" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+    </defs>
+
+    <!-- Hauptgruppe zentriert -->
+    <g transform="translate(24, 24)">
+        <!-- Skalierungsgruppe für passende Ausrichtung im 48x48 Rahmen -->
+        <g transform="translate(0, 3) scale(0.78)">
+            
+            <!-- Hahnenkamm -->
+            <path d="M -10,-22 Q -12,-30 -8,-28 Q -6,-32 0,-28 Q 2,-32 8,-28 Q 12,-30 10,-22 Z" 
+                  fill="white" stroke="black" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+
+            <!-- Unteres Gesicht / Kinnbereich -->
+            <rect x="-24" y="-8" width="48" height="18" rx="5" 
+                  fill="white" stroke="black" stroke-width="2" />
+            
+            <!-- Augen am Kinn -->
+            <circle cx="-22" cy="1" r="4" fill="black" />
+            <circle cx="22" cy="1" r="4" fill="black" />
+
+            <!-- Hauptkopfform -->
+            <rect x="-24" y="-22" width="48" height="44" rx="8" ry="8" 
+                  fill="white" stroke="black" stroke-width="2" />
+
+            <!-- Schnabel -->
+            <g transform="translate(0, 10)">
+                <path d="M -14,0 Q 0,-6 14,0 Q 12,12 0,14 Q -12,12 -14,0 Z" 
+                      fill="white" stroke="black" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            </g>
+
+            <!-- Brille -->
+            <g transform="translate(0, -3)">
+                <!-- Brillengestell -->
+                <path d="M -24,-8 C -24,-2 -23,8 -11,8 Q 0,5 11,8 C 23,8 24,-2 24,-8 Q 0,-10 -24,-8 Z" 
+                      fill="white" stroke="black" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                
+                <!-- Augenpupillen -->
+                <circle cx="-10" cy="0" r="4" fill="black" />
+                <circle cx="10" cy="0" r="4" fill="black" />
+            </g>
+        </g>
+    </g>
+</svg>
