@@ -11,6 +11,7 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
@@ -85,8 +86,9 @@ class SessionBrowserPanel(private val project: Project) {
         })
 
         // Create JS queries for handling JavaScript calls
-        jsQueryRouter = JBCefJSQuery.create(browser)
-        jsQueryCursor = JBCefJSQuery.create(browser)
+        // Cast to JBCefBrowserBase to avoid using deprecated JBCefJSQuery.create(JBCefBrowser)
+        jsQueryRouter = JBCefJSQuery.create(browser as JBCefBrowserBase)
+        jsQueryCursor = JBCefJSQuery.create(browser as JBCefBrowserBase)
 
         // Initialize view generators
         listView = SessionListView(project, jsQueryRouter, jsQueryCursor)
