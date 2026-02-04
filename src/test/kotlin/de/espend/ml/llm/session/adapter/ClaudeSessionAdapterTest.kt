@@ -443,4 +443,55 @@ class ClaudeSessionAdapterTest {
 
         assertNull("Should return null for missing timestamp", timestamp)
     }
+
+    @Test
+    fun `parseJsonlMetadata should skip command messages for summary`() {
+        val content = """
+            {"type":"user","timestamp":"2026-01-15T10:00:00.000Z","message":{"content":"<command-name>/clear</command-name>\n<command-message>clear</command-message>"}}
+            {"type":"user","timestamp":"2026-01-15T10:01:00.000Z","message":{"content":"My actual question"}}
+        """.trimIndent()
+
+        val metadata = ClaudeSessionAdapter.parseJsonlMetadata(content)
+
+        assertEquals("Should skip command and use real user message", "My actual question", metadata.summary)
+    }
+
+    @Test
+    fun `parseJsonlMetadata should skip local-command-stdout for summary`() {
+        val content = """
+            {"type":"user","timestamp":"2026-01-15T10:00:00.000Z","message":{"content":"<local-command-stdout></local-command-stdout>"}}
+            {"type":"user","timestamp":"2026-01-15T10:01:00.000Z","message":{"content":"Real user message"}}
+        """.trimIndent()
+
+        val metadata = ClaudeSessionAdapter.parseJsonlMetadata(content)
+
+        assertEquals("Should skip local-command-stdout and use real user message", "Real user message", metadata.summary)
+    }
+
+    @Test
+    fun `parseJsonlMetadata should skip isMeta messages for summary`() {
+        val content = """
+            {"type":"user","isMeta":true,"timestamp":"2026-01-15T10:00:00.000Z","message":{"content":"<local-command-caveat>Some caveat</local-command-caveat>"}}
+            {"type":"user","timestamp":"2026-01-15T10:01:00.000Z","message":{"content":"User question after meta"}}
+        """.trimIndent()
+
+        val metadata = ClaudeSessionAdapter.parseJsonlMetadata(content)
+
+        assertEquals("Should skip isMeta and use real user message", "User question after meta", metadata.summary)
+    }
+
+    @Test
+    fun `parseJsonlMetadata should skip all command-related messages for summary`() {
+        val content = """
+            {"type":"user","isMeta":true,"timestamp":"2026-01-15T10:00:00.000Z","message":{"content":"<local-command-caveat>Caveat</local-command-caveat>"}}
+            {"type":"user","timestamp":"2026-01-15T10:00:01.000Z","message":{"content":"<command-name>/clear</command-name>"}}
+            {"type":"user","timestamp":"2026-01-15T10:00:02.000Z","message":{"content":"<local-command-stdout></local-command-stdout>"}}
+            {"type":"user","timestamp":"2026-01-15T10:01:00.000Z","message":{"content":"This is the real question"}}
+        """.trimIndent()
+
+        val metadata = ClaudeSessionAdapter.parseJsonlMetadata(content)
+
+        assertEquals("Should skip all command-related messages", "This is the real question", metadata.summary)
+        assertEquals("Should count all 4 messages", 4, metadata.messageCount)
+    }
 }

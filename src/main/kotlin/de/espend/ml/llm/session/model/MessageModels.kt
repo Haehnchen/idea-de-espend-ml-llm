@@ -90,8 +90,8 @@ sealed class ParsedMessage {
     /**
      * Generic info message with configurable title, subtitle, content, and visual style.
      *
-     * @property title Main title/label for the message (e.g., "system", "error", "summary", "queue")
-     * @property subtitle Optional secondary label (e.g., error name, operation type)
+     * @property title Main title/label for the message (e.g., "system", "error", "summary", "queue", "command")
+     * @property subtitle Optional secondary label (e.g., error name, operation type, command name)
      * @property content The message content to display
      * @property style Visual style (DEFAULT=grey, ERROR=red)
      */

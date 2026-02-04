@@ -27,6 +27,7 @@ object ClaudeSessionParser {
             val content = file.readText()
             val (messages, metadata) = parseContent(content)
 
+            // Find first real user message (skip Commands for title extraction)
             val title = messages.filterIsInstance<ParsedMessage.User>().firstOrNull()?.let { userMsg ->
                 val text = userMsg.content.filterIsInstance<MessageContent.Text>().joinToString(" ") { it.text }
                     .ifEmpty { userMsg.content.filterIsInstance<MessageContent.Markdown>().joinToString(" ") { it.markdown } }
@@ -86,6 +87,10 @@ object ClaudeSessionParser {
                         cwd = cwd
                     )
                 }
+
+                // Skip meta messages (e.g., local-command-caveat instructions)
+                val isMeta = json["isMeta"]?.jsonPrimitive?.booleanOrNull ?: false
+                if (isMeta) continue
 
                 val messageObj = json["message"]?.jsonObject
 
@@ -211,12 +216,37 @@ object ClaudeSessionParser {
         }
     }
 
+    private val COMMAND_NAME_REGEX = Regex("<command-name>([^<]+)</command-name>")
+    private val LOCAL_COMMAND_STDOUT_REGEX = Regex("^<local-command-stdout>.*</local-command-stdout>$", RegexOption.DOT_MATCHES_ALL)
+
     private fun parseUserMessage(
         messageObj: JsonObject?,
         json: JsonObject,
         timestamp: String
-    ): ParsedMessage {
+    ): ParsedMessage? {
         val contentField = messageObj?.get("content")
+
+        // Check for command-related message patterns
+        val contentString = when (contentField) {
+            is JsonPrimitive -> contentField.content
+            else -> null
+        }
+        if (contentString != null) {
+            // Skip local-command-stdout messages (empty output after /clear etc.)
+            if (LOCAL_COMMAND_STDOUT_REGEX.matches(contentString.trim())) {
+                return null
+            }
+
+            val commandMatch = COMMAND_NAME_REGEX.find(contentString)
+            if (commandMatch != null) {
+                val commandName = commandMatch.groupValues[1].removePrefix("/")
+                return ParsedMessage.Info(
+                    timestamp = timestamp,
+                    title = "command",
+                    content = MessageContent.Text(commandName)
+                )
+            }
+        }
 
         var hasText = false
         var hasToolResult = false

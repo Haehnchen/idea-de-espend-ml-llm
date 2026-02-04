@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.util.concurrent.Callable
@@ -80,6 +81,10 @@ class ClaudeSessionAdapter(private val project: Project) {
                         try {
                             val json = JSON.parseToJsonElement(trimmed).jsonObject
 
+                            // Skip meta messages (e.g., local-command-caveat)
+                            val isMeta = json["isMeta"]?.jsonPrimitive?.booleanOrNull ?: false
+                            if (isMeta) continue
+
                             val type = json["type"]?.jsonPrimitive?.content
                             if (type == "user") {
                                 val message = json["message"]?.jsonObject
@@ -87,6 +92,10 @@ class ClaudeSessionAdapter(private val project: Project) {
                                     // Handle content as string (simple format)
                                     is JsonPrimitive -> {
                                         val text = contentElement.content
+                                        // Skip command messages and local-command-stdout
+                                        if (text.contains("<command-name>") || text.contains("<local-command-stdout>")) {
+                                            continue
+                                        }
                                         if (text.isNotEmpty()) {
                                             summary = if (text.length > 100) text.take(100) + "..." else text
                                         }
