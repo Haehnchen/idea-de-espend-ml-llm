@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.4.0
+* Add AMP session support (Daniel Espendiller)
+* Skipping `isMeta`, `local-command-stdout`, and command messages in Claude session. (Daniel Espendiller)
+
 # 0.3.0
 * Add Session Browser for viewing Claude Code, OpenCode and Codex sessions (Daniel Espendiller)
 * fix api changes (Daniel Espendiller)
