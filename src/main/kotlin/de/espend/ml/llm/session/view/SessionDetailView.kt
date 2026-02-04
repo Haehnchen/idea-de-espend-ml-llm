@@ -216,19 +216,21 @@ class SessionDetailView(
      * This allows matching both "old_string" and "oldString" with the same lookup.
      *
      * @param parameters The original parameter map
-     * @param normalizedKey The normalized key to look up (e.g., "oldstring" will match "old_string", "oldString", etc.)
+     * @param normalizedKeys List of normalized keys to look up (e.g., ["oldstring", "oldstr"] will match "old_string", "oldString", "old_str", etc.)
      * @return The value if found, null otherwise
      */
-    private fun getParameterValue(parameters: Map<String, String>, normalizedKey: String): String? {
-        // First try direct lookup with the normalized key
-        if (parameters.containsKey(normalizedKey)) {
-            return parameters[normalizedKey]
-        }
-        // Then search through all keys, normalizing them for comparison
-        for ((key, value) in parameters) {
-            val keyNormalized = key.lowercase().replace("_", "")
-            if (keyNormalized == normalizedKey) {
-                return value
+    private fun getParameterValue(parameters: Map<String, String>, vararg normalizedKeys: String): String? {
+        for (normalizedKey in normalizedKeys) {
+            // First try direct lookup with the normalized key
+            if (parameters.containsKey(normalizedKey)) {
+                return parameters[normalizedKey]
+            }
+            // Then search through all keys, normalizing them for comparison
+            for ((key, value) in parameters) {
+                val keyNormalized = key.lowercase().replace("_", "")
+                if (keyNormalized == normalizedKey) {
+                    return value
+                }
             }
         }
         return null
@@ -239,13 +241,16 @@ class SessionDetailView(
      * Handles Edit tool with diff generation directly in the view layer.
      *
      * Normalizes parameter names to handle both underscore (old_string) and camelCase (oldString) formats.
+     * Also handles variations like old_str/new_str used by some providers.
      */
     private fun formatInputWithPathStripping(input: Map<String, String>, toolName: String, cwd: String?): String {
-        // Special handling for Edit tool - generate diff view directly
-        if (toolName.lowercase() == "edit") {
-            // Use normalized parameter lookup to handle both underscore and camelCase
-            val oldString = getParameterValue(input, "oldstring")
-            val newString = getParameterValue(input, "newstring")
+        // Special handling for Edit-like tools - generate diff view directly
+        // Match tool names containing "edit" (e.g., "Edit", "edit_file", "EditFile")
+        if (toolName.lowercase().contains("edit")) {
+            // Use normalized parameter lookup to handle various naming conventions:
+            // old_string, oldString, old_str, oldStr
+            val oldString = getParameterValue(input, "oldstring", "oldstr")
+            val newString = getParameterValue(input, "newstring", "newstr")
 
             if (oldString != null && newString != null) {
                 return formatEditDiffHtml(oldString, newString, input, cwd)
@@ -260,14 +265,16 @@ class SessionDetailView(
      * Formats an Edit tool diff as HTML with inline diff highlighting.
      * Shows removed lines in red with "-" prefix and added lines in green with "+" prefix.
      *
-     * Normalizes parameter names to handle both underscore (file_path) and camelCase (filePath) formats.
+     * Normalizes parameter names to handle various path formats:
+     * file_path, filePath, path, pathInProject, pathinproject
      */
     private fun formatEditDiffHtml(oldString: String, newString: String, parameters: Map<String, String>, cwd: String? = null): String {
         val diffLines = HtmlBuilder.generateInlineDiff(oldString, newString)
 
         return buildString {
-            // Add file_path parameter if present using normalized lookup
-            val filePath = getParameterValue(parameters, "filepath")
+            // Add file path parameter if present using normalized lookup
+            // Handle various naming conventions: file_path, filePath, path
+            val filePath = getParameterValue(parameters, "filepath", "path")
             filePath?.let { path ->
                 val strippedPath = cwd?.let { HtmlBuilder.stripWorkingDirectory(path, it) } ?: path
                 append("<span class=\"file-path-label\">file_path: </span>")

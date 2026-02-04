@@ -28,6 +28,7 @@
             <tr><td><b>Claude Code</b></td><td>Chat sessions from Claude Code CLI</td></tr>
             <tr><td><b>Codex CLI</b></td><td>Chat sessions from JetBrains AI Assistant CLI</td></tr>
             <tr><td><b>OpenCode</b></td><td>Chat sessions from OpenCode CLI</td></tr>
+            <tr><td><b>Amp</b></td><td>Chat sessions from ampcode.com</td></tr>
         </table>
 
         <h3>Using AI Providers</h3>

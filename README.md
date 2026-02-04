@@ -38,11 +38,12 @@ Browse and view chat sessions from external AI tools directly in the IDE.
 
 **Location**: Available in the AI Assistant chat toolbar and in the right sidebar.
 
-| Source | Description |
-|--------|-------------|
+| Source          | Description |
+|-----------------|-------------|
 | **Claude Code** | Chat sessions from Claude Code CLI |
-| **Codex CLI** | Chat sessions from JetBrains AI Assistant CLI |
-| **OpenCode** | Chat sessions from OpenCode CLI |
+| **Codex CLI**   | Chat sessions from JetBrains AI Assistant CLI |
+| **OpenCode**    | Chat sessions from OpenCode CLI |
+| **Amp**         | Chat sessions from ampcode.com |
 
 ## Installation
 

@@ -3,6 +3,8 @@
 package de.espend.ml.llm.session.cli
 
 import de.espend.ml.llm.session.SessionDetail
+import de.espend.ml.llm.session.adapter.amp.AmpSessionFinder
+import de.espend.ml.llm.session.adapter.amp.AmpSessionParser
 import de.espend.ml.llm.session.adapter.claude.ClaudeSessionFinder
 import de.espend.ml.llm.session.adapter.claude.ClaudeSessionParser
 import de.espend.ml.llm.session.adapter.codex.CodexSessionFinder
@@ -100,6 +102,15 @@ private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail
         }
     }
 
+    // Try Amp
+    val ampFile = AmpSessionFinder.findSessionFile(sessionId)
+    if (ampFile != null) {
+        val detail = AmpSessionParser.parseFile(ampFile)
+        if (detail != null) {
+            return Triple("amp", detail, ampFile.toString())
+        }
+    }
+
     return null
 }
 
@@ -158,6 +169,26 @@ private fun listSessions() {
         }
         if (codexFiles.size > 50) {
             println("  ... and ${codexFiles.size - 50} more")
+        }
+    }
+
+    println()
+
+    // List Amp sessions
+    println("Amp Sessions:")
+    val ampSessions = AmpSessionFinder.listSessions()
+    if (ampSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        ampSessions.take(50).forEach { session ->
+            val created = Instant.ofEpochMilli(session.created)
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            val title = session.firstPrompt?.take(60) ?: "Untitled"
+            println("  [$created] ${session.sessionId} - $title")
+        }
+        if (ampSessions.size > 50) {
+            println("  ... and ${ampSessions.size - 50} more")
         }
     }
     println()

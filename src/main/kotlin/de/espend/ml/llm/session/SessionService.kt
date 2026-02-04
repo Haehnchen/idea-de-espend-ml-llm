@@ -3,6 +3,7 @@ package de.espend.ml.llm.session
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
 import de.espend.ml.llm.session.adapter.CodexSessionAdapter
 import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
@@ -16,6 +17,7 @@ class SessionService(private val project: Project) {
     private val claudeAdapter = ClaudeSessionAdapter(project)
     private val openCodeAdapter = OpenCodeSessionAdapter(project)
     private val codexAdapter = CodexSessionAdapter(project)
+    private val ampAdapter = AmpSessionAdapter(project)
 
     companion object {
         fun getInstance(project: Project): SessionService = project.service()
@@ -31,7 +33,8 @@ class SessionService(private val project: Project) {
             val tasks = listOf(
                 Callable { claudeAdapter.findSessions() },
                 Callable { openCodeAdapter.findSessions() },
-                Callable { codexAdapter.findSessions() }
+                Callable { codexAdapter.findSessions() },
+                Callable { ampAdapter.findSessions() }
             )
 
             executor.invokeAll(tasks)

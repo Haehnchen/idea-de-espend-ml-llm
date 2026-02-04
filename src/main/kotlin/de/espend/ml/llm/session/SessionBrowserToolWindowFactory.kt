@@ -12,6 +12,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefJSQuery
+import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
 import de.espend.ml.llm.session.adapter.CodexSessionAdapter
 import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
@@ -145,6 +146,7 @@ class SessionBrowserPanel(private val project: Project) {
                 "claude" -> ClaudeSessionAdapter(project).getSessionDetail(sessionId)
                 "opencode" -> OpenCodeSessionAdapter(project).getSessionDetail(sessionId)
                 "codex" -> CodexSessionAdapter(project).getSessionDetail(sessionId)
+                "amp" -> AmpSessionAdapter(project).getSessionDetail(sessionId)
                 else -> null
             }
 

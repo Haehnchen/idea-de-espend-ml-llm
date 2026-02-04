@@ -6,7 +6,8 @@ package de.espend.ml.llm.session
 enum class SessionProvider(val displayName: String, val iconClass: String) {
     CLAUDE_CODE("Claude Code", "claude-icon"),
     OPENCODE("OpenCode", "opencode-icon"),
-    CODEX("Codex", "codex-icon")
+    CODEX("Codex", "codex-icon"),
+    AMP("Amp", "amp-icon")
 }
 
 /**

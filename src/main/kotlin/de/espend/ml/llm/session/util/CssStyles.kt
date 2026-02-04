@@ -70,6 +70,10 @@ object CssStyles {
         .provider-icon svg.opencode-dark { display: none; }
         .theme-dark .provider-icon svg.opencode-dark { display: block; }
         .theme-light .provider-icon svg.opencode-light { display: block; }
+        .provider-icon svg.amp-light { display: none; }
+        .provider-icon svg.amp-dark { display: none; }
+        .theme-dark .provider-icon svg.amp-dark { display: block; }
+        .theme-light .provider-icon svg.amp-light { display: block; }
         .session-title { font-weight: 500; color: var(--jb-color-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: break-word; overflow-wrap: break-word; }
         .session-meta { font-size: 11px; color: var(--jb-color-comment); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         .session-id { font-size: 10px; color: var(--jb-color-comment); font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
