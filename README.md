@@ -5,7 +5,7 @@
 [![Downloads](http://phpstorm.espend.de/badge/29900/downloads)](https://plugins.jetbrains.com/plugin/7219)
 [![Downloads last month](http://phpstorm.espend.de/badge/29900/last-month)](https://plugins.jetbrains.com/plugin/7219)
 
-Configure and use multiple AI providers as chat Agent in IntelliJ IDEA's AI Assistant chat. Includes a Session Browser for viewing chat sessions from external AI tools.
+Configure and use multiple AI providers as chat Agent in ~~IntelliJ IDEA's AI Assistant chat~~ (not allowed for now). Includes a Session Browser for viewing chat sessions from external AI tools.
 
 | Key                  | Value                                      |
 |----------------------|--------------------------------------------|
@@ -14,7 +14,7 @@ Configure and use multiple AI providers as chat Agent in IntelliJ IDEA's AI Assi
 
 ## Features
 
-- **AI Providers**: Configure and use multiple AI providers with IntelliJ's AI Assistant
+- **AI Providers**: Configure and use multiple AI providers with ~~IntelliJ's AI Assistant~~ (not allowed for now)
 - **Session Browser**: Browse and view chat sessions from Claude Code, Codex CLI, and OpenCode
 
 ## AI Providers
@@ -73,7 +73,7 @@ The Session Browser works out of the box - no additional setup required. Simply 
 ## Requirements
 
 - IntelliJ IDEA (or any JetBrains IDE with AI Assistant support)
-- AI Assistant plugin must be installed
+- ~~AI Assistant plugin~~ (not allowed for now) must be installed
 - Node.js with npm (for CLI-based providers)
 
 

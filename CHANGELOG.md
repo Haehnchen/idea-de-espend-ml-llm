@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.4.1
+* remove not allowed features for extending chat windows with own providers (Daniel Espendiller)
+
 # 0.4.0
 * Add AMP session support (Daniel Espendiller)
 * Skipping `isMeta`, `local-command-stdout`, and command messages in Claude session. (Daniel Espendiller)
