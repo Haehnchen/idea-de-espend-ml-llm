@@ -14,7 +14,7 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers as chat Agent in IntelliJ IDEA's AI Assistant chat. Includes a Session Browser for viewing chat sessions from external AI tools.</p>
+        <p>Configure and use multiple AI providers as chat Agent in <del>IntelliJ IDEA's AI Assistant chat</del> (not allowed for now). Includes a Session Browser for viewing chat sessions from external AI tools.</p>
 
         <h2>AI Providers</h2>
         <p>This plugin allows you to configure multiple AI providers through a simple settings UI. Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API.</p>
@@ -77,11 +77,6 @@
                     factoryClass="de.espend.ml.llm.session.SessionBrowserToolWindowFactory"
                     anchor="right"
                     icon="/icons/ai-provider.svg"/>
-    </extensions>
-
-    <!-- Third-party AI Provider extension -->
-    <extensions defaultExtensionNs="com.intellij.ml.llm">
-        <thirdPartyAIProvider implementation="de.espend.ml.llm.chat.AgentProvidersAIProvider"/>
     </extensions>
 
     <!-- Actions for AI Provider plugin -->
