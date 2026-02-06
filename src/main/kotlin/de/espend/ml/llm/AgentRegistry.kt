@@ -140,7 +140,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = acpPath,
                 args = emptyList(),
-                env = buildBaseEnv()
+                env = buildBaseEnv(),
+                useIdeaMcp = null,
+                useCustomMcp = null,
+                executionEnvironment = null,
+                ideaMcpAllowedTools = null
             )
         }
 
@@ -154,7 +158,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = opencodePath,
                 args = listOf("acp"),
-                env = buildBaseEnv()
+                env = buildBaseEnv(),
+                useIdeaMcp = null,
+                useCustomMcp = null,
+                executionEnvironment = null,
+                ideaMcpAllowedTools = null
             )
         }
 
@@ -168,7 +176,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = cursorPath,
                 args = emptyList(),
-                env = buildBaseEnv()
+                env = buildBaseEnv(),
+                useIdeaMcp = null,
+                useCustomMcp = null,
+                executionEnvironment = null,
+                ideaMcpAllowedTools = null
             )
         }
 
@@ -182,7 +194,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = droidPath,
                 args = listOf("exec", "--output-format", "acp"),
-                env = buildBaseEnv()
+                env = buildBaseEnv(),
+                useIdeaMcp = null,
+                useCustomMcp = null,
+                executionEnvironment = null,
+                ideaMcpAllowedTools = null
             )
         }
 
@@ -196,7 +212,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = geminiPath,
                 args = listOf("--experimental-acp"),
-                env = buildBaseEnv()
+                env = buildBaseEnv(),
+                useIdeaMcp = null,
+                useCustomMcp = null,
+                executionEnvironment = null,
+                ideaMcpAllowedTools = null
             )
         }
 
@@ -221,7 +241,11 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 put("ANTHROPIC_DEFAULT_SONNET_MODEL", modelToUse)
                 put("ANTHROPIC_DEFAULT_OPUS_MODEL", modelToUse)
                 put("ANTHROPIC_API_KEY", "")
-            }
+            },
+            useIdeaMcp = null,
+            useCustomMcp = null,
+            executionEnvironment = null,
+            ideaMcpAllowedTools = null
         )
     }
 
@@ -232,7 +256,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         LOG.info("Registering dynamic agent: ${config.provider} (id: ${config.id})")
 
         val serverConfig = createAgentServerConfig(config)
-        val defaultMcpSettings = DefaultMcpSettings(true, true)
+        val defaultMcpSettings = DefaultMcpSettings(true, true, emptyList())
         val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
         val acpAgentConfig = LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
         val acpAgentId = AcpCustomAgentId(config.id)

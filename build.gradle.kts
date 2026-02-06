@@ -22,8 +22,8 @@ dependencies {
         intellijIdeaUltimate("2025.3.2")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
-        // AI Assistant plugin (ml.llm) from marketplace
-        compatiblePlugins("com.intellij.ml.llm")
+        // AI Assistant plugin (ml.llm) from marketplace - use latest version with ideaMcpAllowedTools
+        plugin("com.intellij.ml.llm", "253.31033.23")
     }
 
     // Kotlinx Serialization for JSON parsing
