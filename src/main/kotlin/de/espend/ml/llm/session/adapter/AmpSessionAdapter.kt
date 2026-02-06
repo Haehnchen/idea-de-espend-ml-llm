@@ -34,8 +34,8 @@ class AmpSessionAdapter(private val project: Project) {
                 val tasks = sessions.map { session ->
                     Callable {
                         try {
-                            // Filter by matching project path if cwd is available
-                            if (session.cwd != null && session.cwd != projectPath) {
+                            // Filter by matching project path; skip sessions without a cwd
+                            if (session.cwd == null || session.cwd != projectPath) {
                                 return@Callable null
                             }
 
