@@ -269,53 +269,6 @@ class AgentSettingsConfigurable : Configurable {
                 }
             }
 
-            // Helper to create activation panel with clickable link
-            // Format: "Active for core AI features" (clickable) like commit generation, AI actions...
-            fun createActivationPanel(): JPanel {
-                return JPanel(GridBagLayout()).apply {
-                    isOpaque = false
-                    
-                    val activateLink = ActionLink("Activate for core AI features") {
-                        val parentWindow = SwingUtilities.getWindowAncestor(this)
-                        val customModel = modelField?.text?.trim()?.takeIf { it.isNotEmpty() }
-                        val hasModel = ActiveModelSetter.hasModel(customModel, providerInfo)
-                        
-                        if (!hasModel) {
-                            JOptionPane.showMessageDialog(
-                                parentWindow,
-                                "Please enter a model name first.",
-                                "Model Required",
-                                JOptionPane.WARNING_MESSAGE
-                            )
-                            return@ActionLink
-                        }
-                        
-                        ActiveModelSetter.setActiveModel(providerInfo!!, customModel)
-                        
-                        JOptionPane.showMessageDialog(
-                            parentWindow,
-                            "Provider has been set as the active model for AI Assistant.",
-                            "Success",
-                            JOptionPane.INFORMATION_MESSAGE
-                        )
-                    }.apply {
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                    }
-                    add(activateLink, GridBagConstraints().apply {
-                        gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
-                    })
-                    
-                    // Rest of text
-                    val suffixLabel = JBLabel(" like commit message, AI actions. (sets configurations \"Models & API keys\").").apply {
-                        foreground = UIUtil.getContextHelpForeground()
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                    }
-                    add(suffixLabel, GridBagConstraints().apply {
-                        gridx = 1; gridy = 0; anchor = GridBagConstraints.WEST; weightx = 1.0
-                    })
-                }
-            }
-
             // Create header with checkbox, icon, and text
             enabledCheckbox = JBCheckBox("", initialConfig?.isEnabled ?: false)
             val headerPanel = JPanel(GridBagLayout()).apply {
@@ -465,11 +418,6 @@ class AgentSettingsConfigurable : Configurable {
 
                     // Store modelField reference for getConfig()
                     this.modelField = modelField
-
-                    // Activation link below model field
-                    inputsPanel.add(createActivationPanel(), GridBagConstraints().apply {
-                        gridx = 0; gridy = 4; gridwidth = 3; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
-                    })
                 }
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
@@ -597,11 +545,6 @@ class AgentSettingsConfigurable : Configurable {
                             gridx = 2; gridy = 2; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
                         })
                     }
-
-                    // Activation link below model field
-                    inputsPanel.add(createActivationPanel(), GridBagConstraints().apply {
-                        gridx = 0; gridy = 3; gridwidth = 3; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(5)
-                    })
                 }
             }
 
