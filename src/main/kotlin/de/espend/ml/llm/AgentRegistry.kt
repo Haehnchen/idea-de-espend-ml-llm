@@ -143,8 +143,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 env = buildBaseEnv(),
                 useIdeaMcp = null,
                 useCustomMcp = null,
-                executionEnvironment = null,
-                ideaMcpAllowedTools = null
+                executionEnvironment = null
             )
         }
 
@@ -161,8 +160,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 env = buildBaseEnv(),
                 useIdeaMcp = null,
                 useCustomMcp = null,
-                executionEnvironment = null,
-                ideaMcpAllowedTools = null
+                executionEnvironment = null
             )
         }
 
@@ -179,8 +177,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 env = buildBaseEnv(),
                 useIdeaMcp = null,
                 useCustomMcp = null,
-                executionEnvironment = null,
-                ideaMcpAllowedTools = null
+                executionEnvironment = null
             )
         }
 
@@ -197,8 +194,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 env = buildBaseEnv(),
                 useIdeaMcp = null,
                 useCustomMcp = null,
-                executionEnvironment = null,
-                ideaMcpAllowedTools = null
+                executionEnvironment = null
             )
         }
 
@@ -215,8 +211,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 env = buildBaseEnv(),
                 useIdeaMcp = null,
                 useCustomMcp = null,
-                executionEnvironment = null,
-                ideaMcpAllowedTools = null
+                executionEnvironment = null
             )
         }
 
@@ -244,8 +239,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             },
             useIdeaMcp = null,
             useCustomMcp = null,
-            executionEnvironment = null,
-            ideaMcpAllowedTools = null
+            executionEnvironment = null
         )
     }
 
@@ -256,7 +250,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         LOG.info("Registering dynamic agent: ${config.provider} (id: ${config.id})")
 
         val serverConfig = createAgentServerConfig(config)
-        val defaultMcpSettings = DefaultMcpSettings(true, true, emptyList())
+        val defaultMcpSettings = DefaultMcpSettings(useCustomMcp = true, useIdeaMcp = true)
         val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
         val acpAgentConfig = LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
         val acpAgentId = AcpCustomAgentId(config.id)
