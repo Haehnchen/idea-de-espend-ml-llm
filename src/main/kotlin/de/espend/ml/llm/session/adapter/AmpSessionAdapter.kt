@@ -35,7 +35,7 @@ class AmpSessionAdapter(private val project: Project) {
                     Callable {
                         try {
                             // Filter by matching project path if cwd is available
-                            if (session.cwd != null && !session.cwd.startsWith(projectPath)) {
+                            if (session.cwd != null && session.cwd != projectPath) {
                                 return@Callable null
                             }
 
