@@ -9,27 +9,46 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.io.BufferedReader
 import java.nio.file.Path
-import kotlin.io.path.readText
+import kotlin.io.path.bufferedReader
 
 /**
  * Standalone parser for Junie session files.
  * No IntelliJ dependencies - can be used from CLI or tests.
  *
- * Event structure (fields are directly on agentEvent, not nested):
- * - ToolBlockUpdatedEvent: stepId, text, status, details
- * - TerminalBlockUpdatedEvent: stepId, status, command, output, presentableOutput, details
- * - ViewFilesBlockUpdatedEvent: stepId, status, files[{relativePath}]
- * - FileChangesBlockUpdatedEvent: stepId, status, changes[{beforeRelativePath, afterRelativePath, beforeContent, afterContent}]
- * - ResultBlockUpdatedEvent: stepId, cancelled, result, changes[], errorCode
- * - LlmResponseMetadataEvent: modelUsage[{model, cost, inputTokens, outputTokens}]
- * - AgentStateUpdatedEvent: blob (serialized JSON string - not useful for display)
+ * Performance: Lines are pre-filtered by string content before JSON parsing.
+ * AgentStateUpdatedEvent (~90% of file size) is skipped entirely since it contains
+ * a huge serialized blob not useful for display.
  *
  * Events come in IN_PROGRESS/COMPLETED pairs by stepId. We deduplicate and keep only COMPLETED.
  */
 object JunieSessionParser {
 
     internal val JSON = Json { ignoreUnknownKeys = true }
+
+    /**
+     * Event kinds that are expensive to parse but not needed for display.
+     * These are skipped via cheap string check before JSON parsing.
+     */
+    private val SKIP_KINDS = setOf(
+        "AgentStateUpdatedEvent",
+        "AgentCurrentStatusUpdatedEvent",
+        "AgentPatchCreatedEvent",
+    )
+
+    /**
+     * Step-based event kinds that come in IN_PROGRESS/COMPLETED pairs.
+     */
+    private val STEP_KINDS = setOf(
+        "ToolBlockUpdatedEvent",
+        "TerminalBlockUpdatedEvent",
+        "ViewFilesBlockUpdatedEvent",
+        "FileChangesBlockUpdatedEvent",
+        "ResultBlockUpdatedEvent",
+    )
+
+    private val CD_PATH_REGEX = """^cd\s+(/[^\s&;]+)""".toRegex()
 
     /**
      * Parses a Junie session by ID and returns SessionDetail.
@@ -40,13 +59,12 @@ object JunieSessionParser {
     }
 
     /**
-     * Parses a Junie events.jsonl file.
+     * Parses a Junie events.jsonl file using streaming (line-by-line).
      */
     fun parseFile(file: Path, sessionId: String? = null): SessionDetail? {
         return try {
-            val content = file.readText()
             val id = sessionId ?: file.parent.fileName.toString()
-            val (messages, metadata) = parseContent(content)
+            val (messages, metadata) = parseReader(file.bufferedReader())
 
             val title = getSessionTitle(id)
                 ?: messages.filterIsInstance<ParsedMessage.User>().firstOrNull()?.let { userMsg ->
@@ -75,110 +93,120 @@ object JunieSessionParser {
     }
 
     /**
-     * Parses Junie events.jsonl content.
+     * Parses Junie events.jsonl content from a string (for tests).
      */
     fun parseContent(content: String): Pair<List<ParsedMessage>, SessionMetadata?> {
-        val lines = content.lines()
+        return parseReader(content.reader().buffered())
+    }
+
+    /**
+     * The agentEvent kind string appears at ~position 80 in each line.
+     * We peek at the first PEEK_SIZE chars to decide whether to read the full line.
+     * This avoids allocating 40-400KB strings for AgentStateUpdatedEvent lines (~90% of file).
+     */
+    private const val PEEK_SIZE = 512
+
+    /**
+     * Core parser: streams lines from a reader, peeking at line starts to skip expensive events.
+     * Two-pass approach:
+     * 1. Read lines (skipping huge ones via peek), deduplicate step events (keep COMPLETED)
+     * 2. Build messages in chronological order
+     */
+    private fun parseReader(reader: BufferedReader): Pair<List<ParsedMessage>, SessionMetadata?> {
         val modelCounts = mutableMapOf<String, Int>()
+        var cwd: String? = null
 
-        // First pass: collect events, deduplicating by stepId (keep COMPLETED over IN_PROGRESS)
-        data class EventEntry(val agentEvent: JsonObject, val kind: String, val stepId: String?, val status: String?)
-        val stepEvents = mutableMapOf<String, EventEntry>()  // stepId -> latest event
-        val orderedStepIds = mutableListOf<String>()          // preserve insertion order
-        val nonStepEvents = mutableListOf<Pair<String, JsonObject>>()  // kind -> full json for events without stepId
+        // Parsed event: kind + json data (either full line json or just agentEvent)
+        data class ParsedEvent(val kind: String, val json: JsonObject)
 
-        for (line in lines) {
-            val trimmed = line.trim()
-            if (!trimmed.startsWith("{")) continue
+        // Step dedup: stepId -> latest (COMPLETED) event
+        val stepEvents = mutableMapOf<String, ParsedEvent>()
 
-            try {
-                val json = JSON.parseToJsonElement(trimmed).jsonObject
-                val topKind = json["kind"]?.jsonPrimitive?.content
+        // All events in file order (non-step events inline, step events as placeholders)
+        data class EventSlot(val kind: String, val json: JsonObject?, val stepId: String?)
+        val slots = mutableListOf<EventSlot>()
+        val seenStepIds = mutableSetOf<String>()
 
-                when (topKind) {
-                    "UserPromptEvent" -> {
-                        nonStepEvents.add("UserPromptEvent" to json)
-                    }
-                    "SessionA2uxEvent" -> {
-                        val event = json["event"]?.jsonObject ?: continue
-                        val agentEvent = event["agentEvent"]?.jsonObject ?: continue
-                        val agentEventKind = agentEvent["kind"]?.jsonPrimitive?.content ?: continue
-                        val stepId = agentEvent["stepId"]?.jsonPrimitive?.content
-                        val status = agentEvent["status"]?.jsonPrimitive?.content
-                            ?: event["state"]?.jsonPrimitive?.content
+        reader.use { br ->
+            while (true) {
+                // Peek at the start of each line to decide if we need the full line
+                br.mark(PEEK_SIZE)
+                val peekBuf = CharArray(PEEK_SIZE)
+                val peekRead = br.read(peekBuf, 0, PEEK_SIZE)
+                if (peekRead <= 0) break
+                br.reset()
 
-                        if (stepId != null && agentEventKind in setOf(
-                                "ToolBlockUpdatedEvent", "TerminalBlockUpdatedEvent",
-                                "ViewFilesBlockUpdatedEvent", "FileChangesBlockUpdatedEvent",
-                                "ResultBlockUpdatedEvent"
-                            )) {
-                            val entry = EventEntry(agentEvent, agentEventKind, stepId, status)
-                            if (!stepEvents.containsKey(stepId)) {
-                                orderedStepIds.add(stepId)
+                val peek = String(peekBuf, 0, peekRead)
+
+                // Check if this line should be skipped entirely (don't allocate full line)
+                val shouldSkip = peek.startsWith("{") && SKIP_KINDS.any { peek.contains(it) }
+
+                if (shouldSkip) {
+                    // Discard the entire line without loading it into a String
+                    skipLine(br)
+                    continue
+                }
+
+                // Read the full line (only for lines we actually need)
+                val line = br.readLine() ?: break
+                val trimmed = line.trim()
+                if (!trimmed.startsWith("{")) continue
+
+                try {
+                    val json = JSON.parseToJsonElement(trimmed).jsonObject
+                    val topKind = json["kind"]?.jsonPrimitive?.content
+
+                    when (topKind) {
+                        "UserPromptEvent" -> {
+                            slots.add(EventSlot("UserPromptEvent", json, null))
+                        }
+                        "SessionA2uxEvent" -> {
+                            val event = json["event"]?.jsonObject ?: continue
+                            val agentEvent = event["agentEvent"]?.jsonObject ?: continue
+                            val agentEventKind = agentEvent["kind"]?.jsonPrimitive?.content ?: continue
+                            val stepId = agentEvent["stepId"]?.jsonPrimitive?.content
+
+                            // Extract cwd from first terminal cd command
+                            if (cwd == null && agentEventKind == "TerminalBlockUpdatedEvent") {
+                                val command = agentEvent["command"]?.jsonPrimitive?.content
+                                if (command != null) {
+                                    cwd = CD_PATH_REGEX.find(command)?.groupValues?.get(1)
+                                }
                             }
-                            // Always overwrite: COMPLETED comes after IN_PROGRESS
-                            stepEvents[stepId] = entry
-                        } else {
-                            nonStepEvents.add(agentEventKind to json)
+
+                            if (stepId != null && agentEventKind in STEP_KINDS) {
+                                // Step event: dedup by keeping latest (COMPLETED overwrites IN_PROGRESS)
+                                stepEvents[stepId] = ParsedEvent(agentEventKind, agentEvent)
+
+                                // Add placeholder slot on first occurrence only
+                                if (seenStepIds.add(stepId)) {
+                                    slots.add(EventSlot(agentEventKind, null, stepId))
+                                }
+                            } else {
+                                // Non-step event (e.g. LlmResponseMetadataEvent, AgentFailureEvent)
+                                slots.add(EventSlot(agentEventKind, json, null))
+                            }
                         }
                     }
+                } catch (_: Exception) {
+                    // Skip unparseable lines
                 }
-            } catch (_: Exception) {
-                // Skip unparseable lines
             }
         }
 
-        // Second pass: build messages in order
+        // Build messages from slots (resolving step placeholders to their COMPLETED version)
         val messages = mutableListOf<ParsedMessage>()
-        var stepIndex = 0
-        var nonStepIndex = 0
 
-        // Interleave: process nonStepEvents, inserting step events at proper positions
-        // Since events are ordered chronologically in the file, we process them in file order.
-        // Rebuild in file order by replaying all lines
-        val allEvents = mutableListOf<Pair<String, JsonObject>>()
-        val seenSteps = mutableSetOf<String>()
-
-        for (line in lines) {
-            val trimmed = line.trim()
-            if (!trimmed.startsWith("{")) continue
-
+        for (slot in slots) {
             try {
-                val json = JSON.parseToJsonElement(trimmed).jsonObject
-                val topKind = json["kind"]?.jsonPrimitive?.content
-
-                when (topKind) {
-                    "UserPromptEvent" -> {
-                        allEvents.add("UserPromptEvent" to json)
-                    }
-                    "SessionA2uxEvent" -> {
-                        val event = json["event"]?.jsonObject ?: continue
-                        val agentEvent = event["agentEvent"]?.jsonObject ?: continue
-                        val agentEventKind = agentEvent["kind"]?.jsonPrimitive?.content ?: continue
-                        val stepId = agentEvent["stepId"]?.jsonPrimitive?.content
-
-                        if (stepId != null && stepId in stepEvents) {
-                            if (stepId !in seenSteps) {
-                                // First occurrence of this stepId - will emit the COMPLETED version
-                                seenSteps.add(stepId)
-                                val completed = stepEvents[stepId]!!
-                                allEvents.add(completed.kind to wrapAsSessionEvent(completed.agentEvent))
-                            }
-                            // Skip duplicate occurrences
-                        } else {
-                            allEvents.add(agentEventKind to json)
-                        }
-                    }
+                val json = if (slot.stepId != null) {
+                    stepEvents[slot.stepId]?.json ?: continue
+                } else {
+                    slot.json ?: continue
                 }
-            } catch (_: Exception) {
-                // Skip
-            }
-        }
+                val isDirectAgentEvent = slot.stepId != null
 
-        // Now process all events in order
-        for ((kind, json) in allEvents) {
-            try {
-                when (kind) {
+                when (slot.kind) {
                     "UserPromptEvent" -> {
                         val prompt = json["prompt"]?.jsonPrimitive?.content
                         if (prompt != null) {
@@ -189,8 +217,8 @@ object JunieSessionParser {
                         }
                     }
                     "LlmResponseMetadataEvent" -> {
-                        val event = json["event"]?.jsonObject
-                        val agentEvent = event?.get("agentEvent")?.jsonObject ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val modelUsage = agentEvent["modelUsage"]?.jsonArray
                         modelUsage?.forEach { usage ->
                             val model = usage.jsonObject["model"]?.jsonPrimitive?.content
@@ -200,7 +228,8 @@ object JunieSessionParser {
                         }
                     }
                     "ToolBlockUpdatedEvent" -> {
-                        val agentEvent = extractAgentEvent(json) ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val text = agentEvent["text"]?.jsonPrimitive?.content
                         val details = agentEvent["details"]?.jsonPrimitive?.content
 
@@ -224,7 +253,8 @@ object JunieSessionParser {
                         ))
                     }
                     "TerminalBlockUpdatedEvent" -> {
-                        val agentEvent = extractAgentEvent(json) ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val command = agentEvent["command"]?.jsonPrimitive?.content
                         val output = agentEvent["output"]?.jsonPrimitive?.content
 
@@ -248,7 +278,8 @@ object JunieSessionParser {
                         ))
                     }
                     "ViewFilesBlockUpdatedEvent" -> {
-                        val agentEvent = extractAgentEvent(json) ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val files = agentEvent["files"]?.jsonArray
                         val filePaths = files?.mapNotNull { f ->
                             f.jsonObject["relativePath"]?.jsonPrimitive?.content
@@ -261,7 +292,8 @@ object JunieSessionParser {
                         ))
                     }
                     "FileChangesBlockUpdatedEvent" -> {
-                        val agentEvent = extractAgentEvent(json) ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val changes = agentEvent["changes"]?.jsonArray ?: continue
 
                         changes.forEach { change ->
@@ -278,7 +310,8 @@ object JunieSessionParser {
                         }
                     }
                     "ResultBlockUpdatedEvent" -> {
-                        val agentEvent = extractAgentEvent(json) ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val cancelled = agentEvent["cancelled"]?.jsonPrimitive?.content == "true"
                         val result = agentEvent["result"]?.jsonPrimitive?.content
 
@@ -290,8 +323,8 @@ object JunieSessionParser {
                         }
                     }
                     "AgentFailureEvent" -> {
-                        val event = json["event"]?.jsonObject
-                        val agentEvent = event?.get("agentEvent")?.jsonObject ?: continue
+                        val agentEvent = if (isDirectAgentEvent) json
+                            else json["event"]?.jsonObject?.get("agentEvent")?.jsonObject ?: continue
                         val message = agentEvent["message"]?.jsonPrimitive?.content
 
                         if (!message.isNullOrBlank()) {
@@ -310,6 +343,7 @@ object JunieSessionParser {
         }
 
         val metadata = SessionMetadata(
+            cwd = cwd,
             messageCount = messages.size,
             models = modelCounts.entries.sortedByDescending { it.value }.map { it.key to it.value }
         )
@@ -318,23 +352,13 @@ object JunieSessionParser {
     }
 
     /**
-     * Extracts agentEvent from a json object.
-     * Handles both direct agentEvent objects and wrapped SessionA2uxEvent.
+     * Skips the rest of the current line without allocating a String.
+     * Reads and discards chars until newline or EOF.
      */
-    private fun extractAgentEvent(json: JsonObject): JsonObject? {
-        // If this is already the agentEvent (from our dedup wrapper)
-        if (json.containsKey("kind") && !json.containsKey("event") && !json.containsKey("prompt")) {
-            return json
+    private fun skipLine(reader: BufferedReader) {
+        while (true) {
+            val ch = reader.read()
+            if (ch == -1 || ch == '\n'.code) break
         }
-        // Standard SessionA2uxEvent wrapper
-        return json["event"]?.jsonObject?.get("agentEvent")?.jsonObject
-    }
-
-    /**
-     * Wraps an agentEvent JsonObject back into a pseudo-SessionA2uxEvent for uniform processing.
-     */
-    private fun wrapAsSessionEvent(agentEvent: JsonObject): JsonObject {
-        // Return the agentEvent directly - extractAgentEvent handles both formats
-        return agentEvent
     }
 }

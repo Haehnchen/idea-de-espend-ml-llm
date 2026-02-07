@@ -1,5 +1,6 @@
 package de.espend.ml.llm.session.adapter.junie
 
+import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
@@ -12,7 +13,8 @@ data class JunieSession(
     val createdAt: Long,
     val updatedAt: Long,
     val taskName: String?,
-    val status: String?
+    val status: String?,
+    val cwd: String? = null
 )
 
 /**
@@ -80,6 +82,38 @@ object JunieSessionFinder {
             taskName = taskName,
             status = status
         )
+    }
+
+    /**
+     * Extracts the working directory from a session's events.jsonl.
+     * Lightweight: reads lines until it finds a terminal cd command, then stops.
+     * Skips expensive lines (AgentStateUpdatedEvent) via string pre-filter.
+     */
+    fun extractCwd(sessionId: String): String? {
+        val eventsFile = findSessionFile(sessionId) ?: return null
+        return extractCwdFromFile(eventsFile.toFile())
+    }
+
+    private val CD_PATTERN = """"command"\s*:\s*"cd\s+(/[^\s"&;\\]+)""".toRegex()
+
+    internal fun extractCwdFromFile(file: File): String? {
+        try {
+            file.bufferedReader().use { reader ->
+                reader.lineSequence().forEach { line ->
+                    // Skip expensive lines
+                    if (line.contains("AgentStateUpdatedEvent")) return@forEach
+                    if (!line.contains("TerminalBlockUpdatedEvent")) return@forEach
+
+                    val match = CD_PATTERN.find(line)
+                    if (match != null) {
+                        return match.groupValues[1]
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // ignore
+        }
+        return null
     }
 
     /**
