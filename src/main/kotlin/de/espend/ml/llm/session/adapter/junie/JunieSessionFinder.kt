@@ -85,13 +85,57 @@ object JunieSessionFinder {
     }
 
     /**
-     * Extracts the working directory from a session's events.jsonl.
-     * Lightweight: reads lines until it finds a terminal cd command, then stops.
-     * Skips expensive lines (AgentStateUpdatedEvent) via string pre-filter.
+     * Extracts the working directory from a session.
+     * First tries to read from issue.standalone_project_str_worker (reliable source),
+     * then falls back to parsing events.jsonl for a cd command.
      */
     fun extractCwd(sessionId: String): String? {
-        val eventsFile = findSessionFile(sessionId) ?: return null
+        val sessionsDir = getJunieSessionsDir() ?: return null
+        val sessionDir = sessionsDir.resolve(sessionId)
+        if (!sessionDir.exists()) return null
+
+        // Try reading from issue.standalone_project_str_worker first (fast and reliable)
+        val projectDirFile = findProjectWorkerFile(sessionDir.toFile())
+        if (projectDirFile != null) {
+            return extractProjectDirFromFile(projectDirFile)
+        }
+
+        // Fall back to parsing events.jsonl for cd command
+        val eventsFile = sessionDir.resolve("events.jsonl")
+        if (!eventsFile.exists()) return null
         return extractCwdFromFile(eventsFile.toFile())
+    }
+
+    /**
+     * Finds the issue.standalone_project_str_worker file in a session directory.
+     */
+    internal fun findProjectWorkerFile(sessionDir: File): File? {
+        // The file is located at: session-{id}/task-{id}/.matterhorn/representations/issue_md/issue.standalone_project_str_worker
+        val taskDirs = sessionDir.listFiles()?.filter { it.isDirectory && it.name.startsWith("task-") } ?: emptyList()
+        for (taskDir in taskDirs) {
+            val workerFile = File(taskDir, ".matterhorn/representations/issue_md/issue.standalone_project_str_worker")
+            if (workerFile.exists()) return workerFile
+        }
+        return null
+    }
+
+    private val PROJECT_DIR_PATTERN = """Project root directory:\s*(\S+)""".toRegex()
+
+    /**
+     * Extracts project directory from issue.standalone_project_str_worker file.
+     */
+    internal fun extractProjectDirFromFile(file: File): String? {
+        return try {
+            file.bufferedReader().use { reader ->
+                reader.useLines { lines ->
+                    lines.firstNotNullOfOrNull { line ->
+                        PROJECT_DIR_PATTERN.find(line)?.groupValues?.get(1)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private val CD_PATTERN = """"command"\s*:\s*"cd\s+(/[^\s"&;\\]+)""".toRegex()
