@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
 import de.espend.ml.llm.session.adapter.CodexSessionAdapter
+import de.espend.ml.llm.session.adapter.JunieSessionAdapter
 import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
 import de.espend.ml.llm.session.model.ParsedMessage
 import java.util.concurrent.Callable
@@ -18,6 +19,7 @@ class SessionService(private val project: Project) {
     private val openCodeAdapter = OpenCodeSessionAdapter(project)
     private val codexAdapter = CodexSessionAdapter(project)
     private val ampAdapter = AmpSessionAdapter(project)
+    private val junieAdapter = JunieSessionAdapter(project)
 
     companion object {
         fun getInstance(project: Project): SessionService = project.service()
@@ -28,13 +30,14 @@ class SessionService(private val project: Project) {
      * Uses 4 threads for parallel provider queries.
      */
     fun getAllSessions(): List<SessionListItem> {
-        val executor = Executors.newFixedThreadPool(4)
+        val executor = Executors.newFixedThreadPool(5)
         return try {
             val tasks = listOf(
                 Callable { claudeAdapter.findSessions() },
                 Callable { openCodeAdapter.findSessions() },
                 Callable { codexAdapter.findSessions() },
-                Callable { ampAdapter.findSessions() }
+                Callable { ampAdapter.findSessions() },
+                Callable { junieAdapter.findSessions() }
             )
 
             executor.invokeAll(tasks)

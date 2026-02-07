@@ -9,6 +9,8 @@ import de.espend.ml.llm.session.adapter.claude.ClaudeSessionFinder
 import de.espend.ml.llm.session.adapter.claude.ClaudeSessionParser
 import de.espend.ml.llm.session.adapter.codex.CodexSessionFinder
 import de.espend.ml.llm.session.adapter.codex.CodexSessionParser
+import de.espend.ml.llm.session.adapter.junie.JunieSessionFinder
+import de.espend.ml.llm.session.adapter.junie.JunieSessionParser
 import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionFinder
 import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionParser
 import de.espend.ml.llm.session.view.SessionDetailView
@@ -111,6 +113,15 @@ private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail
         }
     }
 
+    // Try Junie
+    val junieFile = JunieSessionFinder.findSessionFile(sessionId)
+    if (junieFile != null) {
+        val detail = JunieSessionParser.parseFile(junieFile, sessionId)
+        if (detail != null) {
+            return Triple("junie", detail, junieFile.toString())
+        }
+    }
+
     return null
 }
 
@@ -189,6 +200,26 @@ private fun listSessions() {
         }
         if (ampSessions.size > 50) {
             println("  ... and ${ampSessions.size - 50} more")
+        }
+    }
+
+    println()
+
+    // List Junie sessions
+    println("Junie Sessions:")
+    val junieSessions = JunieSessionFinder.listSessions()
+    if (junieSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        junieSessions.take(50).forEach { session ->
+            val updated = Instant.ofEpochMilli(session.updatedAt)
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            val title = session.taskName ?: "Untitled"
+            println("  [$updated] ${session.sessionId} - ${title.take(60)}")
+        }
+        if (junieSessions.size > 50) {
+            println("  ... and ${junieSessions.size - 50} more")
         }
     }
     println()

@@ -63,6 +63,7 @@ class SessionListView(
             SessionProvider.OPENCODE -> "opencode"
             SessionProvider.CODEX -> "codex"
             SessionProvider.AMP -> "amp"
+            SessionProvider.JUNIE -> "junie"
         }
         val actionUrl = JsHandlers.sessionDetailUrl(session.sessionId, providerKey)
         val providerIcon = getProviderIconSvg(session.provider)
@@ -117,6 +118,16 @@ class SessionListView(
          * AMP icon SVG for light theme (black fill on light background).
          */
         private const val AMP_ICON_LIGHT_SVG = """<svg class="amp-light" width="16" height="16" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.9197 13.61L17.3816 26.566L14.242 27.4049L11.2645 16.2643L0.119926 13.2906L0.957817 10.15L13.9197 13.61Z" fill="#000000"/><path d="M13.7391 16.0892L4.88169 24.9056L2.58872 22.6019L11.4461 13.7865L13.7391 16.0892Z" fill="#000000"/><path d="M18.9386 8.58315L22.4005 21.5392L19.2609 22.3781L16.2833 11.2374L5.13879 8.26381L5.97668 5.12318L18.9386 8.58315Z" fill="#000000"/><path d="M23.9803 3.55632L27.4422 16.5124L24.3025 17.3512L21.325 6.21062L10.1805 3.23698L11.0183 0.0963593L23.9803 3.55632Z" fill="#000000"/></svg>"""
+
+        /**
+         * Junie icon SVG for dark theme (white fill on dark background).
+         */
+        private const val JUNIE_ICON_DARK_SVG = """<svg class="junie-dark" width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25 15H35V16.75C35 29 30.5001 35 16.5001 35H15V25H16.5001C22.6251 25 25 22.875 25 16.75V15Z" fill="#FFFFFF"/><rect x="5" y="15" width="10" height="10" fill="#FFFFFF"/><rect x="15" y="5" width="10" height="10" fill="#FFFFFF"/></svg>"""
+
+        /**
+         * Junie icon SVG for light theme (black fill on light background).
+         */
+        private const val JUNIE_ICON_LIGHT_SVG = """<svg class="junie-light" width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25 15H35V16.75C35 29 30.5001 35 16.5001 35H15V25H16.5001C22.6251 25 25 22.875 25 16.75V15Z" fill="#000000"/><rect x="5" y="15" width="10" height="10" fill="#000000"/><rect x="15" y="5" width="10" height="10" fill="#000000"/></svg>"""
     }
 
     /**
@@ -128,6 +139,7 @@ class SessionListView(
             SessionProvider.OPENCODE -> OPENCODE_ICON_DARK_SVG + OPENCODE_ICON_LIGHT_SVG
             SessionProvider.CODEX -> CODEX_ICON_SVG
             SessionProvider.AMP -> AMP_ICON_DARK_SVG + AMP_ICON_LIGHT_SVG
+            SessionProvider.JUNIE -> JUNIE_ICON_DARK_SVG + JUNIE_ICON_LIGHT_SVG
         }
     }
 }
