@@ -16,6 +16,7 @@ import com.intellij.ui.jcef.JBCefJSQuery
 import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
 import de.espend.ml.llm.session.adapter.CodexSessionAdapter
+import de.espend.ml.llm.session.adapter.JunieSessionAdapter
 import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
 import de.espend.ml.llm.session.view.ErrorView
 import de.espend.ml.llm.session.view.SessionDetailView
@@ -149,6 +150,7 @@ class SessionBrowserPanel(private val project: Project) {
                 "opencode" -> OpenCodeSessionAdapter(project).getSessionDetail(sessionId)
                 "codex" -> CodexSessionAdapter(project).getSessionDetail(sessionId)
                 "amp" -> AmpSessionAdapter(project).getSessionDetail(sessionId)
+                "junie" -> JunieSessionAdapter(project).getSessionDetail(sessionId)
                 else -> null
             }
 
