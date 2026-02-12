@@ -9,8 +9,14 @@ import de.espend.ml.llm.session.adapter.claude.ClaudeSessionFinder
 import de.espend.ml.llm.session.adapter.claude.ClaudeSessionParser
 import de.espend.ml.llm.session.adapter.codex.CodexSessionFinder
 import de.espend.ml.llm.session.adapter.codex.CodexSessionParser
+import de.espend.ml.llm.session.adapter.droid.DroidSessionFinder
+import de.espend.ml.llm.session.adapter.droid.DroidSessionParser
+import de.espend.ml.llm.session.adapter.gemini.GeminiSessionFinder
+import de.espend.ml.llm.session.adapter.gemini.GeminiSessionParser
 import de.espend.ml.llm.session.adapter.junie.JunieSessionFinder
 import de.espend.ml.llm.session.adapter.junie.JunieSessionParser
+import de.espend.ml.llm.session.adapter.kilocode.KiloSessionFinder
+import de.espend.ml.llm.session.adapter.kilocode.KiloSessionParser
 import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionFinder
 import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionParser
 import de.espend.ml.llm.session.view.SessionDetailView
@@ -122,6 +128,33 @@ private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail
         }
     }
 
+    // Try Droid
+    val droidFile = DroidSessionFinder.findSessionFile(sessionId)
+    if (droidFile != null) {
+        val detail = DroidSessionParser.parseFile(droidFile)
+        if (detail != null) {
+            return Triple("droid", detail, droidFile.absolutePath)
+        }
+    }
+
+    // Try Gemini
+    val geminiFile = GeminiSessionFinder.findSessionFile(sessionId)
+    if (geminiFile != null) {
+        val detail = GeminiSessionParser.parseFile(geminiFile)
+        if (detail != null) {
+            return Triple("gemini", detail, geminiFile.absolutePath)
+        }
+    }
+
+    // Try Kilo Code
+    val kiloFile = KiloSessionFinder.findSessionFile(sessionId)
+    if (kiloFile != null) {
+        val detail = KiloSessionParser.parseSession(kiloFile.absolutePath, sessionId)
+        if (detail != null) {
+            return Triple("kilocode", detail, kiloFile.absolutePath)
+        }
+    }
+
     return null
 }
 
@@ -220,6 +253,53 @@ private fun listSessions() {
         }
         if (junieSessions.size > 50) {
             println("  ... and ${junieSessions.size - 50} more")
+        }
+    }
+    println()
+
+    // List Droid sessions
+    println("Droid Sessions:")
+    val droidSessions = DroidSessionFinder.listSessions()
+    if (droidSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        droidSessions.take(50).forEach { session ->
+            println("  [${session.updated.take(16)}] ${session.sessionId} - ${session.title.take(60)}")
+        }
+        if (droidSessions.size > 50) {
+            println("  ... and ${droidSessions.size - 50} more")
+        }
+    }
+
+    println()
+
+    // List Gemini sessions
+    println("Gemini Sessions:")
+    val geminiSessions = GeminiSessionFinder.listSessions()
+    if (geminiSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        geminiSessions.take(50).forEach { session ->
+            println("  [${session.created.take(16)}] ${session.sessionId} - ${session.projectName}")
+        }
+        if (geminiSessions.size > 50) {
+            println("  ... and ${geminiSessions.size - 50} more")
+        }
+    }
+
+    println()
+
+    // List Kilo Code sessions
+    println("Kilo Code Sessions:")
+    val kiloSessions = KiloSessionFinder.listSessionFiles()
+    if (kiloSessions.isEmpty()) {
+        println("  No sessions found")
+    } else {
+        kiloSessions.take(50).forEach { session ->
+            println("  ${session.taskId} (session: ${session.sessionId}) - ${session.projectPath}")
+        }
+        if (kiloSessions.size > 50) {
+            println("  ... and ${kiloSessions.size - 50} more")
         }
     }
     println()

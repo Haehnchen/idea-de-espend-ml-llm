@@ -64,6 +64,9 @@ class SessionListView(
             SessionProvider.CODEX -> "codex"
             SessionProvider.AMP -> "amp"
             SessionProvider.JUNIE -> "junie"
+            SessionProvider.DROID -> "droid"
+            SessionProvider.GEMINI -> "gemini"
+            SessionProvider.KILO_CODE -> "kilocode"
         }
         val actionUrl = JsHandlers.sessionDetailUrl(session.sessionId, providerKey)
         val providerIcon = getProviderIconSvg(session.provider)
@@ -128,6 +131,36 @@ class SessionListView(
          * Junie icon SVG for light theme (black fill on light background).
          */
         private const val JUNIE_ICON_LIGHT_SVG = """<svg class="junie-light" width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25 15H35V16.75C35 29 30.5001 35 16.5001 35H15V25H16.5001C22.6251 25 25 22.875 25 16.75V15Z" fill="#000000"/><rect x="5" y="15" width="10" height="10" fill="#000000"/><rect x="15" y="5" width="10" height="10" fill="#000000"/></svg>"""
+
+        /**
+         * Droid icon SVG for dark theme (light teal #2DD4BF on dark background).
+         */
+        private const val DROID_ICON_DARK_SVG = """<svg class="droid-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#2DD4BF" d="M12 2C9.243 2 7 4.243 7 7v1H6c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-1V7c0-2.757-2.243-5-5-5zm0 2c1.654 0 3 1.346 3 3v1H9V7c0-1.654 1.346-3 3-3zm-3 8c.552 0 1 .448 1 1s-.448 1-1 1-1-.448-1-1 .448-1 1-1zm6 0c.552 0 1 .448 1 1s-.448 1-1 1-1-.448-1-1 .448-1 1-1z"/></svg>"""
+
+        /**
+         * Droid icon SVG for light theme (teal #0D9488 on light background).
+         */
+        private const val DROID_ICON_LIGHT_SVG = """<svg class="droid-light" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#0D9488" d="M12 2C9.243 2 7 4.243 7 7v1H6c-1.103 0-2 .897-2 2v9c0 1.103.897 2 2 2h12c1.103 0 2-.897 2-2v-9c0-1.103-.897-2-2-2h-1V7c0-2.757-2.243-5-5-5zm0 2c1.654 0 3 1.346 3 3v1H9V7c0-1.654 1.346-3 3-3zm-3 8c.552 0 1 .448 1 1s-.448 1-1 1-1-.448-1-1 .448-1 1-1zm6 0c.552 0 1 .448 1 1s-.448 1-1 1-1-.448-1-1 .448-1 1-1z"/></svg>"""
+
+        /**
+         * Gemini icon SVG for dark theme (light blue #8AB4F8 sparkle on dark background).
+         */
+        private const val GEMINI_ICON_DARK_SVG = """<svg class="gemini-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#8AB4F8" d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>"""
+
+        /**
+         * Gemini icon SVG for light theme (Google blue #4285F4 sparkle on light background).
+         */
+        private const val GEMINI_ICON_LIGHT_SVG = """<svg class="gemini-light" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>"""
+
+        /**
+         * Kilo Code icon SVG for dark theme (light blue #60A5FA on dark background).
+         */
+        private const val KILO_ICON_DARK_SVG = """<svg class="kilo-dark" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#60A5FA" d="M0,0v100h100V0H0ZM92.5925926,92.5925926H7.4074074V7.4074074h85.1851852v85.1851852ZM61.1111044,71.9096084h9.2592593v7.4074074h-11.6402116l-5.026455-5.026455v-11.6402116h7.4074074v9.2592593ZM77.7777711,71.9096084h-7.4074074v-9.2592593h-9.2592593v-7.4074074h11.6402116l5.026455,5.026455v11.6402116ZM46.2962963,61.1114207h-7.4074074v-7.4074074h7.4074074v7.4074074ZM22.2222222,53.7040133h7.4074074v16.6666667h16.6666667v7.4074074h-19.047619l-5.026455-5.026455v-19.047619ZM77.7777711,38.8888889v7.4074074h-24.0740741v-7.4074074h8.2781918v-9.2592593h-8.2781918v-7.4074074h10.6591442l5.026455,5.026455v11.6402116h8.3884749ZM29.6296296,30.5555556h9.2592593l7.4074074,7.4074074v8.3333333h-7.4074074v-8.3333333h-9.2592593v8.3333333h-7.4074074v-24.0740741h7.4074074v8.3333333ZM46.2962963,30.5555556h-7.4074074v-8.3333333h7.4074074v8.3333333Z"/></svg>"""
+
+        /**
+         * Kilo Code icon SVG for light theme (blue #2563EB on light background).
+         */
+        private const val KILO_ICON_LIGHT_SVG = """<svg class="kilo-light" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#2563EB" d="M0,0v100h100V0H0ZM92.5925926,92.5925926H7.4074074V7.4074074h85.1851852v85.1851852ZM61.1111044,71.9096084h9.2592593v7.4074074h-11.6402116l-5.026455-5.026455v-11.6402116h7.4074074v9.2592593ZM77.7777711,71.9096084h-7.4074074v-9.2592593h-9.2592593v-7.4074074h11.6402116l5.026455,5.026455v11.6402116ZM46.2962963,61.1114207h-7.4074074v-7.4074074h7.4074074v7.4074074ZM22.2222222,53.7040133h7.4074074v16.6666667h16.6666667v7.4074074h-19.047619l-5.026455-5.026455v-19.047619ZM77.7777711,38.8888889v7.4074074h-24.0740741v-7.4074074h8.2781918v-9.2592593h-8.2781918v-7.4074074h10.6591442l5.026455,5.026455v11.6402116h8.3884749ZM29.6296296,30.5555556h9.2592593l7.4074074,7.4074074v8.3333333h-7.4074074v-8.3333333h-9.2592593v8.3333333h-7.4074074v-24.0740741h7.4074074v8.3333333ZM46.2962963,30.5555556h-7.4074074v-8.3333333h7.4074074v8.3333333Z"/></svg>"""
     }
 
     /**
@@ -140,6 +173,9 @@ class SessionListView(
             SessionProvider.CODEX -> CODEX_ICON_SVG
             SessionProvider.AMP -> AMP_ICON_DARK_SVG + AMP_ICON_LIGHT_SVG
             SessionProvider.JUNIE -> JUNIE_ICON_DARK_SVG + JUNIE_ICON_LIGHT_SVG
+            SessionProvider.DROID -> DROID_ICON_DARK_SVG + DROID_ICON_LIGHT_SVG
+            SessionProvider.GEMINI -> GEMINI_ICON_DARK_SVG + GEMINI_ICON_LIGHT_SVG
+            SessionProvider.KILO_CODE -> KILO_ICON_DARK_SVG + KILO_ICON_LIGHT_SVG
         }
     }
 }

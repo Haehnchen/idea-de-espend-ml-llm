@@ -78,6 +78,18 @@ object CssStyles {
         .provider-icon svg.junie-dark { display: none; }
         .theme-dark .provider-icon svg.junie-dark { display: block; }
         .theme-light .provider-icon svg.junie-light { display: block; }
+        .provider-icon svg.droid-light { display: none; }
+        .provider-icon svg.droid-dark { display: none; }
+        .theme-dark .provider-icon svg.droid-dark { display: block; }
+        .theme-light .provider-icon svg.droid-light { display: block; }
+        .provider-icon svg.gemini-light { display: none; }
+        .provider-icon svg.gemini-dark { display: none; }
+        .theme-dark .provider-icon svg.gemini-dark { display: block; }
+        .theme-light .provider-icon svg.gemini-light { display: block; }
+        .provider-icon svg.kilo-light { display: none; }
+        .provider-icon svg.kilo-dark { display: none; }
+        .theme-dark .provider-icon svg.kilo-dark { display: block; }
+        .theme-light .provider-icon svg.kilo-light { display: block; }
         .session-title { font-weight: 500; color: var(--jb-color-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: break-word; overflow-wrap: break-word; }
         .session-meta { font-size: 11px; color: var(--jb-color-comment); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         .session-id { font-size: 10px; color: var(--jb-color-comment); font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
