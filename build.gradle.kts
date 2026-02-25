@@ -22,6 +22,8 @@ dependencies {
         intellijIdeaUltimate("2025.3.2")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
+        bundledPlugins("com.intellij.mcpServer")
+
         // AI Assistant plugin (ml.llm) from marketplace
         compatiblePlugins("com.intellij.ml.llm")
     }
