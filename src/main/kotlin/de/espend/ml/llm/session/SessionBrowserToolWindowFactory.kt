@@ -13,14 +13,6 @@ import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
-import de.espend.ml.llm.session.adapter.AmpSessionAdapter
-import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
-import de.espend.ml.llm.session.adapter.CodexSessionAdapter
-import de.espend.ml.llm.session.adapter.DroidSessionAdapter
-import de.espend.ml.llm.session.adapter.GeminiSessionAdapter
-import de.espend.ml.llm.session.adapter.JunieSessionAdapter
-import de.espend.ml.llm.session.adapter.KiloSessionAdapter
-import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
 import de.espend.ml.llm.session.view.ErrorView
 import de.espend.ml.llm.session.view.SessionDetailView
 import de.espend.ml.llm.session.view.SessionListView
@@ -134,8 +126,7 @@ class SessionBrowserPanel(private val project: Project) {
 
     fun loadSessions(showRefreshToast: Boolean = false) {
         currentView = View.LIST
-        val sessionService = SessionService.getInstance(project)
-        val sessions = sessionService.getAllSessions()
+        val sessions = SessionService.getAllSessions(project)
         val html = listView.generate(sessions, showRefreshToast)
         browser.loadHTML(html)
     }
@@ -148,16 +139,11 @@ class SessionBrowserPanel(private val project: Project) {
             currentProvider = provider
 
             // Get session detail from appropriate adapter
-            val sessionDetail = when (provider) {
-                "claude" -> ClaudeSessionAdapter(project).getSessionDetail(sessionId)
-                "opencode" -> OpenCodeSessionAdapter(project).getSessionDetail(sessionId)
-                "codex" -> CodexSessionAdapter(project).getSessionDetail(sessionId)
-                "amp" -> AmpSessionAdapter(project).getSessionDetail(sessionId)
-                "junie" -> JunieSessionAdapter(project).getSessionDetail(sessionId)
-                "droid" -> DroidSessionAdapter(project).getSessionDetail(sessionId)
-                "gemini" -> GeminiSessionAdapter(project).getSessionDetail(sessionId)
-                "kilocode" -> KiloSessionAdapter(project).getSessionDetail(sessionId)
-                else -> null
+            val providerEnum = SessionProvider.entries.find {
+                it.name.equals(provider, ignoreCase = true) || it.iconClass.replace("-icon", "") == provider
+            }
+            val sessionDetail = providerEnum?.let {
+                SessionService.getSessionDetail(project, sessionId, it)
             }
 
             // Use unified detail view for all providers
