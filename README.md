@@ -41,6 +41,10 @@ Browse and view chat sessions from external AI tools directly in the IDE.
 | **Codex CLI**   | Chat sessions from JetBrains AI Assistant CLI |
 | **OpenCode**    | Chat sessions from OpenCode CLI |
 | **Amp**         | Chat sessions from ampcode.com |
+| **Junie**       | Chat sessions from Junie CLI (JetBrains) |
+| **Gemini**      | Chat sessions from Gemini CLI (Google) |
+| **Droid**       | Chat sessions from Factory.ai CLI |
+| **Kilo Code**   | Chat sessions from Kilo Code CLI |
 
 ### MCP Integration (IntelliJ Built-in MCP Server)
 

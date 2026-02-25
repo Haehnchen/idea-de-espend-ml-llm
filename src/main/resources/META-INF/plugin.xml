@@ -14,7 +14,7 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers as chat Agent in <del>IntelliJ IDEA's AI Assistant chat</del> (not allowed for now). Includes a Session Browser for viewing chat sessions from external AI tools.</p>
+        <p>Configure and use multiple AI providers as chat Agent in <del>IntelliJ IDEA's AI Assistant chat</del> (not allowed for now). Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.</p>
 
         <h2>AI Providers</h2>
         <p>This plugin allows you to configure multiple AI providers through a simple settings UI. Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API.</p>
@@ -29,6 +29,19 @@
             <tr><td><b>Codex CLI</b></td><td>Chat sessions from JetBrains AI Assistant CLI</td></tr>
             <tr><td><b>OpenCode</b></td><td>Chat sessions from OpenCode CLI</td></tr>
             <tr><td><b>Amp</b></td><td>Chat sessions from ampcode.com</td></tr>
+            <tr><td><b>Junie</b></td><td>Chat sessions from Junie CLI (JetBrains)</td></tr>
+            <tr><td><b>Gemini</b></td><td>Chat sessions from Gemini CLI (Google)</td></tr>
+            <tr><td><b>Droid</b></td><td>Chat sessions from Factory.ai CLI</td></tr>
+            <tr><td><b>Kilo Code</b></td><td>Chat sessions from Kilo Code CLI</td></tr>
+        </table>
+
+        <h3>MCP Integration (IntelliJ Built-in MCP Server)</h3>
+        <p>The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing any MCP client to search and retrieve past coding sessions.</p>
+        <p><b>Requirement:</b> The <code>com.intellij.mcpServer</code> plugin must be enabled in your IDE.</p>
+        <table>
+            <tr><th>Tool</th><th>Description</th></tr>
+            <tr><td><b>search_ai_sessions</b></td><td>Search across all AI sessions for a query string. Returns matching sessions with text snippets.</td></tr>
+            <tr><td><b>get_ai_session</b></td><td>Fetch the full conversation of a session by its ID.</td></tr>
         </table>
 
         <h3>Using AI Providers</h3>
