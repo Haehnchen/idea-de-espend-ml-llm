@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.5.0
+* Add McpToolset support for AI session search and retrieval (Daniel Espendiller)
+* Add support for Droid, Gemini, and Kilo Code session adapters. (Daniel Espendiller)
+* Add Junie session adapter (Daniel Espendiller)
+
 # 0.4.1
 * remove not allowed features for extending chat windows with own providers (Daniel Espendiller)
 
