@@ -45,6 +45,17 @@ Browse and view chat sessions from external AI tools directly in the IDE.
 | **OpenCode**    | Chat sessions from OpenCode CLI |
 | **Amp**         | Chat sessions from ampcode.com |
 
+## MCP Integration (IntelliJ Built-in MCP Server)
+
+The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing any MCP client (e.g. AI agents, CLI tools) to search and retrieve past coding sessions.
+
+**Requirement**: The `com.intellij.mcpServer` plugin must be enabled in your IDE.
+
+| Tool | Description |
+|------|-------------|
+| **`search_ai_sessions`** | Search across all AI sessions for a query string. Returns matching sessions with text snippets. |
+| **`get_ai_session`** | Fetch the full conversation of a session by its ID. |
+
 ## Installation
 
 1. In IntelliJ IDEA, go to **File → Settings → Plugins**
