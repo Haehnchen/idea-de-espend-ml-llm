@@ -5,7 +5,7 @@
 [![Downloads](http://phpstorm.espend.de/badge/29900/downloads)](https://plugins.jetbrains.com/plugin/7219)
 [![Downloads last month](http://phpstorm.espend.de/badge/29900/last-month)](https://plugins.jetbrains.com/plugin/7219)
 
-Configure and use multiple AI providers as chat Agent in ~~IntelliJ IDEA's AI Assistant chat~~ (not allowed for now). Includes a Session Browser for viewing chat sessions from external AI tools.
+Configure and use multiple AI providers as chat Agent in ~~IntelliJ IDEA's AI Assistant chat~~ (not allowed for now). Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.
 
 | Key                  | Value                                      |
 |----------------------|--------------------------------------------|
@@ -14,10 +14,7 @@ Configure and use multiple AI providers as chat Agent in ~~IntelliJ IDEA's AI As
 
 ## Features
 
-- **AI Providers**: Configure and use multiple AI providers with ~~IntelliJ's AI Assistant~~ (not allowed for now)
-- **Session Browser**: Browse and view chat sessions from Claude Code, Codex CLI, and OpenCode
-
-## AI Providers
+### AI Providers
 
 Configure multiple AI providers through **Settings → AI Assistant → Agent Providers**.
 
@@ -32,7 +29,7 @@ Configure multiple AI providers through **Settings → AI Assistant → Agent Pr
 | **OpenRouter** | OpenRouter via Anthropic Compatible API | - |
 | **And more...** | MiniMax, Mimo, Moonshot, Requesty.ai, Nano-GPT, AIHubMix, Factory.ai | - |
 
-## Session Browser
+### Session Browser
 
 Browse and view chat sessions from external AI tools directly in the IDE.
 
@@ -45,7 +42,7 @@ Browse and view chat sessions from external AI tools directly in the IDE.
 | **OpenCode**    | Chat sessions from OpenCode CLI |
 | **Amp**         | Chat sessions from ampcode.com |
 
-## MCP Integration (IntelliJ Built-in MCP Server)
+### MCP Integration (IntelliJ Built-in MCP Server)
 
 The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing any MCP client (e.g. AI agents, CLI tools) to search and retrieve past coding sessions.
 
