@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.5.1
+* Fix usages again AgentServerConfig parameters (Daniel Espendiller)
+
 # 0.5.0
 * Add McpToolset support for AI session search and retrieval (Daniel Espendiller)
 * Add support for Droid, Gemini, and Kilo Code session adapters. (Daniel Espendiller)
