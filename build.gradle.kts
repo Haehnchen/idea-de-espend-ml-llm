@@ -22,7 +22,7 @@ dependencies {
         intellijIdeaUltimate("2025.3.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
-        bundledPlugins("com.intellij.mcpServer")
+        bundledPlugins("com.intellij.mcpServer", "org.intellij.plugins.markdown")
 
         // AI Assistant plugin (ml.llm) from marketplace
         compatiblePlugins("com.intellij.ml.llm")
@@ -30,9 +30,6 @@ dependencies {
 
     // Kotlinx Serialization for JSON parsing
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-
-    // Markdown to HTML conversion
-    implementation("org.jetbrains:markdown:0.7.3")
 
     // Test dependencies
     testImplementation("junit:junit:4.13.2")
