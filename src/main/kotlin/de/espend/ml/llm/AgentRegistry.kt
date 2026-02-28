@@ -140,10 +140,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = acpPath,
                 args = emptyList(),
-                env = buildBaseEnv(),
-                useIdeaMcp = null,
-                useCustomMcp = null,
-                executionEnvironment = null
+                env = buildBaseEnv()
             )
         }
 
@@ -157,10 +154,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = opencodePath,
                 args = listOf("acp"),
-                env = buildBaseEnv(),
-                useIdeaMcp = null,
-                useCustomMcp = null,
-                executionEnvironment = null
+                env = buildBaseEnv()
             )
         }
 
@@ -174,10 +168,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = cursorPath,
                 args = emptyList(),
-                env = buildBaseEnv(),
-                useIdeaMcp = null,
-                useCustomMcp = null,
-                executionEnvironment = null
+                env = buildBaseEnv()
             )
         }
 
@@ -191,10 +182,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = droidPath,
                 args = listOf("exec", "--output-format", "acp"),
-                env = buildBaseEnv(),
-                useIdeaMcp = null,
-                useCustomMcp = null,
-                executionEnvironment = null
+                env = buildBaseEnv()
             )
         }
 
@@ -208,10 +196,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return AgentServerConfig(
                 command = geminiPath,
                 args = listOf("--experimental-acp"),
-                env = buildBaseEnv(),
-                useIdeaMcp = null,
-                useCustomMcp = null,
-                executionEnvironment = null
+                env = buildBaseEnv()
             )
         }
 
@@ -236,10 +221,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 put("ANTHROPIC_DEFAULT_SONNET_MODEL", modelToUse)
                 put("ANTHROPIC_DEFAULT_OPUS_MODEL", modelToUse)
                 put("ANTHROPIC_API_KEY", "")
-            },
-            useIdeaMcp = null,
-            useCustomMcp = null,
-            executionEnvironment = null
+            }
         )
     }
 
