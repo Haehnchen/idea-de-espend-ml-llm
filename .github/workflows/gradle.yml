@@ -43,11 +43,9 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew check test buildPlugin
 
-      # Archive plugin artifact only for tags
-      - name: Archive plugin
+      # Create GitHub Release for tags
+      - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v1
         with:
-          name: intellij-plugin
-          path: build/distributions/*.zip
-          retention-days: 7
+          files: build/distributions/*.zip
