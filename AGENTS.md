@@ -178,3 +178,18 @@ To add session viewing for a new AI tool (e.g., Cursor, Gemini):
    - Import finder/parser
    - Add to `findAndParseSession()` function
    - Add to `listSessions()` output
+
+## Decompiler Tools
+
+For analyzing bundled plugins like "AI Assistant plugin" (ml.llm) / "com.intellij.ml.llm" you MUST use **vineflower** and NOT **Fernflower** from IntelliJ (less quality):
+
+**vineflower**
+
+- **GitHub:** https://github.com/Vineflower/vineflower
+- **Download:** https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.2/vineflower-1.11.2.jar
+- **Local copy:** `decompiled/vineflower.jar`
+- **Usage:** `java -jar vineflower.jar input.jar output/`
+
+**Bundled Plugin JARs (for decompilation):**
+- **Location:** `~/.gradle/caches/[gradle-version]/transforms/*/transformed/com.jetbrains.[plugin]-[intellij-version]/[plugin]/lib/[plugin].jar`
+- **Example:** `~/.gradle/caches/9.3.0/transforms/*/transformed/com.jetbrains.twig-253.28294.322/twig/lib/twig.jar`
