@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.5.2
+* Update IntelliJ IDEA Ultimate version to 2025.3.3 (Daniel Espendiller)
+
 # 0.5.1
 * Fix usages again AgentServerConfig parameters (Daniel Espendiller)
 
