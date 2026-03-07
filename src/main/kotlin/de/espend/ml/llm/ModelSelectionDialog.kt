@@ -49,6 +49,7 @@ class ModelSelectionDialog(
     private val searchField = SearchTextField()
     private val statusLabel = JBLabel("")
     private var selectedRow: Int = -1
+    private val refreshButton = JButton("Refresh")
 
     init {
         title = "Select Model"
@@ -68,9 +69,7 @@ class ModelSelectionDialog(
             }
         })
         topPanel.add(searchField, BorderLayout.CENTER)
-        val refreshButton = JButton("Refresh").apply {
-            addActionListener { fetchModels() }
-        }
+        refreshButton.addActionListener { fetchModels() }
         topPanel.add(refreshButton, BorderLayout.EAST)
         panel.add(topPanel, BorderLayout.NORTH)
 
@@ -126,8 +125,8 @@ class ModelSelectionDialog(
     }
 
     private fun fetchModels() {
+        refreshButton.isEnabled = false
         statusLabel.text = "Loading models..."
-        allModels.clear()
         filteredModels.clear()
         tableModel.fireTableDataChanged()
 
@@ -148,21 +147,25 @@ class ModelSelectionDialog(
                     val responseBody = connection.inputStream.bufferedReader().readText()
                     val response = Gson().fromJson(responseBody, ModelsResponse::class.java)
                     SwingUtilities.invokeLater {
+                        allModels.clear()
                         allModels.addAll(response.data)
                         filterModels()
                         statusLabel.text = "${allModels.size} models loaded"
+                        refreshButton.isEnabled = true
                         // Pre-select current model
                         preselectCurrentModel()
                     }
                 } else {
                     SwingUtilities.invokeLater {
                         statusLabel.text = "Error: HTTP $responseCode ($uri)"
+                        refreshButton.isEnabled = true
                     }
                 }
                 connection.disconnect()
             } catch (e: Exception) {
                 SwingUtilities.invokeLater {
                     statusLabel.text = "Error: ${e.message} ($modelsUrl)"
+                    refreshButton.isEnabled = true
                 }
             }
         }.start()
