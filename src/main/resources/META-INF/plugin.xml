@@ -14,10 +14,10 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers as chat Agent in <del>IntelliJ IDEA's AI Assistant chat</del> (not allowed for now). Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.</p>
+        <p>Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.</p>
 
         <h2>AI Providers</h2>
-        <p>This plugin allows you to configure multiple AI providers through a simple settings UI. Supports Claude CLI, Gemini CLI, OpenCode CLI, Cursor CLI, and any Anthropic-compatible API.</p>
+        <p>Configure multiple AI providers through **Settings → AI Assistant → Agent Providers**.</p>
 
         <h2>Session Browser</h2>
         <p>Browse and view chat sessions from external AI tools directly in the IDE.</p>

@@ -5,7 +5,7 @@
 [![Downloads](http://phpstorm.espend.de/badge/29900/downloads)](https://plugins.jetbrains.com/plugin/29900)
 [![Downloads last month](http://phpstorm.espend.de/badge/29900/last-month)](https://plugins.jetbrains.com/plugin/29900)
 
-Configure and use multiple AI providers as chat Agent in ~~IntelliJ IDEA's AI Assistant chat~~ (not allowed for now). Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.
+Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.
 
 | Key                  | Value                                      |
 |----------------------|--------------------------------------------|
