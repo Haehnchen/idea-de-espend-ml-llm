@@ -86,6 +86,9 @@
 
         <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
 
+        <!-- Agent Popup Enhancement - adds Agent Providers to agent dropdown -->
+        <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.ProviderAgentPopupEnhancementProvider"/>
+
         <!-- Session Browser Tool Window -->
         <toolWindow id="Session Browser"
                     factoryClass="de.espend.ml.llm.session.SessionBrowserToolWindowFactory"
