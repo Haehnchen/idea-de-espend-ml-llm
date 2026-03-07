@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.6.0
+* Add commit message generator using AI provider integration (Daniel Espendiller)
+* Model Selector: Enable refresh button management and refactor button initialization (Daniel Espendiller)
+* Add Agent Providers action to AI Assistant agent dropdown (Daniel Espendiller)
+
 # 0.5.2
 * Update IntelliJ IDEA Ultimate version to 2025.3.3 (Daniel Espendiller)
 
