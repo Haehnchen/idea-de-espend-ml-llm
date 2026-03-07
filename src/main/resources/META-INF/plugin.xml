@@ -113,5 +113,13 @@
                 description="Browse AI chat sessions">
             <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
         </action>
+
+        <!-- Commit Message Generator Action -->
+        <action id="de.espend.ml.llm.ProviderCommitMessageAction"
+                class="de.espend.ml.llm.vcs.ProviderCommitMessageAction"
+                text="Generate with Agent Provider"
+                description="Generate commit message using configured AI providers">
+            <add-to-group group-id="Vcs.MessageActionGroup" anchor="after" relative-to-action="Vcs.LLMCommitMessageAction"/>
+        </action>
     </actions>
 </idea-plugin>
