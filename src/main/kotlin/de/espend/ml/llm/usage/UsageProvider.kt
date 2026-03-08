@@ -11,6 +11,7 @@ import kotlin.reflect.KClass
  * @param providerName Display name for the provider
  * @param icon Icon to display for the provider
  * @param usageEntryCount Expected number of usage entries this provider returns (for panel pre-centering)
+ * @param lineCount Expected number of text lines this provider returns (without progress bar)
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
@@ -18,7 +19,8 @@ data class ProviderInfo(
     val providerId: String,
     val providerName: String,
     val icon: Icon,
-    val usageEntryCount: Int
+    val usageEntryCount: Int,
+    val lineCount: Int = 0
 )
 
 /**

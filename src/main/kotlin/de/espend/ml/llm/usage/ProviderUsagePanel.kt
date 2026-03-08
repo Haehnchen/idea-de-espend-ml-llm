@@ -43,8 +43,13 @@ class ProviderUsagePanel(
         val resetLabel: JBLabel
     )
 
+    private data class LineWidgets(
+        val lineLabel: JBLabel
+    )
+
     private data class ProviderWidgets(
-        val entries: List<EntryWidgets>
+        val entries: List<EntryWidgets>,
+        val lines: List<LineWidgets>
     )
 
     init {
@@ -186,10 +191,12 @@ class ProviderUsagePanel(
         val providerInfo = provider?.providerInfo
         val icon = providerInfo?.icon?.let { PluginIcons.scaleIcon(it, 14) }
         val providerLabel = providerInfo?.providerName ?: config.providerId
-        val accountLabel = config.name.ifBlank { config.id }
+        val accountLabel = config.name
         val entryCount = providerInfo?.usageEntryCount ?: 1
+        val lineCount = providerInfo?.lineCount ?: 0
 
-        val nameLabel = JBLabel("$providerLabel · $accountLabel").apply {
+        val displayLabel = if (accountLabel.isNotBlank()) "$providerLabel · $accountLabel" else providerLabel
+        val nameLabel = JBLabel(displayLabel).apply {
             if (icon != null) this.icon = icon
             alignmentX = 0f
         }
@@ -233,7 +240,29 @@ class ProviderUsagePanel(
             }
         }
 
-        return ProviderWidgets(entryWidgets)
+        // Add spacing between entries and lines if both exist
+        if (entryCount > 0 && lineCount > 0) {
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+        }
+
+        val lineWidgets = mutableListOf<LineWidgets>()
+        for (i in 0 until lineCount) {
+            val lineLabel = JBLabel(" ").apply {
+                foreground = SECONDARY_COLOR
+                font = font.deriveFont(font.size2D - 1f)
+                alignmentX = 0f
+            }
+            add(lineLabel)
+
+            lineWidgets.add(LineWidgets(lineLabel))
+
+            // Add spacing between lines if not the last one
+            if (i < lineCount - 1) {
+                add(Box.createVerticalStrut(JBUI.scale(4)))
+            }
+        }
+
+        return ProviderWidgets(entryWidgets, lineWidgets)
     }
 
     private fun updateWidgets(widgets: ProviderWidgets, usage: ProviderUsage) {
@@ -255,6 +284,12 @@ class ProviderUsagePanel(
                 entryWidgets.resetLabel.text = " "
             }
         }
+
+        widgets.lines.forEachIndexed { index, lineWidgets ->
+            val line = usage.lines.getOrNull(index)
+            lineWidgets.lineLabel.text = line?.text?.ifBlank { " " } ?: " "
+            lineWidgets.lineLabel.foreground = SECONDARY_COLOR
+        }
     }
 
     private fun showWidgetError(widgets: ProviderWidgets, error: String) {
@@ -263,6 +298,10 @@ class ProviderUsagePanel(
             entryWidgets.pctLabel.foreground = ERROR_COLOR
             entryWidgets.progressBar.value = 0
             entryWidgets.resetLabel.text = " "
+        }
+        widgets.lines.forEach { lineWidgets ->
+            lineWidgets.lineLabel.text = " "
+            lineWidgets.lineLabel.foreground = ERROR_COLOR
         }
     }
 

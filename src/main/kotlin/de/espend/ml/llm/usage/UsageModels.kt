@@ -13,13 +13,29 @@ data class UsageEntry(
 /**
  * Raw usage data returned by handlers (supports multiple entries)
  *
+ * @param entries Progress bar entries with percentage and subtitle
+ * @param lines Text-only lines for displaying token info without progress bar
+ *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
 data class UsageData(
-    val entries: List<UsageEntry>
+    val entries: List<UsageEntry>,
+    val lines: List<UsageLine> = emptyList()
 ) {
     constructor(percentageUsed: Float, subtitle: String? = null) : this(listOf(UsageEntry(percentageUsed, subtitle)))
+    constructor(lines: List<UsageLine>) : this(emptyList(), lines)
 }
+
+/**
+ * Single text line for usage display without progress bar
+ *
+ * @param text The text content to display
+ *
+ * @author Daniel Espendiller <daniel@espendiller.net>
+ */
+data class UsageLine(
+    val text: String
+)
 
 /**
  * Result of fetching usage from a handler
@@ -56,7 +72,19 @@ data class ProviderUsageEntry(
 data class ProviderUsage(
     val providerId: String,
     val providerName: String,
-    val entries: List<ProviderUsageEntry>
+    val entries: List<ProviderUsageEntry>,
+    val lines: List<ProviderUsageLine> = emptyList()
+)
+
+/**
+ * Single text line for provider usage display without progress bar
+ *
+ * @param text The text content to display
+ *
+ * @author Daniel Espendiller <daniel@espendiller.net>
+ */
+data class ProviderUsageLine(
+    val text: String
 )
 
 /**

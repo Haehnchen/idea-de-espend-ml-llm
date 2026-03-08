@@ -5,6 +5,7 @@ import com.intellij.openapi.components.Service
 import de.espend.ml.llm.usage.provider.AmpcodeUsageProvider
 import de.espend.ml.llm.usage.provider.ClaudeUsageProvider
 import de.espend.ml.llm.usage.provider.CodexUsageProvider
+import de.espend.ml.llm.usage.provider.JunieUsageProvider
 import de.espend.ml.llm.usage.provider.ZaiUsageProvider
 
 /**
@@ -23,6 +24,7 @@ class ProviderUsageService {
         registerProvider(AmpcodeUsageProvider())
         registerProvider(CodexUsageProvider())
         registerProvider(ClaudeUsageProvider())
+        registerProvider(JunieUsageProvider())
     }
 
     fun registerProvider(provider: UsageProvider) {
@@ -59,10 +61,17 @@ class ProviderUsageService {
                 val entries = result.data.entries.map {
                     ProviderUsageEntry(it.percentageUsed, it.subtitle)
                 }
-                ProviderUsageResponse.success(
-                    providerId = provider.providerInfo.providerId,
-                    providerName = provider.providerInfo.providerName,
-                    entries = entries
+                val lines = result.data.lines.map {
+                    ProviderUsageLine(it.text)
+                }
+                ProviderUsageResponse(
+                    ProviderUsage(
+                        providerId = provider.providerInfo.providerId,
+                        providerName = provider.providerInfo.providerName,
+                        entries = entries,
+                        lines = lines
+                    ),
+                    null
                 )
             } else {
                 ProviderUsageResponse.error(result.error ?: "Unknown error")
