@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.7.0
+* Add provider usage tracking toolbar for Codex, Claude, Zai, Amp (Daniel Espendiller)
+
 # 0.6.0
 * Add commit message generator using AI provider integration (Daniel Espendiller)
 * Model Selector: Enable refresh button management and refactor button initialization (Daniel Espendiller)
