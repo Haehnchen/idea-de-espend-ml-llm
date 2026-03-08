@@ -1,0 +1,309 @@
+package de.espend.ml.llm.usage.ui
+
+import com.intellij.ui.AnActionButton
+import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.table.TableView
+import com.intellij.util.IconUtil
+import com.intellij.util.ui.ColumnInfo
+import com.intellij.util.ui.ElementProducer
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
+import de.espend.ml.llm.usage.ProviderUsageService
+import de.espend.ml.llm.usage.UsageAccountConfig
+import de.espend.ml.llm.usage.UsageAccountState
+import de.espend.ml.llm.usage.UsagePlatformRegistry
+import java.awt.Component
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.event.ItemEvent
+import javax.swing.Icon
+import javax.swing.JCheckBox
+import javax.swing.JComponent
+import javax.swing.JMenuItem
+import javax.swing.JPanel
+import javax.swing.JPopupMenu
+import javax.swing.JTable
+import javax.swing.ListSelectionModel
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.table.TableCellRenderer
+import javax.swing.table.TableCellEditor
+import javax.swing.AbstractCellEditor
+
+/**
+ * Settings panel for managing usage accounts.
+ *
+ * Provider-agnostic: all account types are handled generically via [UsageProvider.fromState] /
+ * [UsageProvider.toState]. Adding a new provider requires no changes here.
+ *
+ * @author Daniel Espendiller <daniel@espendiller.net>
+ */
+class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
+
+    /**
+     * Internal wrapper for table display, wraps UsageAccountConfig
+     */
+    data class UsageRow(
+        val config: UsageAccountConfig
+    ) {
+        val type: String get() = config.providerId
+        val label: String get() = config.name
+    }
+
+    private val rows: MutableList<UsageRow> = mutableListOf()
+
+    private val modelList = com.intellij.util.ui.ListTableModel<UsageRow>(
+        arrayOf(EnabledColumn(), LabelColumn(), TypeColumn()),
+        mutableListOf()
+    )
+
+    private val tableView = TableView(modelList).apply {
+        setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+        rowHeight = JBUI.scale(28)
+        intercellSpacing = JBUI.size(0, 4)
+        setShowGrid(false)
+        setDefaultRenderer(String::class.java, SpacedTableCellRenderer())
+    }
+
+    init {
+        val title = JBLabel("Accounts").apply {
+            font = UIUtil.getLabelFont().deriveFont(java.awt.Font.BOLD)
+        }
+        add(title, GridBagConstraints().apply {
+            gridx = 0
+            gridy = 0
+            anchor = GridBagConstraints.WEST
+            insets = JBUI.insetsBottom(6)
+        })
+
+        tableView.columnModel.getColumn(0).preferredWidth = JBUI.scale(50)
+        tableView.columnModel.getColumn(0).maxWidth = JBUI.scale(60)
+        tableView.columnModel.getColumn(1).preferredWidth = JBUI.scale(260)
+        tableView.columnModel.getColumn(2).preferredWidth = JBUI.scale(120)
+
+        val toolbarDecorator = ToolbarDecorator.createDecorator(tableView, object : ElementProducer<UsageRow> {
+            override fun createElement(): UsageRow? = null
+            override fun canCreateElement(): Boolean = true
+        })
+
+        toolbarDecorator.setAddAction { button ->
+            showProviderMenu(button.contextComponent, button)
+        }
+        toolbarDecorator.setEditAction { editSelectedRow() }
+        toolbarDecorator.setRemoveAction { removeSelectedRow() }
+
+        toolbarDecorator.disableUpAction()
+        toolbarDecorator.disableDownAction()
+
+        add(toolbarDecorator.createPanel(), GridBagConstraints().apply {
+            gridx = 0
+            gridy = 1
+            fill = GridBagConstraints.BOTH
+            weightx = 1.0
+            weighty = 1.0
+        })
+    }
+
+    fun loadFrom(accountStates: List<UsageAccountState>) {
+        rows.clear()
+        while (modelList.rowCount > 0) modelList.removeRow(0)
+
+        val service = ProviderUsageService.getInstance()
+        accountStates.forEach { state ->
+            val config = service.getProvider(state.providerId)?.fromState(state) ?: return@forEach
+            rows.add(UsageRow(config))
+        }
+
+        rows.forEach { modelList.addRow(it) }
+        if (modelList.rowCount > 0) tableView.setRowSelectionInterval(0, 0)
+    }
+
+    fun isModified(accountStates: List<UsageAccountState>): Boolean {
+        return toAccountStates() != accountStates
+    }
+
+    fun applyTo(registryState: UsagePlatformRegistry.State) {
+        registryState.accounts = toAccountStates().toMutableList()
+    }
+
+    private fun toAccountStates(): List<UsageAccountState> {
+        val service = ProviderUsageService.getInstance()
+        return modelList.items.mapNotNull { row ->
+            service.getProvider(row.type)?.toState(row.config)
+        }
+    }
+
+    private fun editSelectedRow() {
+        val index = tableView.selectedRow
+        if (index < 0 || index >= modelList.rowCount) return
+
+        val row = modelList.getItem(index)
+        val provider = ProviderUsageService.getInstance().getProvider(row.type) ?: return
+        val panel = UsageFormPanel(provider, row.config)
+        val onSave = provider.openForm(panel, row.config)
+        if (!panel.showDialog(tableView)) return
+        onSave()
+
+        row.config.name = panel.nameField.text.trim()
+        row.config.isEnabled = panel.enabledCheckBox.isSelected
+
+        val newRow = UsageRow(row.config)
+        modelList.removeRow(index)
+        modelList.insertRow(index, newRow)
+        tableView.setRowSelectionInterval(index, index)
+    }
+
+    private fun removeSelectedRow() {
+        val index = tableView.selectedRow
+        if (index < 0 || index >= modelList.rowCount) return
+
+        modelList.removeRow(index)
+        if (modelList.rowCount > 0) {
+            val nextRow = index.coerceAtMost(modelList.rowCount - 1)
+            tableView.setRowSelectionInterval(nextRow, nextRow)
+        }
+    }
+
+    private fun showProviderMenu(anchor: JComponent, button: AnActionButton) {
+        val menu = JPopupMenu()
+        val service = ProviderUsageService.getInstance()
+
+        service.getAllProviders().forEach { provider ->
+            val scaledIcon = scaleIcon(provider.providerInfo.icon, 12)
+            val menuItem = JMenuItem(provider.providerInfo.providerName, scaledIcon).apply {
+                iconTextGap = JBUI.scale(6)
+            }
+            menuItem.addActionListener {
+                val defaultConfig = provider.createDefaultConfig()
+
+                val panel = UsageFormPanel(provider, defaultConfig)
+                val onSave = provider.openForm(panel, defaultConfig)
+                if (!panel.showDialog(anchor)) return@addActionListener
+                onSave()
+
+                defaultConfig.name = panel.nameField.text.trim()
+                defaultConfig.isEnabled = panel.enabledCheckBox.isSelected
+
+                modelList.addRow(UsageRow(defaultConfig))
+                tableView.setRowSelectionInterval(modelList.rowCount - 1, modelList.rowCount - 1)
+            }
+            menu.add(menuItem)
+        }
+
+        val popupPoint = button.preferredPopupPoint
+        val comp = popupPoint.component
+        val point = popupPoint.getPoint(comp)
+        menu.show(comp, point.x, point.y)
+    }
+
+    private class LabelColumn : ColumnInfo<UsageRow, String>("Label") {
+        override fun valueOf(item: UsageRow?): String? = item?.label
+    }
+
+    private class TypeColumn : ColumnInfo<UsageRow, String>("Type") {
+        override fun valueOf(item: UsageRow?): String? {
+            val providerId = item?.type ?: return null
+            val provider = ProviderUsageService.getInstance().getProvider(providerId)
+            return provider?.providerInfo?.providerName ?: providerId
+        }
+    }
+
+    private inner class EnabledColumn : ColumnInfo<UsageRow, Boolean>("") {
+        private val editor = EnabledCellEditor()
+
+        override fun valueOf(item: UsageRow?): Boolean? = item?.config?.isEnabled
+
+        override fun getColumnClass(): Class<*> = Boolean::class.java
+
+        override fun isCellEditable(item: UsageRow?): Boolean = true
+
+        override fun getRenderer(item: UsageRow?): TableCellRenderer = CheckboxRenderer
+
+        override fun getEditor(item: UsageRow?): TableCellEditor = editor
+    }
+
+    private object CheckboxRenderer : JCheckBox(), TableCellRenderer {
+        init {
+            horizontalAlignment = JCheckBox.CENTER
+            isOpaque = true
+            border = JBUI.Borders.empty(4, 8)
+        }
+
+        override fun getTableCellRendererComponent(
+            table: JTable?,
+            value: Any?,
+            isSelected: Boolean,
+            hasFocus: Boolean,
+            row: Int,
+            column: Int
+        ): Component {
+            this.isSelected = value as? Boolean ?: false
+            if (isSelected) {
+                background = table?.selectionBackground
+                foreground = table?.selectionForeground
+            } else {
+                background = table?.background
+                foreground = table?.foreground
+            }
+            return this
+        }
+    }
+
+    private inner class EnabledCellEditor : AbstractCellEditor(), TableCellEditor {
+        private val checkBox = JCheckBox().apply {
+            horizontalAlignment = JCheckBox.CENTER
+            isOpaque = true
+            border = JBUI.Borders.empty(4, 8)
+        }
+
+        private var currentRow = -1
+
+        override fun getTableCellEditorComponent(
+            table: JTable?,
+            value: Any?,
+            isSelected: Boolean,
+            row: Int,
+            column: Int
+        ): Component {
+            currentRow = row
+            checkBox.removeItemListener(null)
+            checkBox.isSelected = value as? Boolean ?: false
+            checkBox.addItemListener { e ->
+                if (e.stateChange == ItemEvent.SELECTED || e.stateChange == ItemEvent.DESELECTED) {
+                    if (currentRow >= 0 && currentRow < rows.size) {
+                        rows[currentRow].config.isEnabled = checkBox.isSelected
+                    }
+                }
+            }
+            return checkBox
+        }
+
+        override fun getCellEditorValue(): Any = checkBox.isSelected
+    }
+
+    private class SpacedTableCellRenderer : DefaultTableCellRenderer() {
+        override fun getTableCellRendererComponent(
+            table: JTable,
+            value: Any?,
+            isSelected: Boolean,
+            hasFocus: Boolean,
+            row: Int,
+            column: Int
+        ): Component {
+            val component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+            if (component is JComponent) {
+                component.border = JBUI.Borders.empty(4, 8)
+            }
+            return component
+        }
+    }
+
+    companion object {
+        private fun scaleIcon(icon: Icon, size: Int): Icon {
+            val targetSize = JBUI.scale(size)
+            val currentSize = icon.iconWidth.coerceAtLeast(1)
+            if (currentSize == targetSize) return icon
+            return IconUtil.scale(icon, null, targetSize.toFloat() / currentSize)
+        }
+    }
+}
