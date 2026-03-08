@@ -117,6 +117,10 @@ The Session Browser works out of the box - no additional setup required. Simply 
 
 ![Session List](docs/session_list.webp)
 
+![Generate Commit](docs/generate_commit.webp)
+
+![Toolbar Account Quotas / Usages](docs/toolbar_ai_accounts.webp)
+
 ![Gemini](docs/gemini.webp)
 
 ![AI Assistant](docs/ai_assistant.webp)
