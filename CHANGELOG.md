@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.7.1
+* Improve `parseUsageBody` to handle missing or null utilization fields by adding "not started" entries for five-hour and seven-day windows. (Daniel Espendiller)
+* Add Junie provider to usage service (Daniel Espendiller)
+
 # 0.7.0
 * Add provider usage tracking toolbar for Codex, Claude, Zai, Amp (Daniel Espendiller)
 
