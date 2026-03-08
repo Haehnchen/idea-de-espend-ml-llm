@@ -186,6 +186,7 @@ class AgentSettingsConfigurable : Configurable {
                 registry.addAgent(config)
             }
         }
+
     }
 
     override fun reset() {
@@ -200,6 +201,7 @@ class AgentSettingsConfigurable : Configurable {
             val existingConfig = registry.agentConfigs.find { it.provider == provider }
             panel.loadConfig(existingConfig)
         }
+
     }
 
     override fun disposeUIResources() {

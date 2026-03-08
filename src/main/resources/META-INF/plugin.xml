@@ -14,7 +14,7 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.</p>
+        <p>Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools, and a Usage Toolbar to monitor AI provider quotas.</p>
 
         <h2>AI Providers</h2>
         <p>Configure multiple AI providers through **Settings → AI Assistant → Agent Providers**.</p>
@@ -22,7 +22,12 @@
         <h2>Session Browser</h2>
         <p>Browse and view chat sessions from external AI tools directly in the IDE.</p>
 
-        <h3>Supported Session Sources</h3>
+        <h2>Provider Usage Toolbar</h3>
+        <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar</p>
+
+        <h2>Supported Session Sources</h3>
+        <p>The Session Browser is available in the AI Assistant chat toolbar and in the right sidebar.</p>
+
         <table>
             <tr><th>Source</th><th>Description</th></tr>
             <tr><td><b>Claude Code</b></td><td>Chat sessions from Claude Code CLI</td></tr>
@@ -35,7 +40,7 @@
             <tr><td><b>Kilo Code</b></td><td>Chat sessions from Kilo Code CLI</td></tr>
         </table>
 
-        <h3>MCP Integration (IntelliJ Built-in MCP Server)</h3>
+        <h2>MCP Integration (IntelliJ Built-in MCP Server)</h3>
         <p>The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing any MCP client to search and retrieve past coding sessions.</p>
         <p><b>Requirement:</b> The <code>com.intellij.mcpServer</code> plugin must be enabled in your IDE.</p>
         <table>
@@ -44,7 +49,7 @@
             <tr><td><b>get_ai_session</b></td><td>Fetch the full conversation of a session by its ID.</td></tr>
         </table>
 
-        <h3>Using AI Providers</h3>
+        <h2>Using AI Providers</h3>
         <ol>
             <li>Go to <b>File → Settings → AI Assistant → Agent Providers</b></li>
             <li>Configure API keys and base URLs as needed</li>
@@ -59,10 +64,18 @@
             </li>
         </ol>
 
-        <h3>Finding the Session Browser</h3>
-        <p>The Session Browser is available in the AI Assistant chat toolbar and in the right sidebar.</p>
+        <h2>Provider Usage Toolbar</h3>
+        <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar. Click the usage icon in the main toolbar to see current usage percentages and reset times.</p>
+        <p><b>Location</b> (when configured): Main toolbar (right side) → Usage icon</p>
+        <p>Configure accounts in <b>Settings → Tools → Account Usage Toolbar</b>.</p>
 
-        <p>Requires the AI Assistant plugin to be installed.</p>
+        <table>
+            <tr><th>Provider</th><th>Quota Type</th><th>Credential Modes</th></tr>
+            <tr><td><b>Claude</b></td><td>5-hour window + 7-day window</td><td>Auto (<code>~/.claude/.credentials.json</code>), Manual (access token), Web API (sessionKey)</td></tr>
+            <tr><td><b>Codex</b></td><td>Rate limit quota</td><td>Auto (<code>~/.codex/auth.json</code>), Manual (refresh token)</td></tr>
+            <tr><td><b>Z.AI</b></td><td>Token quota</td><td>API key</td></tr>
+            <tr><td><b>Ampcode</b></td><td>Free credits balance</td><td>Auto (<code>~/.local/share/amp/secrets.json</code>), Manual (API key)</td></tr>
+        </table>
     ]]></description>
 
     <!-- Product and plugin compatibility requirements.
@@ -83,6 +96,12 @@
                                  instance="de.espend.ml.llm.AgentSettingsConfigurable"
                                  displayName="Agent Providers"
                                  groupWeight="10"/>
+
+        <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
+                                 id="de.espend.ml.llm.usage.UsageSettings"
+                                 instance="de.espend.ml.llm.usage.ui.UsageSettingsConfigurable"
+                                 displayName="Account Usage Toolbar"
+                                 groupWeight="20"/>
 
         <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
 
@@ -112,6 +131,14 @@
                 text="AI Session Browser"
                 description="Browse AI chat sessions">
             <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
+        </action>
+
+        <!-- Provider Usage Action - shows usage in main toolbar -->
+        <action id="de.espend.ml.llm.ProviderUsage"
+                class="de.espend.ml.llm.usage.action.ProviderUsageAction"
+                text="Usage"
+                description="View provider usage and quota">
+            <add-to-group group-id="MainToolbarRight" anchor="last"/>
         </action>
 
         <!-- Commit Message Generator Action -->

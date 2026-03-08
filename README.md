@@ -5,7 +5,8 @@
 [![Downloads](http://phpstorm.espend.de/badge/29900/downloads)](https://plugins.jetbrains.com/plugin/29900)
 [![Downloads last month](http://phpstorm.espend.de/badge/29900/last-month)](https://plugins.jetbrains.com/plugin/29900)
 
-Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools.
+Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation.
+Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools, and a Usage Toolbar to monitor AI provider quotas.
 
 | Key                  | Value                                      |
 |----------------------|--------------------------------------------|
@@ -13,6 +14,21 @@ Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat
 | ID                   | de.espend.ml.llm                           |
 
 ## Features
+
+### Provider Usage Toolbar
+
+Monitor your AI provider quota usage across multiple accounts directly from the toolbar. Click the usage icon in the main toolbar to see current usage percentages and reset times.
+
+**Location** (when configured): Main toolbar (right side) → Usage icon
+
+Configure accounts in **Settings → Tools → Account Usage Toolbar**.
+
+| Provider | Quota Type | Credential Modes |
+|----------|------------|------------------|
+| **Claude** | 5-hour window + 7-day window | Auto (`~/.claude/.credentials.json`), Manual (access token), Web API (sessionKey) |
+| **Codex** | Rate limit quota | Auto (`~/.codex/auth.json`), Manual (refresh token) |
+| **Z.AI** | Token quota | API key |
+| **Ampcode** | Free credits balance | Auto (`~/.local/share/amp/secrets.json`), Manual (API key) |
 
 ### AI Providers
 

@@ -8,6 +8,8 @@ import javax.swing.ImageIcon
 object PluginIcons {
     // Provider icons
     val ZAI: Icon = IconLoader.getIcon("/icons/zai.png", PluginIcons::class.java)
+    val AMPCODE: Icon = IconLoader.getIcon("/icons/ampcode.png", PluginIcons::class.java)
+    val CODEX: Icon = IconLoader.getIcon("/icons/codex.png", PluginIcons::class.java)
     val MINIMAX: Icon = IconLoader.getIcon("/icons/minimax.png", PluginIcons::class.java)
     val OPENROUTER: Icon = IconLoader.getIcon("/icons/openrouter.png", PluginIcons::class.java)
     val MIMO: Icon = IconLoader.getIcon("/icons/mimo.png", PluginIcons::class.java)
@@ -24,6 +26,9 @@ object PluginIcons {
 
     // Plugin icon
     val AI_PROVIDER: Icon = IconLoader.getIcon("/icons/ai-provider.svg", PluginIcons::class.java)
+
+    // Usage toolbar icon (16x16, auto light/dark)
+    val USAGE: Icon = IconLoader.getIcon("/icons/usage.svg", PluginIcons::class.java)
 
     // Tool window icon (auto-switches between light/dark based on theme)
     val PLUGIN_SIMPLE: Icon = IconLoader.getIcon("/icons/plugin-simple.svg", PluginIcons::class.java)
