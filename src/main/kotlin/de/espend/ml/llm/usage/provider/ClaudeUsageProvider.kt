@@ -440,32 +440,34 @@ class ClaudeUsageProvider : UsageProvider {
 
             val entries = mutableListOf<UsageEntry>()
 
-            // Add 5-hour window entry if available
+            // Add 5-hour window entry (always show, even if not started)
             val fiveHourUtil = fiveHour?.get("utilization")
-            if (fiveHour != null && fiveHourUtil != null && !fiveHourUtil.isJsonNull) {
+            if (fiveHourUtil != null && !fiveHourUtil.isJsonNull) {
                 val utilization = fiveHourUtil.asDouble
                 val percentageUsed = utilization.toFloat().coerceIn(0f, 100f)
                 val resetsAt = fiveHour.get("resets_at")?.takeIf { !it.isJsonNull }?.asString
-                val subtitle = buildSubtitle(resetsAt, "5h")
+                val resetText = formatResetText(resetsAt)
+                val subtitle = "5h · ${resetText ?: "not started"}"
                 entries.add(UsageEntry(percentageUsed, subtitle))
+            } else {
+                entries.add(UsageEntry(0f, "5h · not started"))
             }
 
-            // Add 7-day window entry if available
+            // Add 7-day window entry (always show, even if not started)
             val sevenDayUtil = sevenDay?.get("utilization")
-            if (sevenDay != null && sevenDayUtil != null && !sevenDayUtil.isJsonNull) {
+            if (sevenDayUtil != null && !sevenDayUtil.isJsonNull) {
                 val utilization = sevenDayUtil.asDouble
                 val percentageUsed = utilization.toFloat().coerceIn(0f, 100f)
                 val resetsAt = sevenDay.get("resets_at")?.takeIf { !it.isJsonNull }?.asString
-                val subtitle = buildSubtitle(resetsAt, "7d")
+                val resetText = formatResetText(resetsAt)
+                val subtitle = "7d · ${resetText ?: "not started"}"
                 entries.add(UsageEntry(percentageUsed, subtitle))
-            }
-
-            if (entries.isEmpty()) {
-                return UsageFetchResult.error("No usage data available — try again later")
+            } else {
+                entries.add(UsageEntry(0f, "7d · not started"))
             }
 
             UsageFetchResult.success(entries)
-        } catch (e: IllegalStateException) {
+        } catch (_: IllegalStateException) {
             // JSON parsing errors (e.g., trying to get object from null)
             UsageFetchResult.error("Could not parse usage data")
         } catch (e: Exception) {
@@ -473,13 +475,12 @@ class ClaudeUsageProvider : UsageProvider {
         }
     }
 
-    private fun buildSubtitle(resetsAt: String?, quotaLabel: String): String? {
+    private fun formatResetText(resetsAt: String?): String? {
         resetsAt ?: return null
         return try {
             val resetInstant = java.time.Instant.parse(resetsAt)
             val secondsUntil = resetInstant.epochSecond - System.currentTimeMillis() / 1000L
-            val resetText = UsageFormatUtils.formatSecondsUntilReset(secondsUntil) ?: return null
-            "$quotaLabel · $resetText"
+            UsageFormatUtils.formatSecondsUntilReset(secondsUntil)
         } catch (_: Exception) { null }
     }
 

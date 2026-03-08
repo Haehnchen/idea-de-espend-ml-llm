@@ -33,7 +33,7 @@ class ClaudeUsageProviderTest {
     }
 
     @Test
-    fun `parseUsageBody should parse response with only five_hour`() {
+    fun `parseUsageBody should parse response with only five_hour and show not started for seven_day`() {
         val json = """
             {
                 "five_hour": {
@@ -46,12 +46,14 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(25f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals(0f, result.data.entries[1].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     @Test
-    fun `parseUsageBody should parse response with only seven_day`() {
+    fun `parseUsageBody should parse response with only seven_day and show not started for five_hour`() {
         val json = """
             {
                 "seven_day": {
@@ -64,8 +66,10 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
-        assertEquals(80f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals(0f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("5h · not started", result.data.entries[0].subtitle)
+        assertEquals(80f, result.data.entries[1].percentageUsed, 0.1f)
     }
 
     @Test
@@ -105,8 +109,9 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(100f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     @Test
@@ -123,8 +128,9 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(100f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     @Test
@@ -141,8 +147,9 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(0f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     // ==================== parseUsageBody - Error Cases ====================
@@ -168,7 +175,7 @@ class ClaudeUsageProviderTest {
     }
 
     @Test
-    fun `parseUsageBody should return error when no utilization data`() {
+    fun `parseUsageBody should show not started when no utilization data`() {
         val json = """
             {
                 "some_other_field": "value"
@@ -177,11 +184,14 @@ class ClaudeUsageProviderTest {
 
         val result = provider.parseUsageBody(json)
 
-        assertTrue("Should be error", result.error != null)
+        assertTrue("Should be success", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals("5h · not started", result.data.entries[0].subtitle)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     @Test
-    fun `parseUsageBody should skip window with null utilization but parse other windows`() {
+    fun `parseUsageBody should show not started for window with null utilization`() {
         val json = """
             {
                 "five_hour": {
@@ -198,12 +208,14 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
-        assertEquals(50f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals(0f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("5h · not started", result.data.entries[0].subtitle)
+        assertEquals(50f, result.data.entries[1].percentageUsed, 0.1f)
     }
 
     @Test
-    fun `parseUsageBody should return friendly error when all utilization values are null`() {
+    fun `parseUsageBody should handle five_hour zero with seven_day null`() {
         val json = """
             {
                 "five_hour": {
@@ -219,10 +231,11 @@ class ClaudeUsageProviderTest {
 
         val result = provider.parseUsageBody(json)
 
-        // 0.0 is valid, so this should succeed with one entry
-        assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        // 0.0 is valid, so five_hour should be parsed; seven_day should show not started
+        assertTrue("Should be success, not error: ${result.error}", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(0f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     @Test
@@ -261,8 +274,8 @@ class ClaudeUsageProviderTest {
     }
 
     @Test
-    fun `parseUsageBody should return friendly error when both utilizations are null`() {
-        // Both utilizations null - should return user-friendly error
+    fun `parseUsageBody should show not started when both utilizations are null`() {
+        // Both utilizations null - should show "not started" for both
         val json = """
             {
                 "five_hour": {
@@ -278,32 +291,10 @@ class ClaudeUsageProviderTest {
 
         val result = provider.parseUsageBody(json)
 
-        assertTrue("Should be error when both utilizations are null", result.error != null)
-        assertFalse("Error should not contain 'Null'", result.error?.contains("Null") == true)
-        assertFalse("Error should not contain 'parse error'", result.error?.lowercase()?.contains("parse error") == true)
-    }
-
-    @Test
-    fun `parseUsageBody should parse five_hour zero with seven_day null`() {
-        // five_hour has valid 0.0, seven_day has null - should succeed with 1 entry
-        val json = """
-            {
-                "five_hour": {
-                    "utilization": 0.0,
-                    "resets_at": null
-                },
-                "seven_day": {
-                    "utilization": null,
-                    "resets_at": "2026-03-13T13:59:59.827968+00:00"
-                }
-            }
-        """.trimIndent()
-
-        val result = provider.parseUsageBody(json)
-
-        assertTrue("Should be success, not error: ${result.error}", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
-        assertEquals(0f, result.data.entries[0].percentageUsed, 0.1f)
+        assertTrue("Should be success when both utilizations are null", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals("5h · not started", result.data.entries[0].subtitle)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     // ==================== parseUsageBody - Real-world Examples ====================
@@ -368,8 +359,9 @@ class ClaudeUsageProviderTest {
         val result = provider.parseUsageBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(1, result.data!!.entries.size)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(33.5f, result.data.entries[0].percentageUsed, 0.1f)
+        assertEquals("7d · not started", result.data.entries[1].subtitle)
     }
 
     // ==================== Config Tests ====================
