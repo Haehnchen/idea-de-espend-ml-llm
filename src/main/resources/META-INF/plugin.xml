@@ -75,6 +75,7 @@
             <tr><td><b>Codex</b></td><td>Rate limit quota</td><td>Auto (<code>~/.codex/auth.json</code>), Manual (refresh token)</td></tr>
             <tr><td><b>Z.AI</b></td><td>Token quota</td><td>API key</td></tr>
             <tr><td><b>Ampcode</b></td><td>Free credits balance</td><td>Auto (<code>~/.local/share/amp/secrets.json</code>), Manual (API key)</td></tr>
+            <tr><td><b>Junie</b></td><td>Request quota</td><td>Auto (<code>~/.junie/token.json</code>), Manual (API key)</td></tr>
         </table>
     ]]></description>
 

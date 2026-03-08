@@ -29,6 +29,7 @@ Configure accounts in **Settings → Tools → Account Usage Toolbar**.
 | **Codex** | Rate limit quota | Auto (`~/.codex/auth.json`), Manual (refresh token) |
 | **Z.AI** | Token quota | API key |
 | **Ampcode** | Free credits balance | Auto (`~/.local/share/amp/secrets.json`), Manual (API key) |
+| **Junie** | Request quota | Auto (`~/.junie/token.json`), Manual (API key) |
 
 ### AI Providers
 
