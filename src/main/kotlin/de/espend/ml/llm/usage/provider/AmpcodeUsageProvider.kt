@@ -329,6 +329,12 @@ class AmpcodeUsageProvider : UsageProvider {
 
             val missingAmount = (total - remaining).coerceAtLeast(0.0)
             val hoursUntilFull = missingAmount / replenishmentPerHour
+
+            // If already full or invalid, return "replenished" without percentage per hour
+            if (!hoursUntilFull.isFinite() || hoursUntilFull <= 0.0) {
+                return "replenished"
+            }
+
             val percentagePerHour = ((replenishmentPerHour / total) * 100).toFloat()
             return "${formatHoursUntilFull(hoursUntilFull)} (+${"%.1f".format(percentagePerHour)}%/h)"
         }
@@ -340,8 +346,8 @@ class AmpcodeUsageProvider : UsageProvider {
          * @return A formatted time string like "replenish in 1d 4h" or "replenished soon"
          */
         fun formatHoursUntilFull(hoursUntilFull: Double): String {
-            if (!hoursUntilFull.isFinite() || hoursUntilFull <= 0.0) {
-                return "replenished soon"
+            require(hoursUntilFull.isFinite() && hoursUntilFull > 0.0) {
+                "hoursUntilFull must be finite and positive, but was: $hoursUntilFull"
             }
 
             val totalMinutes = ceil(hoursUntilFull * 60.0).toLong().coerceAtLeast(1)
