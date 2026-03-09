@@ -17,10 +17,10 @@ import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.UsageProvider
 import de.espend.ml.llm.usage.ui.UsageFormPanel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.event.ItemEvent
 import java.io.File
@@ -96,14 +96,36 @@ class ClaudeUsageProvider : UsageProvider {
         }
         ButtonGroup().apply { add(autoRadio); add(manualRadio); add(webRadio) }
 
-        // Manual mode: Access Token field
-        val accessTokenField = JBTextField(config.manualToken).apply { font = smallFont }
+        // Manual mode: Load button + status message (no text input)
+        val loadButton = javax.swing.JButton("Load OAuth Token").apply {
+            font = smallFont
+            toolTipText = "Load and refresh OAuth token from ~/.claude/.credentials.json"
+        }
 
-        val tokenRow = JPanel(BorderLayout(JBUI.scale(4), 0)).apply {
-            isOpaque = false
+        val statusLabel = JBLabel("").apply {
+            font = smallFont
             alignmentX = Component.LEFT_ALIGNMENT
-            add(JBLabel("Access Token").apply { font = smallFont }, BorderLayout.WEST)
-            add(accessTokenField, BorderLayout.CENTER)
+        }
+
+        // Helper to show token status - only displays token on success (green)
+        fun updateTokenStatus(token: String) {
+            if (token.isEmpty()) {
+                statusLabel.text = ""
+                return
+            }
+            statusLabel.text = "Token: ${formatTokenDisplay(token)}"
+            statusLabel.foreground = com.intellij.ui.JBColor.GREEN.darker()
+        }
+
+        // Helper to show error message (red)
+        fun showError(message: String) {
+            statusLabel.text = message
+            statusLabel.foreground = com.intellij.ui.JBColor.RED
+        }
+
+        // Show current token status if already configured
+        if (config.credentialMode == "manual" && config.manualToken.isNotEmpty()) {
+            updateTokenStatus(config.manualToken)
         }
 
         val manualContentPanel = JPanel().apply {
@@ -111,7 +133,9 @@ class ClaudeUsageProvider : UsageProvider {
             isOpaque = false
             alignmentX = Component.LEFT_ALIGNMENT
             isVisible = config.credentialMode == "manual"
-            add(tokenRow)
+            add(loadButton)
+            add(Box.createVerticalStrut(JBUI.scale(4)))
+            add(statusLabel)
         }
 
         // Web API mode: Session Key field
@@ -135,28 +159,33 @@ class ClaudeUsageProvider : UsageProvider {
             })
         }
 
-        val loadLink = ActionLink("~/.claude/.credentials.json") {
+        // Load button action
+        loadButton.addActionListener {
+            statusLabel.text = "Loading..."
+            statusLabel.foreground = hintColor
+
             val creds = loadCredentialsFromFile()
             if (creds == null) {
-                com.intellij.openapi.ui.Messages.showErrorDialog(
-                    "Could not load credentials from ~/.claude/.credentials.json",
-                    "Claude OAuth"
-                )
+                showError("✗ No credentials found — run `claude` to relogin")
+            } else if (creds.refreshToken != null) {
+                try {
+                    val refreshed = runBlocking { refreshAccessToken(creds.refreshToken) }
+                    config.manualToken = refreshed.accessToken
+                    config.cachedRefreshToken = refreshed.refreshToken ?: ""
+                    config.cachedExpiresAt = refreshed.expiresAt ?: 0L
+                    updateTokenStatus(refreshed.accessToken)
+                } catch (e: Exception) {
+                    // Refresh failed - show truncated error
+                    val msg = e.message?.take(40)?.let { ": $it" } ?: ""
+                    showError("✗ Refresh failed$msg")
+                }
             } else {
-                accessTokenField.text = creds.accessToken
-                manualRadio.isSelected = true
-                manualContentPanel.isVisible = true
-                webContentPanel.isVisible = false
-                panel.providerPanel.revalidate()
-                panel.providerPanel.repaint()
+                // No refresh token available - cannot use
+                showError("✗ No refresh token — run `claude` to relogin")
             }
-        }.apply { font = smallFont }
 
-        val manualHintPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
-            isOpaque = false
-            alignmentX = Component.LEFT_ALIGNMENT
-            add(JBLabel("Provide manually or load from: ").apply { font = smallFont; foreground = hintColor })
-            add(loadLink)
+            manualContentPanel.revalidate()
+            manualContentPanel.repaint()
         }
 
         val box = JPanel().apply {
@@ -166,9 +195,11 @@ class ClaudeUsageProvider : UsageProvider {
             add(JBLabel("Load OAuth credentials from ~/.claude/.credentials.json").apply {
                 font = smallFont; foreground = hintColor; alignmentX = Component.LEFT_ALIGNMENT
             })
-            add(Box.createVerticalStrut(JBUI.scale(4)))
+            add(Box.createVerticalStrut(JBUI.scale(8)))
             add(manualRadio)
-            add(manualHintPanel)
+            add(JBLabel("Hijack and decouple OAuth from ~/.claude/.credentials.json (requires active login and after a relogin)").apply {
+                font = smallFont; foreground = hintColor; alignmentX = Component.LEFT_ALIGNMENT
+            })
             add(Box.createVerticalStrut(JBUI.scale(2)))
             add(manualContentPanel)
             add(Box.createVerticalStrut(JBUI.scale(8)))
@@ -189,6 +220,11 @@ class ClaudeUsageProvider : UsageProvider {
             if (e.stateChange == ItemEvent.SELECTED) {
                 manualContentPanel.isVisible = false
                 webContentPanel.isVisible = false
+                statusLabel.text = ""
+                // Clear cached tokens on mode switch
+                config.manualToken = ""
+                config.cachedRefreshToken = ""
+                config.cachedExpiresAt = 0L
                 panel.providerPanel.revalidate(); panel.providerPanel.repaint()
             }
         }
@@ -196,6 +232,10 @@ class ClaudeUsageProvider : UsageProvider {
             if (e.stateChange == ItemEvent.SELECTED) {
                 manualContentPanel.isVisible = true
                 webContentPanel.isVisible = false
+                // Clear cached tokens on mode switch
+                config.manualToken = ""
+                config.cachedRefreshToken = ""
+                config.cachedExpiresAt = 0L
                 panel.providerPanel.revalidate(); panel.providerPanel.repaint()
             }
         }
@@ -203,6 +243,11 @@ class ClaudeUsageProvider : UsageProvider {
             if (e.stateChange == ItemEvent.SELECTED) {
                 manualContentPanel.isVisible = false
                 webContentPanel.isVisible = true
+                statusLabel.text = ""
+                // Clear cached tokens on mode switch
+                config.manualToken = ""
+                config.cachedRefreshToken = ""
+                config.cachedExpiresAt = 0L
                 panel.providerPanel.revalidate(); panel.providerPanel.repaint()
             }
         }
@@ -213,12 +258,7 @@ class ClaudeUsageProvider : UsageProvider {
                 webRadio.isSelected -> "web"
                 else -> "manual"
             }
-            config.manualToken = accessTokenField.text.trim()
             config.sessionKey = sessionKeyField.text.trim()
-            // Invalidate cached tokens when credentials change
-            config.cachedAccessToken = ""
-            config.cachedRefreshToken = ""
-            config.cachedExpiresAt = 0L
         }
     }
 
@@ -241,49 +281,99 @@ class ClaudeUsageProvider : UsageProvider {
     }
 
     private suspend fun fetchWithTokenRefresh(config: ClaudeUsageAccountConfig): UsageFetchResult {
-        val creds: Credentials = when (config.credentialMode) {
-            "auto" -> loadCredentialsFromFile()
-                ?: return UsageFetchResult.error("Could not load credentials from ~/.claude/.credentials.json")
-            else -> {
-                if (config.manualToken.isEmpty()) {
-                    return UsageFetchResult.error("No access token configured")
-                }
-                Credentials(
-                    accessToken = config.manualToken,
-                    refreshToken = null,
-                    expiresAt = null
-                )
+        val isAutoMode = config.credentialMode == "auto"
+
+        val creds: Credentials = if (isAutoMode) {
+            // Auto mode: Load all credentials from CLI file (accessToken, refreshToken, expiresAt)
+            loadCredentialsFromFile() ?: return UsageFetchResult.error("Could not load credentials from ~/.claude/.credentials.json")
+        } else {
+            // Manual mode: Use user-provided token + cached refreshToken (if loaded from file)
+            if (config.manualToken.isEmpty()) {
+                return UsageFetchResult.error("No access token configured")
             }
+            Credentials(
+                accessToken = config.manualToken,
+                refreshToken = config.cachedRefreshToken.takeIf { it.isNotEmpty() },
+                expiresAt = config.cachedExpiresAt.takeIf { it > 0 }
+            )
         }
 
-        // Check if token needs refresh before using it
-        if (needsRefresh(creds.expiresAt) && creds.refreshToken != null) {
-            val refreshed = try {
-                refreshAccessToken(creds.refreshToken)
-            } catch (e: Exception) {
-                return UsageFetchResult.error("Token refresh failed: ${e.message}")
-            }
-            persistRefreshedToken(config, refreshed)
-            val response = fetchUsageHttp(refreshed.accessToken)
-            return parseUsageResponse(response)
-        }
-
-        // Try the current access_token
+        // Try the current access_token first
         val response = fetchUsageHttp(creds.accessToken)
 
-        // On 401/403, try to refresh once if we have a refresh token
-        if ((response.statusCode() == 401 || response.statusCode() == 403) && creds.refreshToken != null) {
-            val refreshed = try {
-                refreshAccessToken(creds.refreshToken)
-            } catch (e: Exception) {
-                return UsageFetchResult.error("Token refresh failed: ${e.message}")
+        // On 401/403, try to refresh
+        if (response.statusCode() == 401 || response.statusCode() == 403) {
+            if (isAutoMode) {
+                // Auto mode: Trigger CLI to refresh its tokens, then reload from file
+                val refreshed = triggerCliRefreshAndReload()
+                if (refreshed != null) {
+                    val retryResponse = fetchUsageHttp(refreshed.accessToken)
+                    return parseUsageResponse(retryResponse)
+                }
+                return UsageFetchResult.error("Token refresh failed — run `claude` to re-authenticate")
+            } else if (creds.refreshToken != null) {
+                // Manual mode with refreshToken: Try direct OAuth refresh
+                val refreshed = try {
+                    refreshAccessToken(creds.refreshToken)
+                } catch (_: Exception) { null }
+
+                if (refreshed != null) {
+                    // Update cached tokens for future use
+                    config.cachedRefreshToken = refreshed.refreshToken ?: config.cachedRefreshToken
+                    config.cachedExpiresAt = refreshed.expiresAt ?: 0L
+                    val retryResponse = fetchUsageHttp(refreshed.accessToken)
+                    return parseUsageResponse(retryResponse)
+                }
+                return UsageFetchResult.error("Token refresh failed — load a fresh token via the link")
+            } else {
+                // Manual mode without refreshToken: No refresh possible
+                return UsageFetchResult.error("Authentication failed — manual token expired, load fresh token via link")
             }
-            persistRefreshedToken(config, refreshed)
-            val retryResponse = fetchUsageHttp(refreshed.accessToken)
-            return parseUsageResponse(retryResponse)
         }
 
         return parseUsageResponse(response)
+    }
+
+    /**
+     * Triggers Claude CLI to refresh its OAuth tokens by running `claude /status`.
+     * The CLI handles the refresh internally and updates ~/.claude/.credentials.json.
+     * After the CLI refresh, we reload the credentials from the file.
+     *
+     * This is only used in auto mode where we read from the CLI's credential file.
+     */
+    private suspend fun triggerCliRefreshAndReload(): Credentials? {
+        return try {
+            withContext(Dispatchers.IO) {
+                val process = ProcessBuilder("claude", "/status")
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+
+                try {
+                    // Wait with timeout (12 seconds) - process is destroyed if it hangs
+                    val completed = process.waitFor(12, java.util.concurrent.TimeUnit.SECONDS)
+                    if (!completed) {
+                        process.destroyForcibly()
+                        return@withContext null
+                    }
+
+                    if (process.exitValue() != 0) {
+                        return@withContext null
+                    }
+                } catch (_: Exception) {
+                    process.destroyForcibly()
+                    return@withContext null
+                }
+
+                // Small delay to ensure file is written
+                Thread.sleep(500)
+
+                // Reload credentials from file
+                loadCredentialsFromFile()
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private suspend fun fetchUsageHttp(accessToken: String): HttpResponse<String> {
@@ -374,9 +464,18 @@ class ClaudeUsageProvider : UsageProvider {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Direct OAuth token refresh (kept for potential future use)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Directly refresh access token via OAuth endpoint.
+     * Currently not used - we delegate refresh to the CLI in auto mode.
+     * Kept for potential future use in manual mode or as fallback.
+     */
     private suspend fun refreshAccessToken(refreshToken: String): Credentials {
         return withContext(Dispatchers.IO) {
-            val body = """{"grant_type":"refresh_token","refresh_token":"$refreshToken","client_id":"$CLIENT_ID","scope":"$SCOPES"}"""
+            val body = """{"grant_type":"refresh_token","refresh_token":"$refreshToken","client_id":"$CLIENT_ID"}"""
 
             val request = HttpRequest.newBuilder()
                 .uri(URI.create(REFRESH_URL))
@@ -518,6 +617,13 @@ class ClaudeUsageProvider : UsageProvider {
     // File credential I/O (auto mode)
     // -------------------------------------------------------------------------
 
+    /**
+     * Load credentials from the CLI credentials file.
+     * Used in auto mode where the CLI manages the OAuth tokens.
+     *
+     * When the CLI runs `claude /status`, it automatically refreshes expired tokens
+     * and updates this file with new accessToken, refreshToken, and expiresAt.
+     */
     private fun loadCredentialsFromFile(): Credentials? {
         return try {
             val file = File(System.getProperty("user.home"), ".claude/.credentials.json")
@@ -581,6 +687,18 @@ class ClaudeUsageProvider : UsageProvider {
         // Web API endpoints (sessionKey cookie authentication)
         private const val WEB_BASE_URL = "https://claude.ai/api"
         private const val WEB_ORGANIZATIONS_URL = "https://claude.ai/api/organizations"
+
+        /**
+         * Format token for display: show first and last characters with ellipsis in between.
+         */
+        fun formatTokenDisplay(token: String): String {
+            if (token.isEmpty()) return ""
+            return if (token.length > 20) {
+                "${token.take(8)}...${token.takeLast(8)}"
+            } else {
+                "${token.take(4)}...${token.takeLast(4)}"
+            }
+        }
     }
 
     private data class Credentials(
