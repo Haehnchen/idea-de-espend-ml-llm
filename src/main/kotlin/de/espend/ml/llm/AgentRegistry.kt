@@ -158,16 +158,16 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             )
         }
 
-        // Cursor uses special command
+        // Cursor uses built-in ACP via `agent acp` subcommand
         if (config.provider == ProviderConfig.PROVIDER_CURSOR) {
-            val cursorPath = if (config.executable.isNotEmpty()) {
+            val agentPath = if (config.executable.isNotEmpty()) {
                 config.executable
             } else {
-                CommandPathUtils.findCursorAgentAcpPath() ?: "cursor-agent-acp"
+                CommandPathUtils.findCursorAgentPath() ?: "agent"
             }
             return AgentServerConfig(
-                command = cursorPath,
-                args = emptyList(),
+                command = agentPath,
+                args = listOf("acp"),
                 env = buildBaseEnv()
             )
         }

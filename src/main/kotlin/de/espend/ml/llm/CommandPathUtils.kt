@@ -87,23 +87,27 @@ object CommandPathUtils {
     }
 
     /**
-     * Finds the cursor-agent-acp command with specific fallback paths.
-     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Finds the Cursor agent command with specific fallback paths.
+     * Cursor now has built-in ACP support via `agent acp`.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin -> $HOME/.cursor/bin
      * Returns null if not found.
      */
-    fun findCursorAgentAcpPath(): String? {
-        findCommandPath("cursor-agent-acp")?.let { return it }
+    fun findCursorAgentPath(): String? {
+        findCommandPath("agent")?.let { return it }
 
         // Check /usr/bin
-        File("/usr/bin/cursor-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        File("/usr/bin/agent").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
         val userHome = System.getProperty("user.home") ?: return null
 
         // Check $HOME/bin
-        File(userHome, "bin/cursor-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        File(userHome, "bin/agent").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
         // Check $HOME/.local/bin
-        return File(userHome, ".local/bin/cursor-agent-acp")
+        File(userHome, ".local/bin/agent").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.cursor/bin (Cursor's default install location)
+        return File(userHome, ".cursor/bin/agent")
             .takeIf { it.exists() && it.canExecute() }
             ?.absolutePath
     }

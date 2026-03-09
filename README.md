@@ -41,7 +41,7 @@ Configure multiple AI providers through **Settings → AI Assistant → Agent Pr
 | **Anthropic Compatible** | Any Anthropic-like API (via `@zed-industries/claude-agent-acp`) | - |
 | **Gemini** | Google's Gemini CLI | - |
 | **OpenCode** | The OpenCode CLI | - |
-| **Cursor** | The Cursor Agent CLI (via `@blowmage/cursor-agent-acp`) | - |
+| **Cursor** | Cursor's built-in ACP support (via `agent acp`) | - |
 | **Z.AI** | Z.AI via Anthropic Compatible API | [Register](https://z.ai/subscribe?ic=BCLQG4VJIO) |
 | **OpenRouter** | OpenRouter via Anthropic Compatible API | - |
 | **And more...** | MiniMax, Mimo, Moonshot, Requesty.ai, Nano-GPT, AIHubMix, Factory.ai | - |

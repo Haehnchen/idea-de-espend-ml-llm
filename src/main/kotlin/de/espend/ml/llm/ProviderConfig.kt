@@ -81,7 +81,7 @@ object ProviderConfig {
             provider = PROVIDER_CURSOR,
             label = "Cursor",
             icon = PluginIcons.CURSOR,
-            description = "Uses the Cursor Agent CLI. Install: npm install -g @blowmage/cursor-agent-acp and curl https://cursor.com/install -fsSL | bash",
+            description = "Uses Cursor's built-in ACP support via `agent acp`.",
             baseUrl = null,
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
