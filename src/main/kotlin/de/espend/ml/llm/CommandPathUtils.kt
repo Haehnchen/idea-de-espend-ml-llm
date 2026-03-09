@@ -65,23 +65,23 @@ object CommandPathUtils {
     }
 
     /**
-     * Finds the claude-code-acp command with specific fallback paths.
+     * Finds the claude-agent-acp command with specific fallback paths.
      * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
      * Returns null if not found.
      */
-    fun findClaudeCodeAcpPath(): String? {
-        findCommandPath("claude-code-acp")?.let { return it }
+    fun findClaudeAgentAcpPath(): String? {
+        findCommandPath("claude-agent-acp")?.let { return it }
 
         // Check /usr/bin
-        File("/usr/bin/claude-code-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        File("/usr/bin/claude-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
         val userHome = System.getProperty("user.home") ?: return null
 
         // Check $HOME/bin
-        File(userHome, "bin/claude-code-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        File(userHome, "bin/claude-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
 
         // Check $HOME/.local/bin
-        return File(userHome, ".local/bin/claude-code-acp")
+        return File(userHome, ".local/bin/claude-agent-acp")
             .takeIf { it.exists() && it.canExecute() }
             ?.absolutePath
     }

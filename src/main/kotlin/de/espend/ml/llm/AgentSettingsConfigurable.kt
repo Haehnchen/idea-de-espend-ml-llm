@@ -6,8 +6,10 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.*
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import de.espend.ml.llm.ui.PackageActionLink
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import javax.swing.*
@@ -87,12 +89,16 @@ class AgentSettingsConfigurable : Configurable {
                     gridx = 3; gridy = 0; weightx = 1.0; fill = GridBagConstraints.HORIZONTAL
                 })
 
-                // Small description text below
-                val helpLabel = JBLabel("@zed-industries/claude-code-acp provides a built-in claude binary (may be outdated). Override if needed.").apply {
-                    foreground = UIUtil.getContextHelpForeground()
-                    font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                // Small description text below with package link
+                val helpPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                    isOpaque = false
+                    add(JBLabel("Provides a built-in claude binary (may be outdated). Override if needed: ").apply {
+                        foreground = UIUtil.getContextHelpForeground()
+                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                    })
+                    add(PackageActionLink.forAnthropicCompatible())
                 }
-                add(helpLabel, GridBagConstraints().apply {
+                add(helpPanel, GridBagConstraints().apply {
                     gridx = 0; gridy = 1; gridwidth = 4; anchor = GridBagConstraints.WEST; insets = JBUI.insetsTop(3)
                 })
             }
@@ -325,19 +331,20 @@ class AgentSettingsConfigurable : Configurable {
 
             when (provider) {
                 ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> {
-                    // Anthropic Default: Show install command only
+                    // Anthropic Default: Show install command with package link
                     apiKeyField = null
                     baseUrlField = null
-                    val installText = "Uses native Claude CLI via npm install -g @zed-industries/claude-code-acp"
-                    descriptionArea = JTextArea(installText).apply {
-                        isEditable = false
-                        wrapStyleWord = true
-                        lineWrap = true
-                        background = this@ProviderPanel.background
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        foreground = UIUtil.getContextHelpForeground()
+                    descriptionArea = null
+
+                    val installPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                        isOpaque = false
+                        add(JBLabel("Uses native Claude CLI via ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(PackageActionLink.forAnthropicCompatible())
                     }
-                    inputsPanel.add(descriptionArea, GridBagConstraints().apply {
+                    inputsPanel.add(installPanel, GridBagConstraints().apply {
                         gridx = 0; gridy = 0; weightx = 1.0
                         anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = labelInsets
                     })
@@ -349,16 +356,16 @@ class AgentSettingsConfigurable : Configurable {
                     val modelField = JBTextField(initialConfig?.model ?: "", 20)
                     descriptionArea = null
 
-                    // Install command label
-                    val installLabel = JTextArea("Supports any Anthropic-like API via npm install -g @zed-industries/claude-code-acp").apply {
-                        isEditable = false
-                        lineWrap = true
-                        wrapStyleWord = true
+                    // Install command with package link
+                    val installPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
                         isOpaque = false
-                        foreground = UIUtil.getContextHelpForeground()
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        add(JBLabel("Supports any Anthropic-like API via ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(PackageActionLink.forAnthropicCompatible())
                     }
-                    inputsPanel.add(installLabel, GridBagConstraints().apply {
+                    inputsPanel.add(installPanel, GridBagConstraints().apply {
                         gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
                         anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
                     })
@@ -487,9 +494,51 @@ class AgentSettingsConfigurable : Configurable {
                     baseUrlField = null
                     descriptionArea = null
 
-                    val fullDesc = providerInfo?.description
-                        ?: "$providerName via Anthropic Compatible API. npm install -g @zed-industries/claude-code-acp"
-                    val descPanel = createDescriptionPanel(fullDesc, providerInfo?.registerUrl)
+                    // Description panel with provider name, register link, and package link
+                    val descPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                        isOpaque = false
+
+                        val fullDesc = providerInfo?.description
+                            ?: "$providerName via Anthropic Compatible API."
+
+                        if (providerInfo?.registerUrl != null) {
+                            add(JBLabel("$providerName ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel("(").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            val registerLink = ActionLink("Register") { BrowserUtil.browse(providerInfo.registerUrl) }.apply {
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            }
+                            add(registerLink)
+                            add(JBLabel(") ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            val restOfDesc = fullDesc.removePrefix(providerName).trimStart()
+                            add(JBLabel(restOfDesc).apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                        } else {
+                            add(JBLabel(fullDesc).apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                        }
+
+                        // Add space and package link for providers that use the acp package
+                        if (fullDesc.contains("claude-agent-acp")) {
+                            add(JBLabel("  via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(PackageActionLink.forAnthropicCompatible())
+                        }
+                    }
                     inputsPanel.add(descPanel, GridBagConstraints().apply {
                         gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
                         anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
