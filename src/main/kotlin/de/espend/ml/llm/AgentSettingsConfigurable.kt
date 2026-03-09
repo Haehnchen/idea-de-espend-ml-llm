@@ -437,19 +437,44 @@ class AgentSettingsConfigurable : Configurable {
                     baseUrlField = null
                     descriptionArea = null
 
-                    // Description label (like installLabel in Anthropic Compatible)
-                    val descLabel = JTextArea(providerInfo?.description ?: "").apply {
-                        isEditable = false
-                        lineWrap = true
-                        wrapStyleWord = true
-                        isOpaque = false
-                        foreground = UIUtil.getContextHelpForeground()
-                        font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                    // Description panel with install link for Cursor
+                    if (provider == ProviderConfig.PROVIDER_CURSOR) {
+                        // Cursor: Special handling with install link dropdown
+                        val descPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                            isOpaque = false
+                            add(JBLabel("Uses Cursor's built-in ACP support via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel("agent acp").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel(". Install via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(PackageActionLink.forCursor())
+                        }
+                        inputsPanel.add(descPanel, GridBagConstraints().apply {
+                            gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                            anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                        })
+                    } else {
+                        // Other providers: Standard description label
+                        val descLabel = JTextArea(providerInfo?.description ?: "").apply {
+                            isEditable = false
+                            lineWrap = true
+                            wrapStyleWord = true
+                            isOpaque = false
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        }
+                        inputsPanel.add(descLabel, GridBagConstraints().apply {
+                            gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                            anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                        })
                     }
-                    inputsPanel.add(descLabel, GridBagConstraints().apply {
-                        gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
-                        anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
-                    })
 
                     // Executable label
                     inputsPanel.add(JBLabel("Executable:"), GridBagConstraints().apply {
@@ -460,7 +485,7 @@ class AgentSettingsConfigurable : Configurable {
                     val commandName = when (provider) {
                         ProviderConfig.PROVIDER_GEMINI -> "gemini"
                         ProviderConfig.PROVIDER_OPENCODE -> "opencode"
-                        ProviderConfig.PROVIDER_CURSOR -> "cursor-agent-acp"
+                        ProviderConfig.PROVIDER_CURSOR -> "agent"
                         ProviderConfig.PROVIDER_DROID -> "droid"
                         else -> provider
                     }
@@ -477,7 +502,7 @@ class AgentSettingsConfigurable : Configurable {
                             val detected = when (provider) {
                                 ProviderConfig.PROVIDER_GEMINI -> CommandPathUtils.findGeminiPath()
                                 ProviderConfig.PROVIDER_OPENCODE -> CommandPathUtils.findOpenCodePath()
-                                ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentAcpPath()
+                                ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentPath()
                                 ProviderConfig.PROVIDER_DROID -> CommandPathUtils.findDroidPath()
                                 else -> null
                             }

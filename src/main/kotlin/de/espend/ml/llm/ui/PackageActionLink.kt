@@ -76,5 +76,16 @@ class PackageActionLink(
                 installCommand = "npm install -g @zed-industries/claude-agent-acp"
             )
         }
+
+        /**
+         * Creates a PackageActionLink for Cursor installation.
+         */
+        fun forCursor(): PackageActionLink {
+            return PackageActionLink(
+                packageName = "cursor.com/install",
+                githubUrl = "https://github.com/cursor/cursor",
+                installCommand = "curl https://cursor.com/install -fsS | bash"
+            )
+        }
     }
 }
