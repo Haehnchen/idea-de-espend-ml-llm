@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.7.2
+* Handle full balance in Ampcode subtitle formatting (Daniel Espendiller)
+* Update Cursor provider to use built-in ACP (Daniel Espendiller)
+* Replace `claude-code-acp` with `claude-agent-acp` across the project. Add reusable `PackageActionLink` UI component for npm package links. (Daniel Espendiller)
+* Optimize claude usage form user flow (Daniel Espendiller)
+
 # 0.7.1
 * Improve `parseUsageBody` to handle missing or null utilization fields by adding "not started" entries for five-hour and seven-day windows. (Daniel Espendiller)
 * Add Junie provider to usage service (Daniel Espendiller)
