@@ -120,6 +120,15 @@ class AmpcodeUsageProviderTest {
         assertTrue("Should contain 10.0%/h", subtitle!!.contains("10.0%/h"))
     }
 
+    @Test
+    fun `buildSubtitleFromText should return replenished without percentage when balance is full`() {
+        val displayText = "Free: \$10.00/\$10 remaining (replenishes +\$0.50/hour)"
+
+        val subtitle = AmpcodeUsageProvider.buildSubtitleFromText(displayText, 10.0, 10.0)
+
+        assertEquals("replenished", subtitle)
+    }
+
     // ==================== formatHoursUntilFull Tests ====================
 
     @Test
@@ -143,11 +152,24 @@ class AmpcodeUsageProviderTest {
         assertEquals("replenish in 1d 2h", result)
     }
 
-    @Test
-    fun `formatHoursUntilFull should return replenished soon for zero or negative`() {
-        assertEquals("replenished soon", AmpcodeUsageProvider.formatHoursUntilFull(0.0))
-        assertEquals("replenished soon", AmpcodeUsageProvider.formatHoursUntilFull(-1.0))
-        assertEquals("replenished soon", AmpcodeUsageProvider.formatHoursUntilFull(Double.NaN))
+    @Test(expected = IllegalArgumentException::class)
+    fun `formatHoursUntilFull should throw for zero`() {
+        AmpcodeUsageProvider.formatHoursUntilFull(0.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `formatHoursUntilFull should throw for negative`() {
+        AmpcodeUsageProvider.formatHoursUntilFull(-1.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `formatHoursUntilFull should throw for NaN`() {
+        AmpcodeUsageProvider.formatHoursUntilFull(Double.NaN)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `formatHoursUntilFull should throw for Infinity`() {
+        AmpcodeUsageProvider.formatHoursUntilFull(Double.POSITIVE_INFINITY)
     }
 
     @Test
