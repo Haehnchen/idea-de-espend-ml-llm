@@ -38,7 +38,7 @@ Configure multiple AI providers through **Settings → AI Assistant → Agent Pr
 | Provider | Description | Register |
 |----------|-------------|----------|
 | **Claude CLI** | Uses Claude Code's built-in Anthropic integration | - |
-| **Anthropic Compatible** | Any Anthropic-like API (via `@zed-industries/claude-code-acp`) | - |
+| **Anthropic Compatible** | Any Anthropic-like API (via `@zed-industries/claude-agent-acp`) | - |
 | **Gemini** | Google's Gemini CLI | - |
 | **OpenCode** | The OpenCode CLI | - |
 | **Cursor** | The Cursor Agent CLI (via `@blowmage/cursor-agent-acp`) | - |
@@ -88,7 +88,7 @@ The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing 
 3. Click **Apply** to register the agents
 4. For CLI-based providers, install the corresponding npm package, e.g.:
    ```bash
-   npm install -g @zed-industries/claude-code-acp
+   npm install -g @zed-industries/claude-agent-acp
    ```
 5. **Important**: To use providers for core AI features (commit generation, AI actions):
    - Go to **Settings → Tools → AI Assistant → "Models & API keys"**

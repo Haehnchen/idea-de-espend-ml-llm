@@ -136,7 +136,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         // Anthropic Default uses built-in Claude Code integration without any custom env vars
         if (config.provider == ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT) {
-            val acpPath = CommandPathUtils.findClaudeCodeAcpPath() ?: "claude-code-acp"
+            val acpPath = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp"
             return AgentServerConfig(
                 command = acpPath,
                 args = emptyList(),
@@ -202,7 +202,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
 
         // Standard Anthropic-based providers
         return AgentServerConfig(
-            command = CommandPathUtils.findClaudeCodeAcpPath() ?: "claude-code-acp",
+            command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
             args = emptyList(),
             env = buildMap {
                 putAll(buildBaseEnv())
