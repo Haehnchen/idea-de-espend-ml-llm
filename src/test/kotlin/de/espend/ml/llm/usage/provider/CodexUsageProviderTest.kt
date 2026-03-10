@@ -232,9 +232,8 @@ class CodexUsageProviderTest {
 
         assertEquals("codex", config.providerId)
         assertEquals("auto", config.credentialMode)
-        assertEquals("", config.refreshToken)
-        assertEquals("", config.accountId)
         assertEquals("", config.cachedAccessToken)
+        assertEquals("", config.cachedRefreshToken)
     }
 
     @Test
@@ -245,11 +244,11 @@ class CodexUsageProviderTest {
         assertEquals("auto", config.credentialMode)
 
         config.credentialMode = "manual"
-        config.refreshToken = "test-refresh-token"
-        config.accountId = "test-account-id"
+        config.cachedAccessToken = "test-access-token"
+        config.cachedRefreshToken = "test-refresh-token"
         assertEquals("manual", config.credentialMode)
-        assertEquals("test-refresh-token", config.refreshToken)
-        assertEquals("test-account-id", config.accountId)
+        assertEquals("test-access-token", config.cachedAccessToken)
+        assertEquals("test-refresh-token", config.cachedRefreshToken)
     }
 
     @Test

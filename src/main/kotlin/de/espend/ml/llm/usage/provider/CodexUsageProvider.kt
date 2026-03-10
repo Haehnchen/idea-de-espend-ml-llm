@@ -1,9 +1,7 @@
 package de.espend.ml.llm.usage.provider
 
 import com.google.gson.JsonParser
-import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import de.espend.ml.llm.PluginIcons
@@ -17,10 +15,9 @@ import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.UsageProvider
 import de.espend.ml.llm.usage.ui.UsageFormPanel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.event.ItemEvent
 import java.io.File
@@ -45,7 +42,7 @@ import javax.swing.JRadioButton
  *
  * Two credential modes:
  *  - auto:   reads OAuth tokens from ~/.codex/auth.json (same format Codex CLI writes)
- *  - manual: user supplies refresh_token and account_id;
+ *  - manual: user supplies refresh_token;
  *            the resolved access_token is cached internally in the registry
  *            and refreshed on demand via https://auth.openai.com/oauth/token
  *
@@ -54,7 +51,6 @@ import javax.swing.JRadioButton
  *   "tokens": {
  *     "access_token": "...",
  *     "refresh_token": "...",
- *     "account_id": "..."
  *   },
  *   "last_refresh": "2025-01-15T10:00:00.000Z"
  * }
@@ -91,20 +87,36 @@ class CodexUsageProvider : UsageProvider {
         }
         ButtonGroup().apply { add(autoRadio); add(manualRadio) }
 
-        val refreshTokenField = JBTextField(config.refreshToken).apply { font = smallFont }
-        val accountIdField = JBTextField(config.accountId).apply { font = smallFont }
-
-        val refreshRow = JPanel(BorderLayout(JBUI.scale(4), 0)).apply {
-            isOpaque = false
-            alignmentX = Component.LEFT_ALIGNMENT
-            add(JBLabel("Refresh Token").apply { font = smallFont }, BorderLayout.WEST)
-            add(refreshTokenField, BorderLayout.CENTER)
+        // Manual mode: Load button + status message (no text input)
+        val loadButton = javax.swing.JButton("Load OAuth Token").apply {
+            font = smallFont
+            toolTipText = "Load and refresh OAuth token from ~/.codex/auth.json"
         }
-        val accountRow = JPanel(BorderLayout(JBUI.scale(4), 0)).apply {
-            isOpaque = false
+
+        val statusLabel = JBLabel("").apply {
+            font = smallFont
             alignmentX = Component.LEFT_ALIGNMENT
-            add(JBLabel("Account ID   ").apply { font = smallFont }, BorderLayout.WEST)
-            add(accountIdField, BorderLayout.CENTER)
+        }
+
+        // Helper to show token status - only displays token on success (green)
+        fun updateTokenStatus(token: String) {
+            if (token.isEmpty()) {
+                statusLabel.text = ""
+                return
+            }
+            statusLabel.text = "Token: ${formatTokenDisplay(token)}"
+            statusLabel.foreground = com.intellij.ui.JBColor.GREEN.darker()
+        }
+
+        // Helper to show error message (red)
+        fun showError(message: String) {
+            statusLabel.text = message
+            statusLabel.foreground = com.intellij.ui.JBColor.RED
+        }
+
+        // Show current token status if already configured
+        if (config.credentialMode == "manual" && config.cachedAccessToken.isNotEmpty()) {
+            updateTokenStatus(config.cachedAccessToken)
         }
 
         val manualContentPanel = JPanel().apply {
@@ -112,33 +124,37 @@ class CodexUsageProvider : UsageProvider {
             isOpaque = false
             alignmentX = Component.LEFT_ALIGNMENT
             isVisible = config.credentialMode == "manual"
-            add(refreshRow)
-            add(Box.createVerticalStrut(JBUI.scale(2)))
-            add(accountRow)
+            add(loadButton)
+            add(Box.createVerticalStrut(JBUI.scale(4)))
+            add(statusLabel)
         }
 
-        val loadLink = ActionLink("~/.codex/auth.json") {
+        // Load button action
+        loadButton.addActionListener {
+            statusLabel.text = "Loading..."
+            statusLabel.foreground = hintColor
+
             val creds = loadCredentialsFromFile()
             if (creds == null) {
-                com.intellij.openapi.ui.Messages.showErrorDialog(
-                    "Could not load credentials from ~/.codex/auth.json",
-                    "Codex"
-                )
+                showError("✗ No credentials found — run `codex` to relogin")
+            } else if (creds.refreshToken != null) {
+                try {
+                    val refreshed = runBlocking { refreshAccessToken(creds.refreshToken) }
+                    config.cachedAccessToken = refreshed.accessToken
+                    config.cachedRefreshToken = refreshed.refreshToken ?: ""
+                    updateTokenStatus(refreshed.accessToken)
+                } catch (e: Exception) {
+                    // Refresh failed - show truncated error
+                    val msg = e.message?.take(40)?.let { ": $it" } ?: ""
+                    showError("✗ Refresh failed$msg")
+                }
             } else {
-                refreshTokenField.text = creds.refreshToken ?: ""
-                accountIdField.text = creds.accountId ?: ""
-                manualRadio.isSelected = true
-                manualContentPanel.isVisible = true
-                panel.providerPanel.revalidate()
-                panel.providerPanel.repaint()
+                // No refresh token available - cannot use
+                showError("✗ No refresh token — run `codex` to relogin")
             }
-        }.apply { font = smallFont }
 
-        val manualHintPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
-            isOpaque = false
-            alignmentX = Component.LEFT_ALIGNMENT
-            add(JBLabel("Provide manually or load from: ").apply { font = smallFont; foreground = hintColor })
-            add(loadLink)
+            manualContentPanel.revalidate()
+            manualContentPanel.repaint()
         }
 
         val box = JPanel().apply {
@@ -150,7 +166,9 @@ class CodexUsageProvider : UsageProvider {
             })
             add(Box.createVerticalStrut(JBUI.scale(4)))
             add(manualRadio)
-            add(manualHintPanel)
+            add(JBLabel("Reuse refresh token from ~/.codex/auth.json to mint independent access tokens (requires valid login)").apply {
+                font = smallFont; foreground = hintColor; alignmentX = Component.LEFT_ALIGNMENT
+            })
             add(Box.createVerticalStrut(JBUI.scale(2)))
             add(manualContentPanel)
         }
@@ -163,22 +181,25 @@ class CodexUsageProvider : UsageProvider {
         autoRadio.addItemListener { e ->
             if (e.stateChange == ItemEvent.SELECTED) {
                 manualContentPanel.isVisible = false
+                statusLabel.text = ""
+                // Clear cached tokens on mode switch
+                config.cachedAccessToken = ""
+                config.cachedRefreshToken = ""
                 panel.providerPanel.revalidate(); panel.providerPanel.repaint()
             }
         }
         manualRadio.addItemListener { e ->
             if (e.stateChange == ItemEvent.SELECTED) {
                 manualContentPanel.isVisible = true
+                // Clear cached tokens on mode switch
+                config.cachedAccessToken = ""
+                config.cachedRefreshToken = ""
                 panel.providerPanel.revalidate(); panel.providerPanel.repaint()
             }
         }
 
         return {
             config.credentialMode = if (autoRadio.isSelected) "auto" else "manual"
-            config.refreshToken = refreshTokenField.text.trim()
-            config.accountId = accountIdField.text.trim()
-            // Invalidate cached token when credentials change
-            config.cachedAccessToken = ""
         }
     }
 
@@ -198,24 +219,26 @@ class CodexUsageProvider : UsageProvider {
     }
 
     private suspend fun fetchWithTokenRefresh(config: CodexUsageAccountConfig): UsageFetchResult {
-        val creds: Credentials = when (config.credentialMode) {
-            "auto" -> loadCredentialsFromFile()
+        val isAutoMode = config.credentialMode == "auto"
+
+        val creds: Credentials = if (isAutoMode) {
+            // Auto mode: Load all credentials from CLI file (accessToken, refreshToken)
+            loadCredentialsFromFile()
                 ?: return UsageFetchResult.error("Could not load credentials from ~/.codex/auth.json")
-            else -> {
-                if (config.refreshToken.isEmpty()) {
-                    return UsageFetchResult.error("No refresh_token configured")
-                }
-                Credentials(
-                    accessToken = config.cachedAccessToken,
-                    refreshToken = config.refreshToken,
-                    accountId = config.accountId.ifEmpty { null }
-                )
+        } else {
+            // Manual mode: Use cached token + cached refreshToken (if loaded from file)
+            if (config.cachedAccessToken.isEmpty()) {
+                return UsageFetchResult.error("No access token — click 'Load OAuth Token' to hijack session")
             }
+            Credentials(
+                accessToken = config.cachedAccessToken,
+                refreshToken = config.cachedRefreshToken.takeIf { it.isNotEmpty() }
+            )
         }
 
         // Try the existing access_token first (if present)
         if (creds.accessToken.isNotEmpty()) {
-            val response = fetchUsageHttp(creds.accessToken, creds.accountId)
+            val response = fetchUsageHttp(creds.accessToken)
             if (response.statusCode() != 401 && response.statusCode() != 403) {
                 return parseUsageResponse(response)
             }
@@ -226,23 +249,27 @@ class CodexUsageProvider : UsageProvider {
             ?: return UsageFetchResult.error("No refresh_token available")
 
         val refreshed = try {
-            refreshAccessToken(refreshToken, creds.accountId)
+            refreshAccessToken(refreshToken)
         } catch (e: Exception) {
             return UsageFetchResult.error("Token refresh failed: ${e.message}")
         }
 
         // Persist the new access_token in plugin state (never modify the CLI credential file)
         config.cachedAccessToken = refreshed.accessToken
+        config.cachedRefreshToken = refreshed.refreshToken ?: config.cachedRefreshToken
         UsagePlatformRegistry.getInstance().updateAccountProperties(
             config.id,
-            mapOf("cachedAccessToken" to refreshed.accessToken)
+            buildMap {
+                put("cachedAccessToken", refreshed.accessToken)
+                if (refreshed.refreshToken != null) put("cachedRefreshToken", refreshed.refreshToken)
+            }
         )
 
-        val response = fetchUsageHttp(refreshed.accessToken, refreshed.accountId)
+        val response = fetchUsageHttp(refreshed.accessToken)
         return parseUsageResponse(response)
     }
 
-    private suspend fun fetchUsageHttp(accessToken: String, accountId: String?): HttpResponse<String> {
+    private suspend fun fetchUsageHttp(accessToken: String): HttpResponse<String> {
         return withContext(Dispatchers.IO) {
             val builder = HttpRequest.newBuilder()
                 .uri(URI.create(USAGE_URL))
@@ -252,15 +279,11 @@ class CodexUsageProvider : UsageProvider {
                 .header("User-Agent", "OpenUsage")
                 .GET()
 
-            if (accountId != null) {
-                builder.header("ChatGPT-Account-Id", accountId)
-            }
-
             httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString())
         }
     }
 
-    private suspend fun refreshAccessToken(refreshToken: String, accountId: String?): Credentials {
+    private suspend fun refreshAccessToken(refreshToken: String): Credentials {
         return withContext(Dispatchers.IO) {
             val body = "grant_type=refresh_token" +
                 "&client_id=" + URLEncoder.encode(CLIENT_ID, StandardCharsets.UTF_8) +
@@ -294,8 +317,7 @@ class CodexUsageProvider : UsageProvider {
 
             Credentials(
                 accessToken = newAccessToken,
-                refreshToken = newRefreshToken,
-                accountId = accountId
+                refreshToken = newRefreshToken
             )
         }
     }
@@ -395,8 +417,7 @@ class CodexUsageProvider : UsageProvider {
 
             Credentials(
                 accessToken = accessToken,
-                refreshToken = tokens.get("refresh_token")?.asString,
-                accountId = tokens.get("account_id")?.asString
+                refreshToken = tokens.get("refresh_token")?.asString
             )
         } catch (_: Exception) { null }
     }
@@ -412,9 +433,8 @@ class CodexUsageProvider : UsageProvider {
             name = state.label
             isEnabled = state.isEnabled
             credentialMode = state.getString("credentialMode", "auto")
-            refreshToken = state.getString("refreshToken")
-            accountId = state.getString("accountId")
             cachedAccessToken = state.getString("cachedAccessToken")
+            cachedRefreshToken = state.getString("cachedRefreshToken")
         }
     }
 
@@ -422,9 +442,8 @@ class CodexUsageProvider : UsageProvider {
         val c = config as CodexUsageAccountConfig
         return UsageAccountState(id = c.id, providerId = PROVIDER_ID, label = c.name, isEnabled = c.isEnabled).apply {
             putString("credentialMode", c.credentialMode)
-            putString("refreshToken", c.refreshToken)
-            putString("accountId", c.accountId)
             putString("cachedAccessToken", c.cachedAccessToken)
+            putString("cachedRefreshToken", c.cachedRefreshToken)
         }
     }
 
@@ -438,19 +457,29 @@ class CodexUsageProvider : UsageProvider {
         private const val USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
         private const val REFRESH_URL = "https://auth.openai.com/oauth/token"
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
+
+        /**
+         * Format token for display: show first and last characters with ellipsis in between.
+         */
+        fun formatTokenDisplay(token: String): String {
+            if (token.isEmpty()) return ""
+            return if (token.length > 20) {
+                "${token.take(8)}...${token.takeLast(8)}"
+            } else {
+                "${token.take(4)}...${token.takeLast(4)}"
+            }
+        }
     }
 
     private data class Credentials(
         val accessToken: String,
-        val refreshToken: String?,
-        val accountId: String?
+        val refreshToken: String?
     )
 
     class CodexUsageAccountConfig : UsageAccountConfig() {
         override val providerId: String = PROVIDER_ID
-        var credentialMode: String = "auto"    // "auto" or "manual"
-        var refreshToken: String = ""          // user-provided (manual mode)
-        var accountId: String = ""             // user-provided (manual mode, optional)
-        var cachedAccessToken: String = ""     // internal: updated after each token refresh
+        var credentialMode: String = "auto"       // "auto" or "manual"
+        var cachedAccessToken: String = ""        // internal: updated after each token refresh
+        var cachedRefreshToken: String = ""       // internal: updated after each token refresh
     }
 }
