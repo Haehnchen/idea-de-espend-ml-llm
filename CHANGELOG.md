@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.7.3
+* Add info string formatting to usage providers (Daniel Espendiller)
+* Simplify Codex manual mode to load tokens from file (Daniel Espendiller)
+* Remove the separate subtitle label and include it in the percentage label to reduce vertical space. (Daniel Espendiller)
+
 # 0.7.2
 * Handle full balance in Ampcode subtitle formatting (Daniel Espendiller)
 * Update Cursor provider to use built-in ACP (Daniel Espendiller)
