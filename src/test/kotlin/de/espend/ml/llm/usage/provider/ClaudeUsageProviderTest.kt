@@ -396,4 +396,14 @@ class ClaudeUsageProviderTest {
         assertEquals("web", config.credentialMode)
         assertEquals("sk-ant-test123", config.sessionKey)
     }
+
+    @Test
+    fun `config info string should include session key in web mode`() {
+        val config = ClaudeUsageProvider.ClaudeUsageAccountConfig().apply {
+            credentialMode = "web"
+            sessionKey = "sk-ant-api03-1234567890abcdefghijklmnopqrst"
+        }
+
+        assertEquals("web · sk-...rst", config.getInfoString())
+    }
 }

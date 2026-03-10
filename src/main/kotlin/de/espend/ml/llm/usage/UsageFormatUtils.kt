@@ -10,6 +10,18 @@ import java.time.Instant
 object UsageFormatUtils {
 
     /**
+     * Formats a secret value for UI display by keeping the beginning and end visible.
+     */
+    fun formatSecret(secret: String): String {
+        if (secret.isEmpty()) return ""
+
+        val edgeLength = 3
+        if (secret.length <= edgeLength * 2) return secret
+
+        return "${secret.take(edgeLength)}...${secret.takeLast(edgeLength)}"
+    }
+
+    /**
      * Formats a reset time as a human-readable string relative to now.
      * Returns null if [resetAt] is null.
      */

@@ -11,6 +11,7 @@ import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
 import de.espend.ml.llm.usage.UsageData
 import de.espend.ml.llm.usage.UsageFetchResult
+import de.espend.ml.llm.usage.UsageFormatUtils
 import de.espend.ml.llm.usage.ui.UsageFormPanel
 import de.espend.ml.llm.usage.UsageProvider
 import kotlinx.coroutines.Dispatchers
@@ -382,5 +383,14 @@ class AmpcodeUsageProvider : UsageProvider {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"  // "auto" or "manual"
         var apiKey: String = ""
+
+        override fun getInfoString(): String {
+            val parts = mutableListOf(credentialMode)
+            if (credentialMode == "manual" && apiKey.isNotEmpty()) {
+                parts += UsageFormatUtils.formatSecret(apiKey)
+            }
+
+            return parts.joinToString(" · ")
+        }
     }
 }

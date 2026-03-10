@@ -302,6 +302,15 @@ class ZaiUsageProviderTest {
         assertEquals("test-api-key-123", config.apiKey)
     }
 
+    @Test
+    fun `config info string should shorten api key`() {
+        val config = ZaiUsageProvider.ZaiUsageAccountConfig().apply {
+            apiKey = "1234567890abcdefghijklmnopqrstuvwx"
+        }
+
+        assertEquals("123...vwx", config.getInfoString())
+    }
+
     // ==================== Real-world Examples ====================
 
     @Test

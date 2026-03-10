@@ -104,7 +104,7 @@ class CodexUsageProvider : UsageProvider {
                 statusLabel.text = ""
                 return
             }
-            statusLabel.text = "Token: ${formatTokenDisplay(token)}"
+            statusLabel.text = "Token: ${UsageFormatUtils.formatSecret(token)}"
             statusLabel.foreground = com.intellij.ui.JBColor.GREEN.darker()
         }
 
@@ -458,17 +458,6 @@ class CodexUsageProvider : UsageProvider {
         private const val REFRESH_URL = "https://auth.openai.com/oauth/token"
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
-        /**
-         * Format token for display: show first and last characters with ellipsis in between.
-         */
-        fun formatTokenDisplay(token: String): String {
-            if (token.isEmpty()) return ""
-            return if (token.length > 20) {
-                "${token.take(8)}...${token.takeLast(8)}"
-            } else {
-                "${token.take(4)}...${token.takeLast(4)}"
-            }
-        }
     }
 
     private data class Credentials(
@@ -481,5 +470,14 @@ class CodexUsageProvider : UsageProvider {
         var credentialMode: String = "auto"       // "auto" or "manual"
         var cachedAccessToken: String = ""        // internal: updated after each token refresh
         var cachedRefreshToken: String = ""       // internal: updated after each token refresh
+
+        override fun getInfoString(): String {
+            val parts = mutableListOf(credentialMode)
+            if (credentialMode == "manual" && cachedAccessToken.isNotEmpty()) {
+                parts += UsageFormatUtils.formatSecret(cachedAccessToken)
+            }
+
+            return parts.joinToString(" · ")
+        }
     }
 }

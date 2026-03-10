@@ -14,6 +14,7 @@ import de.espend.ml.llm.usage.UsageData
 import de.espend.ml.llm.usage.UsageEntry
 import de.espend.ml.llm.usage.UsageFetchResult
 import de.espend.ml.llm.usage.UsageLine
+import de.espend.ml.llm.usage.UsageFormatUtils
 import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.UsageProvider
 import de.espend.ml.llm.usage.ui.UsageFormPanel
@@ -344,5 +345,14 @@ class JunieUsageProvider : UsageProvider {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"
         var apiKey: String = ""
+
+        override fun getInfoString(): String {
+            val parts = mutableListOf(credentialMode)
+            if (credentialMode == "manual" && apiKey.isNotEmpty()) {
+                parts += UsageFormatUtils.formatSecret(apiKey)
+            }
+
+            return parts.joinToString(" · ")
+        }
     }
 }
