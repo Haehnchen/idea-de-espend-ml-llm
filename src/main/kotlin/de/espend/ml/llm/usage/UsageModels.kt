@@ -114,6 +114,8 @@ abstract class UsageAccountConfig {
     var name: String = ""
     var isEnabled: Boolean = true
 
+    open fun getInfoString(): String = ""
+
     companion object {
         private fun generateAccountId(): String {
             val chars = "0123456789abcdef"

@@ -113,7 +113,7 @@ class ClaudeUsageProvider : UsageProvider {
                 statusLabel.text = ""
                 return
             }
-            statusLabel.text = "Token: ${formatTokenDisplay(token)}"
+            statusLabel.text = "Token: ${UsageFormatUtils.formatSecret(token)}"
             statusLabel.foreground = com.intellij.ui.JBColor.GREEN.darker()
         }
 
@@ -688,17 +688,6 @@ class ClaudeUsageProvider : UsageProvider {
         private const val WEB_BASE_URL = "https://claude.ai/api"
         private const val WEB_ORGANIZATIONS_URL = "https://claude.ai/api/organizations"
 
-        /**
-         * Format token for display: show first and last characters with ellipsis in between.
-         */
-        fun formatTokenDisplay(token: String): String {
-            if (token.isEmpty()) return ""
-            return if (token.length > 20) {
-                "${token.take(8)}...${token.takeLast(8)}"
-            } else {
-                "${token.take(4)}...${token.takeLast(4)}"
-            }
-        }
     }
 
     private data class Credentials(
@@ -715,5 +704,25 @@ class ClaudeUsageProvider : UsageProvider {
         var cachedAccessToken: String = ""        // internal: updated after each token refresh
         var cachedRefreshToken: String = ""       // internal: updated after each token refresh
         var cachedExpiresAt: Long = 0L            // internal: expiry timestamp in ms
+
+        override fun getInfoString(): String {
+            val parts = mutableListOf(credentialMode)
+
+            when (credentialMode) {
+                "manual" -> {
+                    val token = manualToken.ifEmpty { cachedAccessToken }
+                    if (token.isNotEmpty()) {
+                        parts += UsageFormatUtils.formatSecret(token)
+                    }
+                }
+                "web" -> {
+                    if (sessionKey.isNotEmpty()) {
+                        parts += UsageFormatUtils.formatSecret(sessionKey)
+                    }
+                }
+            }
+
+            return parts.joinToString(" · ")
+        }
     }
 }

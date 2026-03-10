@@ -259,6 +259,16 @@ class CodexUsageProviderTest {
         assertEquals("cached-token-123", config.cachedAccessToken)
     }
 
+    @Test
+    fun `config info string should include manual access token`() {
+        val config = CodexUsageProvider.CodexUsageAccountConfig().apply {
+            credentialMode = "manual"
+            cachedAccessToken = "1234567890abcdefghijklmnopqrstuvwx"
+        }
+
+        assertEquals("manual · 123...vwx", config.getInfoString())
+    }
+
     // ==================== Real-world Examples ====================
 
     @Test

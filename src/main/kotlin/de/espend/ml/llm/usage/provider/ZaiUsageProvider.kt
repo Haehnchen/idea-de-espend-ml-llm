@@ -198,5 +198,11 @@ class ZaiUsageProvider : UsageProvider {
     class ZaiUsageAccountConfig : UsageAccountConfig() {
         override val providerId: String = PROVIDER_ID
         var apiKey: String = ""
+
+        override fun getInfoString(): String {
+            return apiKey.takeIf { it.isNotEmpty() }
+                ?.let { UsageFormatUtils.formatSecret(it) }
+                ?: ""
+        }
     }
 }

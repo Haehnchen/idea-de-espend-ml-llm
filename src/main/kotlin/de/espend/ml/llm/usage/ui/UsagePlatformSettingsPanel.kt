@@ -14,8 +14,11 @@ import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
 import de.espend.ml.llm.usage.UsagePlatformRegistry
 import java.awt.Component
+import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.ItemEvent
 import javax.swing.Icon
 import javax.swing.JCheckBox
@@ -48,12 +51,13 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
     ) {
         val type: String get() = config.providerId
         val label: String get() = config.name
+        val info: String get() = config.getInfoString()
     }
 
     private val rows: MutableList<UsageRow> = mutableListOf()
 
     private val modelList = com.intellij.util.ui.ListTableModel<UsageRow>(
-        arrayOf(EnabledColumn(), LabelColumn(), TypeColumn()),
+        arrayOf(EnabledColumn(), LabelColumn(), TypeColumn(), InfoColumn()),
         mutableListOf()
     )
 
@@ -62,6 +66,8 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         rowHeight = JBUI.scale(28)
         intercellSpacing = JBUI.size(0, 4)
         setShowGrid(false)
+        autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
+        preferredScrollableViewportSize = Dimension(0, JBUI.scale(180))
         setDefaultRenderer(String::class.java, SpacedTableCellRenderer())
     }
 
@@ -76,10 +82,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             insets = JBUI.insetsBottom(6)
         })
 
-        tableView.columnModel.getColumn(0).preferredWidth = JBUI.scale(50)
-        tableView.columnModel.getColumn(0).maxWidth = JBUI.scale(60)
-        tableView.columnModel.getColumn(1).preferredWidth = JBUI.scale(260)
-        tableView.columnModel.getColumn(2).preferredWidth = JBUI.scale(120)
+        installColumnSizing()
 
         val toolbarDecorator = ToolbarDecorator.createDecorator(tableView, object : ElementProducer<UsageRow> {
             override fun createElement(): UsageRow? = null
@@ -206,6 +209,37 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             val provider = ProviderUsageService.getInstance().getProvider(providerId)
             return provider?.providerInfo?.providerName ?: providerId
         }
+    }
+
+    private class InfoColumn : ColumnInfo<UsageRow, String>("Info") {
+        override fun valueOf(item: UsageRow?): String? = item?.info
+    }
+
+    private fun installColumnSizing() {
+        tableView.columnModel.getColumn(0).minWidth = JBUI.scale(44)
+        tableView.columnModel.getColumn(0).maxWidth = JBUI.scale(56)
+        tableView.columnModel.getColumn(1).minWidth = JBUI.scale(90)
+        tableView.columnModel.getColumn(2).minWidth = JBUI.scale(90)
+        tableView.columnModel.getColumn(3).minWidth = JBUI.scale(120)
+
+        fun applyWidths() {
+            val width = tableView.width.takeIf { it > 0 } ?: return
+            val fixedEnabled = JBUI.scale(52)
+            val remaining = (width - fixedEnabled).coerceAtLeast(JBUI.scale(300))
+
+            tableView.columnModel.getColumn(0).preferredWidth = fixedEnabled
+            tableView.columnModel.getColumn(1).preferredWidth = (remaining * 0.22).toInt()
+            tableView.columnModel.getColumn(2).preferredWidth = (remaining * 0.18).toInt()
+            tableView.columnModel.getColumn(3).preferredWidth = (remaining * 0.60).toInt()
+        }
+
+        tableView.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent?) {
+                applyWidths()
+            }
+        })
+
+        applyWidths()
     }
 
     private inner class EnabledColumn : ColumnInfo<UsageRow, Boolean>("") {
