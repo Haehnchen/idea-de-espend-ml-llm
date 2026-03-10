@@ -39,8 +39,7 @@ class ProviderUsagePanel(
 
     private data class EntryWidgets(
         val pctLabel: JBLabel,
-        val progressBar: JProgressBar,
-        val resetLabel: JBLabel
+        val progressBar: JProgressBar
     )
 
     private data class LineWidgets(
@@ -223,16 +222,8 @@ class ProviderUsagePanel(
                 alignmentX = 0f
             }
             add(progressBar)
-            add(Box.createVerticalStrut(JBUI.scale(4)))
 
-            val resetLabel = JBLabel(" ").apply {
-                foreground = SECONDARY_COLOR
-                font = font.deriveFont(font.size2D - 1f)
-                alignmentX = 0f
-            }
-            add(resetLabel)
-
-            entryWidgets.add(EntryWidgets(pctLabel, progressBar, resetLabel))
+            entryWidgets.add(EntryWidgets(pctLabel, progressBar))
 
             // Add spacing between entries if not the last one
             if (i < entryCount - 1) {
@@ -271,17 +262,23 @@ class ProviderUsagePanel(
             if (entry != null) {
                 val percentageUsed = entry.percentageUsed.coerceIn(0f, 100f)
                 val percentageUsedInt = percentageUsed.roundToInt().coerceIn(0, 100)
+                val subtitle = entry.subtitle?.ifBlank { null }
 
-                entryWidgets.pctLabel.text = "${"%.1f".format(percentageUsed)}% used"
+                entryWidgets.pctLabel.text = buildString {
+                    append(percentageUsedInt)
+                    append(" %")
+                    if (subtitle != null) {
+                        append(" · ")
+                        append(subtitle)
+                    }
+                }
                 entryWidgets.pctLabel.foreground = SECONDARY_COLOR
                 entryWidgets.progressBar.value = percentageUsedInt
                 entryWidgets.progressBar.foreground = quotaColor(percentageUsed)
-                entryWidgets.resetLabel.text = entry.subtitle?.ifBlank { null } ?: " "
             } else {
                 // No data for this entry slot
                 entryWidgets.pctLabel.text = " "
                 entryWidgets.progressBar.value = 0
-                entryWidgets.resetLabel.text = " "
             }
         }
 
@@ -297,7 +294,6 @@ class ProviderUsagePanel(
             entryWidgets.pctLabel.text = error
             entryWidgets.pctLabel.foreground = ERROR_COLOR
             entryWidgets.progressBar.value = 0
-            entryWidgets.resetLabel.text = " "
         }
         widgets.lines.forEach { lineWidgets ->
             lineWidgets.lineLabel.text = " "
