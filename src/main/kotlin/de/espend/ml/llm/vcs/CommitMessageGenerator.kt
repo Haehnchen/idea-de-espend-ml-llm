@@ -1,6 +1,7 @@
 package de.espend.ml.llm.vcs
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vcs.changes.Change
 import de.espend.ml.llm.AgentConfig
@@ -24,16 +25,27 @@ object CommitMessageGenerator {
         project: Project,
         config: AgentConfig,
         changes: List<Change>,
-        existingText: String
+        existingText: String,
+        indicator: ProgressIndicator? = null
     ): ApiResult {
         if (changes.isEmpty()) {
             return ApiResult.Error("No changes to generate commit message from")
+        }
+
+        // Check for cancellation
+        if (indicator?.isCanceled == true) {
+            return ApiResult.Error("Cancelled")
         }
 
         // Build diff from changes
         val diff = buildDiff(project, changes)
         if (diff.isBlank()) {
             return ApiResult.Error("Could not build diff from changes")
+        }
+
+        // Check for cancellation
+        if (indicator?.isCanceled == true) {
+            return ApiResult.Error("Cancelled")
         }
 
         // Create prompt for commit message generation
@@ -212,27 +224,23 @@ object CommitMessageGenerator {
 
     private fun buildPrompt(diff: String, existingText: String): String {
         val existingPrompt = if (existingText.isNotBlank()) {
-            "\n\nCurrent draft message (consider extending or improving it):\n$existingText"
+            "\nCurrent draft (improve it):\n$existingText\n"
         } else {
             ""
         }
 
         return """
-            Generate a concise git commit message for the following changes.$existingPrompt
+            Write a git commit message for this diff.$existingPrompt
 
-            Diff:
             ```
             $diff
             ```
 
-            Requirements:
-            - First line should be a short summary (50-72 characters)
-            - Use imperative mood (e.g., "Add feature" not "Added feature")
-            - If needed, add a blank line followed by a more detailed description
-            - Focus on what changed and why, not how
-            - Don't include the backticks in your response
-
-            Respond with only the commit message, no explanation.
+            Format:
+            - One line summary (max 72 chars)
+            - Use imperative mood
+            - No body unless complex changes
+            - Output only the message
         """.trimIndent()
     }
 }
