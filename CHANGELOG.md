@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.7.4
+* Implement caching mechanism for usage data and improve UI handling of checkbox listeners (Daniel Espendiller)
+* Support cancellation for commit message generation and improve UI handling (Daniel Espendiller)
+* Refactor panel data handling by introducing `AccountPanelInfo` for improved layout flexibility in usage providers. (Daniel Espendiller)
+ 
 # 0.7.3
 * Add info string formatting to usage providers (Daniel Espendiller)
 * Simplify Codex manual mode to load tokens from file (Daniel Espendiller)
