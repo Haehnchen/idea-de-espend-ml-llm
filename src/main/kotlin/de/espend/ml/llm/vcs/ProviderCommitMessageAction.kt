@@ -1,5 +1,6 @@
 package de.espend.ml.llm.vcs
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -31,12 +32,17 @@ import javax.swing.text.JTextComponent
 
 /**
  * Action to generate commit messages using configured AI providers.
+ * Supports aborting generation by clicking again while running.
  */
 class ProviderCommitMessageAction : AnAction(
     "Generate Commit Message Agent Provider",
     "Generate commit message with agent provider",
     PluginIcons.AI_PROVIDER_16
 ) {
+    // Track the running progress indicator for abort functionality
+    @Volatile
+    private var progressIndicator: ProgressIndicator? = null
+
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
@@ -50,11 +56,19 @@ class ProviderCommitMessageAction : AnAction(
         val hasChanges = context.hasChanges()
         val hasTarget = context.getCommitMessageTarget() != null
         val hasValidProviders = validProviders.isNotEmpty()
-        val tooltip = buildTooltip(validProviders)
+        val isRunning = progressIndicator?.isRunning == true
+
+        // Show stop icon when running, normal icon otherwise
+        e.presentation.icon = if (isRunning) AllIcons.Run.Stop else PluginIcons.AI_PROVIDER_16
+
+        val tooltip = if (isRunning) {
+            "Stop generating commit message"
+        } else {
+            buildTooltip(validProviders)
+        }
 
         e.presentation.isVisible = hasValidProviders && project != null
-        e.presentation.isEnabled = hasValidProviders && hasChanges && hasTarget
-        e.presentation.icon = PluginIcons.AI_PROVIDER_16
+        e.presentation.isEnabled = hasValidProviders && (isRunning || (hasChanges && hasTarget))
         // Some commit UI placements render tooltip/title from action text instead of description,
         // so keep both in sync to ensure the dynamic provider tooltip is actually visible.
         e.presentation.description = tooltip
@@ -70,6 +84,13 @@ class ProviderCommitMessageAction : AnAction(
     }
 
     override fun actionPerformed(e: AnActionEvent) {
+        // If already running, abort the current generation
+        if (progressIndicator?.isRunning == true) {
+            progressIndicator?.cancel()
+            progressIndicator = null
+            return
+        }
+
         val project = e.project ?: return
         val context = ActionContext.fromEvent(e)
 
@@ -138,27 +159,39 @@ class ProviderCommitMessageAction : AnAction(
 
         object : Task.Backgroundable(project, "Generating commit message...", true) {
             override fun run(indicator: ProgressIndicator) {
+                // Store indicator for abort functionality
+                progressIndicator = indicator
                 indicator.isIndeterminate = true
 
-                val result = runBlocking {
-                    CommitMessageGenerator.generate(project, config, changes, existingText)
-                }
+                try {
+                    val result = runBlocking {
+                        CommitMessageGenerator.generate(project, config, changes, existingText, indicator)
+                    }
 
-                // Handle result in UI thread
-                ApplicationManager.getApplication().invokeLater {
-                    when (result) {
-                        is ApiResult.Success -> {
-                            val message = result.message.trim()
-                            if (message.isNotEmpty()) {
-                                target.setText(message)
-                            } else {
-                                target.setText("❌ Empty response from $providerName")
+                    // Check if cancelled before updating UI
+                    if (indicator.isCanceled) {
+                        return
+                    }
+
+                    // Handle result in UI thread
+                    ApplicationManager.getApplication().invokeLater {
+                        when (result) {
+                            is ApiResult.Success -> {
+                                val message = result.message.trim()
+                                if (message.isNotEmpty()) {
+                                    target.setText(message)
+                                } else {
+                                    target.setText("❌ Empty response from $providerName")
+                                }
+                            }
+                            is ApiResult.Error -> {
+                                target.setText("❌ ${result.error}")
                             }
                         }
-                        is ApiResult.Error -> {
-                            target.setText("❌ ${result.error}")
-                        }
                     }
+                } finally {
+                    // Clear indicator when done
+                    progressIndicator = null
                 }
             }
         }.queue()
