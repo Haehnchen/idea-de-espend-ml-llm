@@ -7,6 +7,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.usage.AccountPanelInfo
 import de.espend.ml.llm.usage.ProviderInfo
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
@@ -64,7 +65,9 @@ import javax.swing.JRadioButton
  */
 class JunieUsageProvider : UsageProvider {
 
-    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.JUNIE, usageEntryCount = 0, lineCount = 1)
+    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.JUNIE)
+
+    override fun getAccountPanelInfo(account: UsageAccountConfig) = AccountPanelInfo.lines(1)
     override val configClass = JunieUsageAccountConfig::class
 
     private val httpClient: HttpClient = HttpClient.newBuilder()

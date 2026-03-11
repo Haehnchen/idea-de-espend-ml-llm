@@ -10,18 +10,39 @@ import kotlin.reflect.KClass
  * @param providerId Unique identifier for the provider
  * @param providerName Display name for the provider
  * @param icon Icon to display for the provider
- * @param usageEntryCount Expected number of usage entries this provider returns (for panel pre-centering)
- * @param lineCount Expected number of text lines this provider returns (without progress bar)
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
 data class ProviderInfo(
     val providerId: String,
     val providerName: String,
-    val icon: Icon,
-    val usageEntryCount: Int,
-    val lineCount: Int = 0
+    val icon: Icon
 )
+
+/**
+ * Panel layout info for a specific account.
+ * Use [progressbar] for progress bar entries or [lines] for text lines - not both.
+ *
+ * @author Daniel Espendiller <daniel@espendiller.net>
+ */
+class AccountPanelInfo private constructor(
+    val usageEntryCount: Int,
+    val lineCount: Int
+) {
+    companion object {
+        /**
+         * Create panel info for progress bar entries
+         */
+        @JvmStatic
+        fun progressbar(count: Int) = AccountPanelInfo(usageEntryCount = count, lineCount = 0)
+
+        /**
+         * Create panel info for text lines
+         */
+        @JvmStatic
+        fun lines(count: Int) = AccountPanelInfo(usageEntryCount = 0, lineCount = count)
+    }
+}
 
 /**
  * Interface for provider-specific usage providers.
@@ -73,4 +94,12 @@ interface UsageProvider {
      * Serialize a typed config to a generic [UsageAccountState] for persistence.
      */
     fun toState(config: UsageAccountConfig): UsageAccountState
+
+    /**
+     * Get panel layout info for a specific account.
+     *
+     * @param account The account configuration
+     * @return Panel layout info (usageEntryCount, lineCount)
+     */
+    fun getAccountPanelInfo(account: UsageAccountConfig): AccountPanelInfo
 }
