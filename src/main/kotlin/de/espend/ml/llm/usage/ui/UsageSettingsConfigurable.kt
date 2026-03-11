@@ -1,6 +1,7 @@
 package de.espend.ml.llm.usage.ui
 
 import com.intellij.openapi.options.Configurable
+import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
 import javax.swing.JComponent
 
@@ -26,6 +27,7 @@ class UsageSettingsConfigurable : Configurable {
 
     override fun apply() {
         usagePlatformSettingsPanel.applyTo(UsagePlatformRegistry.getInstance().state)
+        ProviderUsageService.getInstance().clearCache()
     }
 
     override fun reset() {

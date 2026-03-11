@@ -291,6 +291,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         }
 
         private var currentRow = -1
+        private var itemListener: java.awt.event.ItemListener? = null
 
         override fun getTableCellEditorComponent(
             table: JTable?,
@@ -300,15 +301,17 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             column: Int
         ): Component {
             currentRow = row
-            checkBox.removeItemListener(null)
+            itemListener?.let { checkBox.removeItemListener(it) }
             checkBox.isSelected = value as? Boolean ?: false
-            checkBox.addItemListener { e ->
+            val listener = java.awt.event.ItemListener { e ->
                 if (e.stateChange == ItemEvent.SELECTED || e.stateChange == ItemEvent.DESELECTED) {
-                    if (currentRow >= 0 && currentRow < rows.size) {
-                        rows[currentRow].config.isEnabled = checkBox.isSelected
+                    if (currentRow >= 0 && currentRow < modelList.rowCount) {
+                        modelList.getItem(currentRow).config.isEnabled = checkBox.isSelected
                     }
                 }
             }
+            itemListener = listener
+            checkBox.addItemListener(listener)
             return checkBox
         }
 

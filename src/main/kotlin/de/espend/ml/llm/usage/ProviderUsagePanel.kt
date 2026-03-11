@@ -139,18 +139,38 @@ class ProviderUsagePanel(
     fun start(popup: JBPopup, project: Project?) {
         currentPopup = popup
         currentProject = project
-        doRefresh()
+
+        if (service.isCacheValid()) {
+            showCachedResults()
+        } else {
+            doRefresh(forceRefresh = false)
+        }
     }
 
-    private fun doRefresh() {
+    private fun showCachedResults() {
+        providers.forEach { config ->
+            providerWidgets[config.id]?.let { widgets ->
+                val cached = service.getCachedResponse(config.id)
+                if (cached != null) {
+                    if (cached.usage != null) updateWidgets(widgets, cached.usage)
+                    else showWidgetError(widgets, cached.error ?: "Unknown error")
+                }
+            }
+        }
+        currentPopup?.pack(true, true)
+    }
+
+    private fun doRefresh(forceRefresh: Boolean = true) {
         isLoading = true
         refreshIconLabel.icon = AnimatedIcon.Default()
 
+        val results = mutableMapOf<String, ProviderUsageResponse>()
         val pending = AtomicInteger(providers.size)
         providers.forEach { config ->
             providerWidgets[config.id]?.let { widgets ->
-                fetchAndUpdate(config, widgets) {
+                fetchAndUpdate(config, widgets, results) {
                     if (pending.decrementAndGet() <= 0) {
+                        service.updateCache(results)
                         isLoading = false
                         refreshIconLabel.icon = AllIcons.Actions.Refresh
                     }
@@ -159,10 +179,11 @@ class ProviderUsagePanel(
         }
     }
 
-    private fun fetchAndUpdate(config: UsageAccountConfig, widgets: ProviderWidgets, onDone: () -> Unit) {
+    private fun fetchAndUpdate(config: UsageAccountConfig, widgets: ProviderWidgets, results: MutableMap<String, ProviderUsageResponse>, onDone: () -> Unit) {
         scope.launch {
             try {
                 val response = service.fetchUsage(config)
+                synchronized(results) { results[config.id] = response }
                 ApplicationManager.getApplication().invokeLater {
                     val popup = currentPopup ?: return@invokeLater
                     if (!popup.isDisposed) {
