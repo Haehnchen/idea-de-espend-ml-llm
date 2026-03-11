@@ -331,9 +331,9 @@ class AmpcodeUsageProvider : UsageProvider {
             val missingAmount = (total - remaining).coerceAtLeast(0.0)
             val hoursUntilFull = missingAmount / replenishmentPerHour
 
-            // If already full or invalid, return "replenished" without percentage per hour
+            // If already full or invalid, return null
             if (!hoursUntilFull.isFinite() || hoursUntilFull <= 0.0) {
-                return "replenished"
+                return null
             }
 
             val percentagePerHour = ((replenishmentPerHour / total) * 100).toFloat()

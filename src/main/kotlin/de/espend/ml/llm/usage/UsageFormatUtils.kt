@@ -36,17 +36,16 @@ object UsageFormatUtils {
      * Formats a duration in seconds until reset as a human-readable string.
      */
     fun formatSecondsUntilReset(secondsUntil: Long): String {
-        if (secondsUntil <= 0) return "Resets soon"
-
         val days = secondsUntil / (24 * 3600)
         val hours = (secondsUntil % (24 * 3600)) / 3600
         val minutes = (secondsUntil % 3600) / 60
+        val seconds = secondsUntil % 60
         return when {
             days > 0 && hours > 0 -> "Resets in ${days}d ${hours}h"
             days > 0 -> "Resets in ${days}d"
             hours > 0 -> "Resets in ${hours}h ${minutes}m"
-            minutes > 0 -> "Resets in ${minutes}m"
-            else -> "Resets soon"
+            minutes > 0 -> "Resets in ${minutes}m ${seconds}s"
+            else -> "Resets in ${seconds}s"
         }
     }
 }

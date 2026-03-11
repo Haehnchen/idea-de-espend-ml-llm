@@ -121,12 +121,12 @@ class AmpcodeUsageProviderTest {
     }
 
     @Test
-    fun `buildSubtitleFromText should return replenished without percentage when balance is full`() {
+    fun `buildSubtitleFromText should return null when balance is full`() {
         val displayText = "Free: \$10.00/\$10 remaining (replenishes +\$0.50/hour)"
 
         val subtitle = AmpcodeUsageProvider.buildSubtitleFromText(displayText, 10.0, 10.0)
 
-        assertEquals("replenished", subtitle)
+        assertNull(subtitle)
     }
 
     // ==================== formatHoursUntilFull Tests ====================
