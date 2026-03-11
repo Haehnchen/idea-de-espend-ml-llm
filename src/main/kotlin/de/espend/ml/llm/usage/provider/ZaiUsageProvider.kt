@@ -8,6 +8,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.usage.AccountPanelInfo
 import de.espend.ml.llm.usage.ProviderInfo
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
@@ -38,7 +39,9 @@ import javax.swing.JPanel
  */
 class ZaiUsageProvider : UsageProvider {
 
-    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.ZAI, usageEntryCount = 1)
+    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.ZAI)
+
+    override fun getAccountPanelInfo(account: UsageAccountConfig) = AccountPanelInfo.progressbar(1)
     override val configClass = ZaiUsageAccountConfig::class
 
     private val httpClient: HttpClient = HttpClient.newBuilder()

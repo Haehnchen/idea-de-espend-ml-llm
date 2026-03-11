@@ -6,6 +6,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.usage.AccountPanelInfo
 import de.espend.ml.llm.usage.ProviderInfo
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
@@ -42,7 +43,9 @@ import kotlin.math.ceil
  */
 class AmpcodeUsageProvider : UsageProvider {
 
-    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.AMPCODE, usageEntryCount = 1)
+    override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.AMPCODE)
+
+    override fun getAccountPanelInfo(account: UsageAccountConfig) = AccountPanelInfo.progressbar(1)
     override val configClass = AmpcodeUsageAccountConfig::class
 
     private val httpClient: HttpClient = HttpClient.newBuilder()

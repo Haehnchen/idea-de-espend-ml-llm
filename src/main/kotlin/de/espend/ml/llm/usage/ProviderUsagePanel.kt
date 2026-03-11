@@ -191,8 +191,9 @@ class ProviderUsagePanel(
         val icon = providerInfo?.icon?.let { PluginIcons.scaleIcon(it, 14) }
         val providerLabel = providerInfo?.providerName ?: config.providerId
         val accountLabel = config.name
-        val entryCount = providerInfo?.usageEntryCount ?: 1
-        val lineCount = providerInfo?.lineCount ?: 0
+        val panelInfo = provider?.getAccountPanelInfo(config) ?: AccountPanelInfo.progressbar(1)
+        val entryCount = panelInfo.usageEntryCount
+        val lineCount = panelInfo.lineCount
 
         val displayLabel = if (accountLabel.isNotBlank()) "$providerLabel · $accountLabel" else providerLabel
         val nameLabel = JBLabel(displayLabel).apply {
