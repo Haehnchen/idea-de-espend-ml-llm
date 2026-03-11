@@ -7,6 +7,7 @@ import de.espend.ml.llm.usage.provider.ClaudeUsageProvider
 import de.espend.ml.llm.usage.provider.CodexUsageProvider
 import de.espend.ml.llm.usage.provider.JunieUsageProvider
 import de.espend.ml.llm.usage.provider.ZaiUsageProvider
+import java.util.concurrent.TimeUnit
 
 /**
  * Service for fetching provider usage data
@@ -18,6 +19,13 @@ class ProviderUsageService {
 
     // Provider registry
     private val providers = mutableMapOf<String, UsageProvider>()
+
+    // Cache for the full fetch result (all accounts)
+    @Volatile
+    private var cachedResults: Map<String, ProviderUsageResponse>? = null
+    @Volatile
+    private var cacheTimestamp: Long = 0L
+    private val cacheTtlMs = TimeUnit.SECONDS.toMillis(10)
 
     init {
         registerProvider(ZaiUsageProvider())
@@ -79,6 +87,36 @@ class ProviderUsageService {
         } catch (e: Exception) {
             ProviderUsageResponse.error(e.message ?: "Unknown error")
         }
+    }
+
+    /**
+     * Returns true if the cache is still valid (not expired).
+     */
+    fun isCacheValid(): Boolean {
+        return cachedResults != null && System.currentTimeMillis() - cacheTimestamp <= cacheTtlMs
+    }
+
+    /**
+     * Returns cached response for a specific account, or null if not cached.
+     */
+    fun getCachedResponse(accountId: String): ProviderUsageResponse? {
+        return cachedResults?.get(accountId)
+    }
+
+    /**
+     * Store results into the cache.
+     */
+    fun updateCache(results: Map<String, ProviderUsageResponse>) {
+        cachedResults = results
+        cacheTimestamp = System.currentTimeMillis()
+    }
+
+    /**
+     * Clear the usage cache.
+     */
+    fun clearCache() {
+        cachedResults = null
+        cacheTimestamp = 0L
     }
 
     companion object {
