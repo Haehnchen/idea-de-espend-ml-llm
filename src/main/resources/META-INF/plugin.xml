@@ -73,6 +73,7 @@
             <tr><th>Provider</th><th>Quota Type</th><th>Credential Modes</th></tr>
             <tr><td><b>Claude</b></td><td>5-hour window + 7-day window</td><td>Auto (<code>~/.claude/.credentials.json</code>), Manual (access token), Web API (sessionKey)</td></tr>
             <tr><td><b>Codex</b></td><td>Rate limit quota</td><td>Auto (<code>~/.codex/auth.json</code>), Manual (refresh token)</td></tr>
+            <tr><td><b>Ollama</b></td><td>Session window + Weekly window</td><td><code>__Secure-session</code> cookie from ollama.com/settings</td></tr>
             <tr><td><b>Z.AI</b></td><td>Token quota</td><td>API key</td></tr>
             <tr><td><b>Ampcode</b></td><td>Free credits balance</td><td>Auto (<code>~/.local/share/amp/secrets.json</code>), Manual (API key)</td></tr>
             <tr><td><b>Junie</b></td><td>Request quota</td><td>Auto (<code>~/.junie/token.json</code>), Manual (API key)</td></tr>

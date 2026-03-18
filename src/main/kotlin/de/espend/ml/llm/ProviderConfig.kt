@@ -8,6 +8,7 @@ object ProviderConfig {
     const val PROVIDER_CURSOR = "cursor"
     const val PROVIDER_DROID = "droid"
     const val PROVIDER_ZAI = "zai"
+    const val PROVIDER_OLLAMA = "ollama"
 
     /**
      * Model IDs for different AI Assistant contexts.
@@ -187,6 +188,17 @@ object ProviderConfig {
             modelIds = ModelIds(smart = "gemini-3-flash-preview-free", quick = "gemini-3-flash-preview-free"),
             autoDiscoveryText = "gemini-3-flash-preview-free",
             modelsUrl = "https://aihubmix.com/v1/models"
+        ),
+        ProviderInfo(
+            provider = PROVIDER_OLLAMA,
+            label = "Ollama",
+            icon = PluginIcons.OLLAMA,
+            description = "Ollama Cloud via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            baseUrl = "https://ollama.com",
+            models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
+            autoDiscoveryText = "",
+            modelsUrl = "https://ollama.com/v1/models"
         )
     )
 
