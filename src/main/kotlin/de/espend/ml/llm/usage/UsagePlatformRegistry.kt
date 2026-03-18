@@ -25,6 +25,7 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
 
     class State {
         var accounts: MutableList<UsageAccountState> = mutableListOf()
+        var showRtkStats: Boolean = false
     }
 
     private var myState = State()

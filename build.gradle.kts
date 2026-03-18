@@ -31,6 +31,9 @@ dependencies {
     // Kotlinx Serialization for JSON parsing
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
+    // SQLite JDBC for RTK stats panel
+    implementation("org.xerial:sqlite-jdbc:3.47.1.0")
+
     // Test dependencies
     testImplementation("junit:junit:4.13.2")
 }

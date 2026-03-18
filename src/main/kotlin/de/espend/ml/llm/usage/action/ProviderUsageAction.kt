@@ -10,6 +10,7 @@ import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.usage.ProviderUsagePanel
 import de.espend.ml.llm.usage.ProviderUsageService
+import de.espend.ml.llm.usage.UsagePlatformRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,8 +53,9 @@ class ProviderUsageAction : AnAction(), DumbAware {
 
     override fun update(e: AnActionEvent) {
         val providers = ProviderUsageService.getInstance().getSupportedAccounts()
+        val rtkEnabled = UsagePlatformRegistry.getInstance().state.showRtkStats
         e.presentation.icon = PluginIcons.USAGE
-        e.presentation.isEnabledAndVisible = providers.isNotEmpty()
+        e.presentation.isEnabledAndVisible = providers.isNotEmpty() || rtkEnabled
     }
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT

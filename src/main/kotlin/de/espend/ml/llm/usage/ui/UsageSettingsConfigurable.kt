@@ -17,12 +17,12 @@ class UsageSettingsConfigurable : Configurable {
     override fun getDisplayName(): String = "Account Usage Toolbar"
 
     override fun createComponent(): JComponent {
-        usagePlatformSettingsPanel.loadFrom(UsagePlatformRegistry.getInstance().state.accounts)
+        usagePlatformSettingsPanel.loadFrom(UsagePlatformRegistry.getInstance().state)
         return usagePlatformSettingsPanel
     }
 
     override fun isModified(): Boolean {
-        return usagePlatformSettingsPanel.isModified(UsagePlatformRegistry.getInstance().state.accounts)
+        return usagePlatformSettingsPanel.isModified(UsagePlatformRegistry.getInstance().state)
     }
 
     override fun apply() {
@@ -31,6 +31,6 @@ class UsageSettingsConfigurable : Configurable {
     }
 
     override fun reset() {
-        usagePlatformSettingsPanel.loadFrom(UsagePlatformRegistry.getInstance().state.accounts)
+        usagePlatformSettingsPanel.loadFrom(UsagePlatformRegistry.getInstance().state)
     }
 }
