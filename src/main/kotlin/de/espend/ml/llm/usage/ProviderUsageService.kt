@@ -6,6 +6,7 @@ import de.espend.ml.llm.usage.provider.AmpcodeUsageProvider
 import de.espend.ml.llm.usage.provider.ClaudeUsageProvider
 import de.espend.ml.llm.usage.provider.CodexUsageProvider
 import de.espend.ml.llm.usage.provider.JunieUsageProvider
+import de.espend.ml.llm.usage.provider.OllamaUsageProvider
 import de.espend.ml.llm.usage.provider.ZaiUsageProvider
 import java.util.concurrent.TimeUnit
 
@@ -33,6 +34,7 @@ class ProviderUsageService {
         registerProvider(CodexUsageProvider())
         registerProvider(ClaudeUsageProvider())
         registerProvider(JunieUsageProvider())
+        registerProvider(OllamaUsageProvider())
     }
 
     fun registerProvider(provider: UsageProvider) {

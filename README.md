@@ -27,6 +27,7 @@ Configure accounts in **Settings → Tools → Account Usage Toolbar**.
 |----------|------------|------------------|
 | **Claude** | 5-hour window + 7-day window | Auto (`~/.claude/.credentials.json`), Manual (access token), Web API (sessionKey) |
 | **Codex** | Rate limit quota | Auto (`~/.codex/auth.json`), Manual (refresh token) |
+| **Ollama** | Session window + Weekly window | `__Secure-session` cookie from ollama.com/settings |
 | **Z.AI** | Token quota | API key |
 | **Ampcode** | Free credits balance | Auto (`~/.local/share/amp/secrets.json`), Manual (API key) |
 | **Junie** | Request quota | Auto (`~/.junie/token.json`), Manual (API key) |
@@ -44,6 +45,7 @@ Configure multiple AI providers through **Settings → AI Assistant → Agent Pr
 | **Cursor** | Cursor's built-in ACP support (via `agent acp`) | - |
 | **Z.AI** | Z.AI via Anthropic Compatible API | [Register](https://z.ai/subscribe?ic=BCLQG4VJIO) |
 | **OpenRouter** | OpenRouter via Anthropic Compatible API | - |
+| **Ollama** | Ollama Cloud via Anthropic Compatible API | - |
 | **And more...** | MiniMax, Mimo, Moonshot, Requesty.ai, Nano-GPT, AIHubMix, Factory.ai | - |
 
 ### Session Browser
