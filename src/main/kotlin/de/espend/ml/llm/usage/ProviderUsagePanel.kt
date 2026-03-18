@@ -10,9 +10,13 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.rtk.RtkStatsPanel
+import de.espend.ml.llm.rtk.RtkStatsReader
 import de.espend.ml.llm.usage.ui.UsageSettingsConfigurable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.Dimension
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
@@ -33,6 +37,7 @@ class ProviderUsagePanel(
     private var currentPopup: JBPopup? = null
     private var currentProject: Project? = null
     private var isLoading = false
+    private val rtkPanel = RtkStatsPanel()
 
     private val refreshIconLabel = JBLabel(AllIcons.Actions.Refresh)
     private val providerWidgets = mutableMapOf<String, ProviderWidgets>()
@@ -120,6 +125,13 @@ class ProviderUsagePanel(
             }
         }
 
+        if (UsagePlatformRegistry.getInstance().state.showRtkStats) {
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+            add(createSeparator())
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+            add(rtkPanel)
+        }
+
         settingsIconButton.addMouseListener(object : java.awt.event.MouseAdapter() {
             override fun mouseEntered(evt: java.awt.event.MouseEvent) { settingsIconButton.hovered = true; settingsIconButton.repaint() }
             override fun mouseExited(evt: java.awt.event.MouseEvent) { settingsIconButton.hovered = false; settingsIconButton.repaint() }
@@ -144,6 +156,21 @@ class ProviderUsagePanel(
             showCachedResults()
         } else {
             doRefresh(forceRefresh = false)
+        }
+
+        if (UsagePlatformRegistry.getInstance().state.showRtkStats) {
+            loadRtkStats()
+        }
+    }
+
+    private fun loadRtkStats() {
+        scope.launch(Dispatchers.IO) {
+            val days = RtkStatsReader.getLastDays(3)
+            val week = RtkStatsReader.getLast7Days()
+            withContext(Dispatchers.Main) {
+                rtkPanel.load(days, week)
+                currentPopup?.takeIf { !it.isDisposed }?.pack(true, true)
+            }
         }
     }
 

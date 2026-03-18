@@ -1,7 +1,9 @@
 package de.espend.ml.llm.usage.ui
 
+import com.intellij.ide.BrowserUtil
 import com.intellij.ui.AnActionButton
 import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.table.TableView
 import com.intellij.util.IconUtil
@@ -26,12 +28,15 @@ import javax.swing.JComponent
 import javax.swing.JMenuItem
 import javax.swing.JPanel
 import javax.swing.JPopupMenu
+import javax.swing.JSeparator
 import javax.swing.JTable
 import javax.swing.ListSelectionModel
+import javax.swing.SwingConstants
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableCellEditor
 import javax.swing.AbstractCellEditor
+import javax.swing.Box
 
 /**
  * Settings panel for managing usage accounts.
@@ -54,6 +59,10 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         val info: String get() = config.getInfoString()
     }
 
+    private val rtkStatsCheckBox = JCheckBox("Show RTK token savings panel").apply {
+        isOpaque = false
+    }
+
     private val rows: MutableList<UsageRow> = mutableListOf()
 
     private val modelList = com.intellij.util.ui.ListTableModel<UsageRow>(
@@ -72,14 +81,54 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
     }
 
     init {
-        val title = JBLabel("Accounts").apply {
-            font = UIUtil.getLabelFont().deriveFont(java.awt.Font.BOLD)
+        // ── Tools section ────────────────────────────────────────────────
+        add(createSectionHeader("Tools"), GridBagConstraints().apply {
+            gridx = 0; gridy = 0; weightx = 1.0
+            fill = GridBagConstraints.HORIZONTAL
+            insets = JBUI.insets(0, 0, 6, 0)
+        })
+
+        val toolsContent = JPanel(GridBagLayout()).apply {
+            isOpaque = false
+
+            add(rtkStatsCheckBox, GridBagConstraints().apply {
+                gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
+                insets = JBUI.insets(0, 0, 2, 0)
+            })
+
+            val hintFont = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+            val hintRow = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
+                isOpaque = false
+                add(JBLabel("Reads token savings from ~/.local/share/rtk/history.db written by ").apply {
+                    font = hintFont
+                    foreground = UIUtil.getContextHelpForeground()
+                })
+                add(ActionLink("rtk") { BrowserUtil.browse("https://github.com/rtk-ai/rtk") }.apply {
+                    font = hintFont
+                })
+                add(JBLabel(", a transparent CLI proxy that reduces token usage.").apply {
+                    font = hintFont
+                    foreground = UIUtil.getContextHelpForeground()
+                })
+            }
+            add(hintRow, GridBagConstraints().apply {
+                gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; weightx = 1.0
+                fill = GridBagConstraints.HORIZONTAL
+                insets = JBUI.insets(0, 20, 0, 0)
+            })
         }
-        add(title, GridBagConstraints().apply {
-            gridx = 0
-            gridy = 0
-            anchor = GridBagConstraints.WEST
-            insets = JBUI.insetsBottom(6)
+
+        add(toolsContent, GridBagConstraints().apply {
+            gridx = 0; gridy = 1; weightx = 1.0
+            fill = GridBagConstraints.HORIZONTAL
+            insets = JBUI.insets(0, 16, 10, 0)
+        })
+
+        // ── Quota Accounts section ────────────────────────────────────────
+        add(createSectionHeader("Quota Accounts"), GridBagConstraints().apply {
+            gridx = 0; gridy = 2; weightx = 1.0
+            fill = GridBagConstraints.HORIZONTAL
+            insets = JBUI.insets(0, 0, 6, 0)
         })
 
         installColumnSizing()
@@ -89,30 +138,42 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             override fun canCreateElement(): Boolean = true
         })
 
-        toolbarDecorator.setAddAction { button ->
-            showProviderMenu(button.contextComponent, button)
-        }
+        toolbarDecorator.setAddAction { button -> showProviderMenu(button.contextComponent, button) }
         toolbarDecorator.setEditAction { editSelectedRow() }
         toolbarDecorator.setRemoveAction { removeSelectedRow() }
-
         toolbarDecorator.disableUpAction()
         toolbarDecorator.disableDownAction()
 
         add(toolbarDecorator.createPanel(), GridBagConstraints().apply {
-            gridx = 0
-            gridy = 1
+            gridx = 0; gridy = 3
             fill = GridBagConstraints.BOTH
-            weightx = 1.0
-            weighty = 1.0
+            weightx = 1.0; weighty = 1.0
         })
     }
 
-    fun loadFrom(accountStates: List<UsageAccountState>) {
+    private fun createSectionHeader(title: String): JPanel = JPanel(GridBagLayout()).apply {
+        isOpaque = false
+        val label = JBLabel(title).apply {
+            font = UIUtil.getLabelFont().deriveFont(java.awt.Font.BOLD)
+        }
+        add(label, GridBagConstraints().apply {
+            gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
+        })
+        add(JSeparator(SwingConstants.HORIZONTAL), GridBagConstraints().apply {
+            gridx = 1; gridy = 0; weightx = 1.0
+            fill = GridBagConstraints.HORIZONTAL
+            insets = JBUI.insetsLeft(8)
+        })
+    }
+
+    fun loadFrom(registryState: UsagePlatformRegistry.State) {
+        rtkStatsCheckBox.isSelected = registryState.showRtkStats
+
         rows.clear()
         while (modelList.rowCount > 0) modelList.removeRow(0)
 
         val service = ProviderUsageService.getInstance()
-        accountStates.forEach { state ->
+        registryState.accounts.forEach { state ->
             val config = service.getProvider(state.providerId)?.fromState(state) ?: return@forEach
             rows.add(UsageRow(config))
         }
@@ -121,11 +182,13 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         if (modelList.rowCount > 0) tableView.setRowSelectionInterval(0, 0)
     }
 
-    fun isModified(accountStates: List<UsageAccountState>): Boolean {
-        return toAccountStates() != accountStates
+    fun isModified(registryState: UsagePlatformRegistry.State): Boolean {
+        if (rtkStatsCheckBox.isSelected != registryState.showRtkStats) return true
+        return toAccountStates() != registryState.accounts
     }
 
     fun applyTo(registryState: UsagePlatformRegistry.State) {
+        registryState.showRtkStats = rtkStatsCheckBox.isSelected
         registryState.accounts = toAccountStates().toMutableList()
     }
 
