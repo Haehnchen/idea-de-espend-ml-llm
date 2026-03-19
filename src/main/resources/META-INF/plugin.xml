@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
     <id>de.espend.ml.llm</id>
-    <version>0.7.4</version>
+    <version>0.8.0</version>
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
@@ -47,6 +47,13 @@
             <tr><th>Tool</th><th>Description</th></tr>
             <tr><td><b>search_ai_sessions</b></td><td>Search across all AI sessions for a query string. Returns matching sessions with text snippets.</td></tr>
             <tr><td><b>get_ai_session</b></td><td>Fetch the full conversation of a session by its ID.</td></tr>
+        </table>
+
+        <h2>Tools</h2>
+        <p>Additional tools integrated into the plugin:</p>
+        <table>
+            <tr><th>Tool</th><th>Description</th></tr>
+            <tr><td><b>RTK Savings</b></td><td>Token savings statistics from RTK (Rust Token Killer) CLI. Shows yesterday, today, and 7-day totals in the Usage popup.</td></tr>
         </table>
 
         <h2>Using AI Providers</h3>

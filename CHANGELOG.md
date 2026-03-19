@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.8.0
+* Add RTK token savings stats panel to usage popup (Daniel Espendiller)
+* Add support for Ollama usage provider (Daniel Espendiller)
+
 # 0.7.4
 * Implement caching mechanism for usage data and improve UI handling of checkbox listeners (Daniel Espendiller)
 * Support cancellation for commit message generation and improve UI handling (Daniel Espendiller)

@@ -76,6 +76,14 @@ The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing 
 | **`search_ai_sessions`** | Search across all AI sessions for a query string. Returns matching sessions with text snippets. |
 | **`get_ai_session`** | Fetch the full conversation of a session by its ID. |
 
+## Tools
+
+Additional tools integrated into the plugin:
+
+| Tool | Description |
+|------|-------------|
+| **RTK Savings** | Token savings statistics from RTK (Rust Token Killer) CLI. Shows yesterday, today, and 7-day totals in the Usage popup. |
+
 ## Installation
 
 1. In IntelliJ IDEA, go to **File → Settings → Plugins**
