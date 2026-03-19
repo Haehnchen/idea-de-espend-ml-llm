@@ -4,7 +4,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
-    id("org.jetbrains.intellij.platform") version "2.11.0"
+    id("org.jetbrains.intellij.platform") version "2.13.1"
 }
 
 group = "de.espend.ml.llm"
@@ -19,7 +19,7 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        intellijIdeaUltimate("2025.3.3")
+        intellijIdeaUltimate("2025.3.4")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
         bundledPlugins("com.intellij.mcpServer", "org.intellij.plugins.markdown")
