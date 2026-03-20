@@ -260,10 +260,7 @@ class AmpcodeUsageProvider : UsageProvider {
      * @return A fully configured AmpcodeUsageAccountConfig instance
      */
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return AmpcodeUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return AmpcodeUsageAccountConfig(state).apply {
             credentialMode = state.getString("credentialMode", "auto")
             apiKey = state.getString("apiKey")
         }
@@ -276,10 +273,10 @@ class AmpcodeUsageProvider : UsageProvider {
      * @return A UsageAccountState ready for storage
      */
     override fun toState(config: UsageAccountConfig): UsageAccountState {
-        val ampcodeConfig = config as AmpcodeUsageAccountConfig
-        return UsageAccountState(id = ampcodeConfig.id, providerId = PROVIDER_ID, label = ampcodeConfig.name, isEnabled = ampcodeConfig.isEnabled).apply {
-            putString("credentialMode", ampcodeConfig.credentialMode)
-            putString("apiKey", ampcodeConfig.apiKey)
+        val c = config as AmpcodeUsageAccountConfig
+        return createState(c) {
+            putString("credentialMode", c.credentialMode)
+            putString("apiKey", c.apiKey)
         }
     }
 
@@ -382,7 +379,7 @@ class AmpcodeUsageProvider : UsageProvider {
      * - auto: Automatically load API key from ~/.local/share/amp/secrets.json
      * - manual: Use a user-provided API key
      */
-    class AmpcodeUsageAccountConfig : UsageAccountConfig() {
+    class AmpcodeUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"  // "auto" or "manual"
         var apiKey: String = ""

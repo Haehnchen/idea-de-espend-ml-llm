@@ -178,18 +178,15 @@ class ZaiUsageProvider : UsageProvider {
     }
 
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return ZaiUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return ZaiUsageAccountConfig(state).apply {
             apiKey = state.getString("apiKey")
         }
     }
 
     override fun toState(config: UsageAccountConfig): UsageAccountState {
-        val zaiConfig = config as ZaiUsageAccountConfig
-        return UsageAccountState(id = zaiConfig.id, providerId = PROVIDER_ID, label = zaiConfig.name, isEnabled = zaiConfig.isEnabled).apply {
-            putString("apiKey", zaiConfig.apiKey)
+        val c = config as ZaiUsageAccountConfig
+        return createState(c) {
+            putString("apiKey", c.apiKey)
         }
     }
 
@@ -198,7 +195,7 @@ class ZaiUsageProvider : UsageProvider {
         const val PROVIDER_NAME = "Z.AI"
     }
 
-    class ZaiUsageAccountConfig : UsageAccountConfig() {
+    class ZaiUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var apiKey: String = ""
 

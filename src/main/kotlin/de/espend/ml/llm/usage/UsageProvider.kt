@@ -96,6 +96,20 @@ interface UsageProvider {
     fun toState(config: UsageAccountConfig): UsageAccountState
 
     /**
+     * Create a [UsageAccountState] with common fields from [config].
+     * [applyProperties] is called to set provider-specific properties on the state.
+     */
+    fun createState(config: UsageAccountConfig, applyProperties: UsageAccountState.() -> Unit): UsageAccountState {
+        return UsageAccountState(
+            id = config.id,
+            providerId = providerInfo.providerId,
+            label = config.name,
+            isEnabled = config.isEnabled,
+            enableStatusBar = config.enableStatusBar
+        ).apply(applyProperties)
+    }
+
+    /**
      * Get panel layout info for a specific account.
      *
      * @param account The account configuration

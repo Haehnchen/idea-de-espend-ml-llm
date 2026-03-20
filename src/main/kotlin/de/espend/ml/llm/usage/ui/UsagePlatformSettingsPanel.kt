@@ -212,6 +212,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
         row.config.name = panel.nameField.text.trim()
         row.config.isEnabled = panel.enabledCheckBox.isSelected
+        row.config.enableStatusBar = panel.enableStatusBarCheckBox.isSelected
 
         val newRow = UsageRow(row.config)
         modelList.removeRow(index)
@@ -249,6 +250,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
                 defaultConfig.name = panel.nameField.text.trim()
                 defaultConfig.isEnabled = panel.enabledCheckBox.isSelected
+                defaultConfig.enableStatusBar = panel.enableStatusBarCheckBox.isSelected
 
                 modelList.addRow(UsageRow(defaultConfig))
                 tableView.setRowSelectionInterval(modelList.rowCount - 1, modelList.rowCount - 1)

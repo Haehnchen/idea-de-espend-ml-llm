@@ -272,7 +272,7 @@ class JunieUsageProvider : UsageProvider {
         }
 
         return if (licenseName != null) {
-            "$licenseName | $balanceStr"
+            "$licenseName \u00B7 $balanceStr"
         } else {
             balanceStr
         }
@@ -317,10 +317,7 @@ class JunieUsageProvider : UsageProvider {
     // -------------------------------------------------------------------------
 
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return JunieUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return JunieUsageAccountConfig(state).apply {
             credentialMode = state.getString("credentialMode", "auto")
             apiKey = state.getString("apiKey")
         }
@@ -328,7 +325,7 @@ class JunieUsageProvider : UsageProvider {
 
     override fun toState(config: UsageAccountConfig): UsageAccountState {
         val c = config as JunieUsageAccountConfig
-        return UsageAccountState(id = c.id, providerId = PROVIDER_ID, label = c.name, isEnabled = c.isEnabled).apply {
+        return createState(c) {
             putString("credentialMode", c.credentialMode)
             putString("apiKey", c.apiKey)
         }
@@ -344,7 +341,7 @@ class JunieUsageProvider : UsageProvider {
         private const val USAGE_URL = "https://ingrazzio-cloud-prod.labs.jb.gg/auth/test"
     }
 
-    class JunieUsageAccountConfig : UsageAccountConfig() {
+    class JunieUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"
         var apiKey: String = ""

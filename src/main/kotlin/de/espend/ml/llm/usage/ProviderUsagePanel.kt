@@ -129,6 +129,7 @@ class ProviderUsagePanel(
             add(Box.createVerticalStrut(JBUI.scale(8)))
             add(createSeparator())
             add(Box.createVerticalStrut(JBUI.scale(8)))
+            rtkPanel.initEmpty()
             add(rtkPanel)
         }
 
@@ -148,7 +149,10 @@ class ProviderUsagePanel(
         })
     }
 
-    fun start(popup: JBPopup, project: Project?) {
+    fun start(
+        popup: JBPopup,
+        project: Project?
+    ) {
         currentPopup = popup
         currentProject = project
 
@@ -248,7 +252,14 @@ class ProviderUsagePanel(
             if (icon != null) this.icon = icon
             alignmentX = 0f
         }
-        add(nameLabel)
+
+        val headerRow = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            isOpaque = false
+            alignmentX = 0f
+            add(nameLabel)
+        }
+        add(headerRow)
         add(Box.createVerticalStrut(JBUI.scale(4)))
 
         val entryWidgets = mutableListOf<EntryWidgets>()

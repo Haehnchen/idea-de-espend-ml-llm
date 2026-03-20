@@ -38,6 +38,7 @@ class UsageFormPanel(
 ) : JPanel(GridBagLayout()) {
 
     val enabledCheckBox = JCheckBox("Account enabled", config.isEnabled)
+    val enableStatusBarCheckBox = JCheckBox("Show in status bar", config.enableStatusBar)
     val nameField = JBTextField(config.name)
 
     /**
@@ -102,6 +103,29 @@ class UsageFormPanel(
             weightx = 1.0
             fill = GridBagConstraints.HORIZONTAL
             insets = JBUI.insets(2, 2, 2, 2)
+        })
+        row++
+
+        // Statusbar checkbox (with left padding)
+        val hintFont = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+        enableStatusBarCheckBox.font = smallFont
+        contentPanel.add(enableStatusBarCheckBox, GridBagConstraints().apply {
+            gridx = 0
+            gridy = row
+            gridwidth = 2
+            anchor = GridBagConstraints.WEST
+            insets = JBUI.insets(4, 24, 0, 2)
+        })
+        row++
+        contentPanel.add(JBLabel("Display usage percentage in the IDE status bar").apply {
+            font = hintFont
+            foreground = UIUtil.getContextHelpForeground()
+        }, GridBagConstraints().apply {
+            gridx = 0
+            gridy = row
+            gridwidth = 2
+            anchor = GridBagConstraints.WEST
+            insets = JBUI.insets(0, 44, 2, 2)
         })
         row++
 

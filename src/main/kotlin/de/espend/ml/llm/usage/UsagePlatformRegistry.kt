@@ -51,4 +51,14 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
     fun updateAccountProperties(accountId: String, updates: Map<String, String>) {
         myState.accounts.find { it.id == accountId }?.properties?.putAll(updates)
     }
+
+    fun isShowInStatusBar(accountId: String): Boolean =
+        myState.accounts.find { it.id == accountId }?.enableStatusBar ?: false
+
+    fun setShowInStatusBar(accountId: String, value: Boolean) {
+        myState.accounts.find { it.id == accountId }?.enableStatusBar = value
+    }
+
+    fun hasAnyStatusBarAccount(): Boolean =
+        myState.accounts.any { it.enableStatusBar }
 }
