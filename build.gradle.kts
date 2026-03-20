@@ -1,3 +1,7 @@
+import java.util.jar.JarFile
+import javax.xml.parsers.DocumentBuilderFactory
+import org.gradle.api.attributes.Attribute
+
 fun properties(key: String) = project.findProperty(key).toString()
 
 plugins {
@@ -85,6 +89,75 @@ tasks {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
+// Helper: parse plugin.xml InputStream → (pluginId, pluginName)
+fun parsePluginXml(stream: java.io.InputStream): Pair<String?, String?> {
+    return try {
+        val factory = DocumentBuilderFactory.newInstance().also {
+            it.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            it.isValidating = false
+        }
+        val doc = factory.newDocumentBuilder().parse(stream)
+        val id = doc.getElementsByTagName("id").item(0)?.textContent?.trim()
+        val name = doc.getElementsByTagName("name").item(0)?.textContent?.trim()
+        id to name
+    } catch (_: Exception) {
+        null to null
+    }
+}
+
+// Helper: find plugin.xml in JARs under plugin dir → (pluginId, pluginName)
+fun readPluginXmlFromDir(pluginDir: File): Pair<String?, String?> {
+    val libDir = pluginDir.resolve("lib").takeIf { it.exists() } ?: return null to null
+    libDir.listFiles { f -> f.extension == "jar" }
+        ?.sortedBy { it.name }
+        ?.forEach { jar ->
+            try {
+                JarFile(jar).use { jf ->
+                    val entry = jf.getJarEntry("META-INF/plugin.xml") ?: return@use
+                    val (id, name) = parsePluginXml(jf.getInputStream(entry))
+                    if (id != null) return id to name
+                }
+            } catch (_: Exception) {}
+        }
+    return null to null
+}
+
+
+// Print all plugin dependencies (bundled + compatible) with ID, name, and path
+tasks.register("printPluginDependencies") {
+    group = "intellij"
+    description = "Print all bundled and compatible plugins with ID, name, and path"
+    notCompatibleWithConfigurationCache("Reads plugin directories and resolves configurations at execution time")
+
+    doLast {
+        val extractedAttr = Attribute.of("intellijPlatformExtracted", Boolean::class.javaObjectType)
+
+        // type\tid\tname\tpath  (tab-separated, pipe with -q flag)
+        fun printPlugin(type: String, id: String?, name: String?, dir: File) =
+            println("$type\t${id ?: ""}\t${name ?: ""}\t${dir.absolutePath}")
+
+        intellijPlatform.platformPath.resolve("plugins").toFile()
+            .listFiles()
+            ?.filter { it.isDirectory }
+            ?.mapNotNull { dir -> readPluginXmlFromDir(dir).let { (id, name) -> if (id != null) Triple(id, name, dir) else null } }
+            ?.sortedBy { it.first }
+            ?.forEach { (id, name, dir) -> printPlugin("bundled", id, name, dir) }
+
+        configurations.getByName("intellijPlatformPluginDependency")
+            .incoming
+            .artifactView { attributes { attribute(extractedAttr, true) } }
+            .files
+            .sortedBy { it.name }
+            .forEach { extractedDir ->
+                val (id, name) = extractedDir.listFiles()
+                    ?.filter { it.isDirectory }
+                    ?.firstNotNullOfOrNull { subDir -> readPluginXmlFromDir(subDir).let { (i, n) -> if (i != null) i to n else null } }
+                    ?: (null to null)
+                printPlugin("compatible", id, name, extractedDir)
+            }
     }
 }
 

@@ -431,10 +431,7 @@ class CodexUsageProvider : UsageProvider {
     // -------------------------------------------------------------------------
 
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return CodexUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return CodexUsageAccountConfig(state).apply {
             credentialMode = state.getString("credentialMode", "auto")
             cachedAccessToken = state.getString("cachedAccessToken")
             cachedRefreshToken = state.getString("cachedRefreshToken")
@@ -443,7 +440,7 @@ class CodexUsageProvider : UsageProvider {
 
     override fun toState(config: UsageAccountConfig): UsageAccountState {
         val c = config as CodexUsageAccountConfig
-        return UsageAccountState(id = c.id, providerId = PROVIDER_ID, label = c.name, isEnabled = c.isEnabled).apply {
+        return createState(c) {
             putString("credentialMode", c.credentialMode)
             putString("cachedAccessToken", c.cachedAccessToken)
             putString("cachedRefreshToken", c.cachedRefreshToken)
@@ -468,7 +465,7 @@ class CodexUsageProvider : UsageProvider {
         val refreshToken: String?
     )
 
-    class CodexUsageAccountConfig : UsageAccountConfig() {
+    class CodexUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"       // "auto" or "manual"
         var cachedAccessToken: String = ""        // internal: updated after each token refresh

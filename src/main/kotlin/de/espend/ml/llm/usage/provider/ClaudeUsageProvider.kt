@@ -650,10 +650,7 @@ class ClaudeUsageProvider : UsageProvider {
     // -------------------------------------------------------------------------
 
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return ClaudeUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return ClaudeUsageAccountConfig(state).apply {
             credentialMode = state.getString("credentialMode", "auto")
             manualToken = state.getString("manualToken")
             sessionKey = state.getString("sessionKey")
@@ -665,7 +662,7 @@ class ClaudeUsageProvider : UsageProvider {
 
     override fun toState(config: UsageAccountConfig): UsageAccountState {
         val c = config as ClaudeUsageAccountConfig
-        return UsageAccountState(id = c.id, providerId = PROVIDER_ID, label = c.name, isEnabled = c.isEnabled).apply {
+        return createState(c) {
             putString("credentialMode", c.credentialMode)
             putString("manualToken", c.manualToken)
             putString("sessionKey", c.sessionKey)
@@ -699,7 +696,7 @@ class ClaudeUsageProvider : UsageProvider {
         val expiresAt: Long?
     )
 
-    class ClaudeUsageAccountConfig : UsageAccountConfig() {
+    class ClaudeUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var credentialMode: String = "auto"       // "auto", "manual", or "web"
         var manualToken: String = ""              // user-provided access token (manual mode)

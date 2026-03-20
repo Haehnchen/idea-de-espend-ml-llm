@@ -117,6 +117,11 @@
         <!-- Agent Popup Enhancement - adds Agent Providers to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.ProviderAgentPopupEnhancementProvider"/>
 
+        <!-- Status bar widget for AI provider usage -->
+        <statusBarWidgetFactory implementation="de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidgetFactory"
+                                id="de.espend.ml.llm.ProviderUsageWidget"
+                                order="before Position"/>
+
         <!-- Session Browser Tool Window -->
         <toolWindow id="Session Browser"
                     factoryClass="de.espend.ml.llm.session.SessionBrowserToolWindowFactory"

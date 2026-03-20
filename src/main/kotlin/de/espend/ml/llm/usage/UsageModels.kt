@@ -108,11 +108,12 @@ data class ProviderUsageResponse(
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
-abstract class UsageAccountConfig {
+abstract class UsageAccountConfig(state: UsageAccountState? = null) {
     abstract val providerId: String
-    var id: String = generateAccountId()
-    var name: String = ""
-    var isEnabled: Boolean = true
+    var id: String = state?.id ?: generateAccountId()
+    var name: String = state?.label ?: ""
+    var isEnabled: Boolean = state?.isEnabled ?: true
+    var enableStatusBar: Boolean = state?.enableStatusBar ?: false
 
     open fun getInfoString(): String = ""
 
@@ -135,6 +136,7 @@ data class UsageAccountState(
     var providerId: String = "",
     var label: String = "",
     var isEnabled: Boolean = true,
+    var enableStatusBar: Boolean = false,
     var properties: MutableMap<String, String> = mutableMapOf()
 ) {
     fun getString(key: String, default: String = ""): String = properties[key] ?: default

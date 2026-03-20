@@ -245,17 +245,14 @@ class OllamaUsageProvider : UsageProvider {
     // -------------------------------------------------------------------------
 
     override fun fromState(state: UsageAccountState): UsageAccountConfig {
-        return OllamaUsageAccountConfig().apply {
-            id = state.id
-            name = state.label
-            isEnabled = state.isEnabled
+        return OllamaUsageAccountConfig(state).apply {
             sessionToken = state.getString("sessionToken")
         }
     }
 
     override fun toState(config: UsageAccountConfig): UsageAccountState {
         val c = config as OllamaUsageAccountConfig
-        return UsageAccountState(id = c.id, providerId = PROVIDER_ID, label = c.name, isEnabled = c.isEnabled).apply {
+        return createState(c) {
             putString("sessionToken", c.sessionToken)
         }
     }
@@ -270,7 +267,7 @@ class OllamaUsageProvider : UsageProvider {
         private const val SETTINGS_URL = "https://ollama.com/settings"
     }
 
-    class OllamaUsageAccountConfig : UsageAccountConfig() {
+    class OllamaUsageAccountConfig(state: UsageAccountState? = null) : UsageAccountConfig(state) {
         override val providerId: String = PROVIDER_ID
         var sessionToken: String = ""
 
