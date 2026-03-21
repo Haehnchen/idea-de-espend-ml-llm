@@ -32,7 +32,7 @@ import javax.swing.JPanel
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
-class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusBarWidget {
+class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : CustomStatusBarWidget {
 
     private val contentPanel = createContentPanel()
     private var scheduledFuture: ScheduledFuture<*>? = null
@@ -49,6 +49,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
     override fun getComponent(): JComponent = contentPanel
 
     override fun install(statusBar: StatusBar) {
+        scheduledFuture?.cancel(false)
         fetchAndUpdate()
         scheduledFuture = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
             { fetchAndUpdate() },
@@ -111,6 +112,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                 }
             }
 
+
             withContext(Dispatchers.Main) {
                 rebuildPanel(results.map { result ->
                     val provider = service.getProvider(result.providerId)
@@ -162,6 +164,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
          * Handles both widget availability (install/remove) and data refresh.
          */
         fun refreshWidget(project: Project) {
+            @Suppress("IncorrectServiceRetrieving") // StatusBarWidgetsManager is @Service(PROJECT) — false positive
             project.getService(StatusBarWidgetsManager::class.java)
                 ?.updateWidget(ProviderUsageStatusBarWidgetFactory::class.java)
             com.intellij.openapi.wm.WindowManager.getInstance().getStatusBar(project)
