@@ -59,7 +59,7 @@ object AmpSessionFinder {
             .mapNotNull { file ->
                 try {
                     parseSessionFile(file)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }
@@ -77,7 +77,7 @@ object AmpSessionFinder {
             .mapNotNull { file ->
                 try {
                     parseSessionFile(file)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }
@@ -96,7 +96,7 @@ object AmpSessionFinder {
     /**
      * Parses a session file to extract metadata.
      */
-    private fun parseSessionFile(file: Path): AmpSession? {
+    private fun parseSessionFile(file: Path): AmpSession {
         val content = file.readText()
         val json = JSON.parseToJsonElement(content).jsonObject
 

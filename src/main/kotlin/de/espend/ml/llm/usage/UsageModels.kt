@@ -142,7 +142,4 @@ data class UsageAccountState(
     fun getString(key: String, default: String = ""): String = properties[key] ?: default
     fun putString(key: String, value: String) { properties[key] = value }
 
-    fun getBool(key: String, default: Boolean = false): Boolean =
-        properties[key]?.toBooleanStrictOrNull() ?: default
-    fun putBool(key: String, value: Boolean) { properties[key] = value.toString() }
 }

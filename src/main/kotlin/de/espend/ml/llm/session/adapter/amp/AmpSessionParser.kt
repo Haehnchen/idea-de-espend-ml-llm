@@ -6,7 +6,6 @@ import de.espend.ml.llm.session.model.MessageContent
 import de.espend.ml.llm.session.model.ParsedMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -29,7 +28,7 @@ object AmpSessionParser {
         return try {
             val content = file.readText()
             parseContent(content)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -75,7 +74,7 @@ object AmpSessionParser {
                 messages = messages,
                 metadata = metadata
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -90,9 +89,9 @@ object AmpSessionParser {
         messagesArray.forEachIndexed { index, messageElement ->
             try {
                 val message = messageElement.jsonObject
-                val parsedMessages = parseMessage(index.toString(), message)
+                val parsedMessages = parseMessage(message)
                 messages.addAll(parsedMessages)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Skip invalid messages
             }
         }
@@ -104,7 +103,7 @@ object AmpSessionParser {
      * Parses a single message. Returns a list because assistant messages
      * can contain multiple tool_use blocks that should be separate messages.
      */
-    private fun parseMessage(key: String, message: JsonObject): List<ParsedMessage> {
+    private fun parseMessage(message: JsonObject): List<ParsedMessage> {
         val role = message["role"]?.jsonPrimitive?.content ?: return emptyList()
 
         // Extract timestamp from usage.timestamp if available, otherwise empty
@@ -221,7 +220,7 @@ object AmpSessionParser {
 
         // Add thinking block at the beginning if present
         if (thinkingBlock != null) {
-            result.add(0, thinkingBlock!!)
+            result.add(0, thinkingBlock)
         }
 
         // Add any remaining text blocks
@@ -249,7 +248,7 @@ object AmpSessionParser {
     private fun parseToolUse(
         timestamp: String,
         content: JsonObject
-    ): ParsedMessage.ToolUse? {
+    ): ParsedMessage.ToolUse {
         val id = content["id"]?.jsonPrimitive?.content
         val name = content["name"]?.jsonPrimitive?.content ?: "tool"
         val input = content["input"]?.jsonObject

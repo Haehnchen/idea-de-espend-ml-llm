@@ -47,7 +47,7 @@ object HtmlBuilder {
             val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy • HH:mm")
                 .withZone(java.time.ZoneId.systemDefault())
             formatter.format(instant)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             timestamp
         }
     }
@@ -61,7 +61,7 @@ object HtmlBuilder {
             val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy • HH:mm")
                 .withZone(java.time.ZoneId.systemDefault())
             formatter.format(instant)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             timestamp.toString()
         }
     }

@@ -1,7 +1,6 @@
 package de.espend.ml.llm.usage.provider
 
 import com.google.gson.JsonParser
-import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
@@ -587,36 +586,6 @@ class ClaudeUsageProvider : UsageProvider {
     }
 
     // -------------------------------------------------------------------------
-    // Token persistence
-    // -------------------------------------------------------------------------
-
-    /** Persist refreshed tokens in plugin state (never modify the CLI credential file). */
-    private fun persistRefreshedToken(config: ClaudeUsageAccountConfig, refreshed: Credentials) {
-        config.cachedAccessToken = refreshed.accessToken
-        config.cachedRefreshToken = refreshed.refreshToken ?: config.cachedRefreshToken
-        config.cachedExpiresAt = refreshed.expiresAt ?: config.cachedExpiresAt
-        UsagePlatformRegistry.getInstance().updateAccountProperties(
-            config.id,
-            buildMap {
-                put("cachedAccessToken", refreshed.accessToken)
-                if (refreshed.refreshToken != null) put("cachedRefreshToken", refreshed.refreshToken)
-                if (refreshed.expiresAt != null) put("cachedExpiresAt", refreshed.expiresAt.toString())
-            }
-        )
-    }
-
-    // -------------------------------------------------------------------------
-    // Token expiry check
-    // -------------------------------------------------------------------------
-
-    /** Returns true if the token is expired or expiring within 5 minutes. */
-    private fun needsRefresh(expiresAt: Long?): Boolean {
-        expiresAt ?: return true
-        val bufferMs = 5 * 60 * 1000L
-        return System.currentTimeMillis() + bufferMs >= expiresAt
-    }
-
-    // -------------------------------------------------------------------------
     // File credential I/O (auto mode)
     // -------------------------------------------------------------------------
 
@@ -679,11 +648,9 @@ class ClaudeUsageProvider : UsageProvider {
     companion object {
         const val PROVIDER_ID = "claude"
         const val PROVIDER_NAME = "Claude"
-        private const val FALLBACK_VERSION = "2.1.0"
         private const val USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
         private const val REFRESH_URL = "https://platform.claude.com/v1/oauth/token"
         private const val CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-        private const val SCOPES = "user:profile user:inference user:sessions:claude_code"
         // Web API endpoints (sessionKey cookie authentication)
         private const val WEB_BASE_URL = "https://claude.ai/api"
         private const val WEB_ORGANIZATIONS_URL = "https://claude.ai/api/organizations"

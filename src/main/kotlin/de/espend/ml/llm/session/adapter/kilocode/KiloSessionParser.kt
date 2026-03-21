@@ -43,7 +43,7 @@ object KiloSessionParser {
             val taskId = taskDir.name
             val finalSessionId = sessionId ?: taskId
 
-            val (messages, sessionMetadata) = parseContent(uiMessages, apiHistory, metadata, taskPath)
+            val (messages, sessionMetadata) = parseContent(uiMessages, apiHistory, metadata)
             val title = extractTitle(uiMessages, apiHistory) ?: "Kilo Session ${finalSessionId.take(8)}"
 
             SessionDetail(
@@ -63,8 +63,7 @@ object KiloSessionParser {
     fun parseContent(
         uiMessages: JsonArray,
         apiHistory: JsonArray,
-        metadata: JsonObject,
-        taskPath: String
+        metadata: JsonObject
     ): Pair<List<ParsedMessage>, SessionMetadata> {
         val messages = mutableListOf<ParsedMessage>()
         var firstTimestamp: Long? = null

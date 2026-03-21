@@ -19,16 +19,6 @@ import kotlin.io.path.readText
 import java.nio.file.Path as JavaPath
 
 /**
- * Project info stored by OpenCode.
- */
-@Serializable
-data class OpenCodeProjectInfo(
-    val id: String,
-    val worktree: String,
-    val vcs: String? = null
-)
-
-/**
  * Session data stored by OpenCode.
  */
 @Serializable
@@ -274,7 +264,7 @@ object OpenCodeSessionParser {
                 val content = partFile.readText()
                 val partData = JSON.decodeFromString<OpenCodePartData>(content)
                 parts.add(partData)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Skip failed parts
             }
         }
@@ -515,7 +505,7 @@ object OpenCodeSessionParser {
         return try {
             val instant = Instant.ofEpochMilli(epochMillis)
             DateTimeFormatter.ISO_INSTANT.format(instant)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }

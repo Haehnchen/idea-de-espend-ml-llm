@@ -67,7 +67,7 @@ object OpenCodeSessionFinder {
                             messageCount = msgCount
                         )
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Skip invalid sessions
                 }
             }
@@ -94,7 +94,7 @@ object OpenCodeSessionFinder {
                     if (session.id == sessionId) {
                         return sessionFile
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Continue searching
                 }
             }
@@ -113,7 +113,7 @@ object OpenCodeSessionFinder {
         }
         return try {
             sessionMessageDir.listDirectoryEntries("*.json").size
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0
         }
     }

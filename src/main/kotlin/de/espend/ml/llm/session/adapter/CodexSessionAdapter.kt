@@ -72,7 +72,7 @@ class CodexSessionAdapter(private val project: Project) {
     private fun parseTimestamp(timestamp: String): Long {
         return try {
             java.time.Instant.parse(timestamp).toEpochMilli()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0L
         }
     }

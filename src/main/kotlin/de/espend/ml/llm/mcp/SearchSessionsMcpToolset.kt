@@ -7,7 +7,6 @@ import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.mcpFail
 import com.intellij.mcpserver.project
-import de.espend.ml.llm.mcp.SessionSearchService
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.serialization.json.*
 

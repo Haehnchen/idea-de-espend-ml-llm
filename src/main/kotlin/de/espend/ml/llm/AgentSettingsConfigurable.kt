@@ -13,7 +13,6 @@ import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import javax.swing.*
-import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 
 /**
@@ -236,46 +235,6 @@ class AgentSettingsConfigurable : Configurable {
             val providerInfo = ProviderConfig.findProviderInfo(provider)
             val providerName = providerInfo?.label ?: provider
             val providerIcon = providerInfo?.icon?.let { PluginIcons.scaleIcon(it, 16) }
-
-            // Helper to create description panel with optional register link after provider name
-            // Format: "$providerName (Register) rest of description..." where Register is clickable
-            fun createDescriptionPanel(description: String, registerUrl: String?): JPanel {
-                return JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
-                    isOpaque = false
-                    
-                    if (registerUrl != null) {
-                        // Show: "ProviderName (Register) rest of description"
-                        add(JBLabel("$providerName ").apply {
-                            foreground = UIUtil.getContextHelpForeground()
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        })
-                        add(JBLabel("(").apply {
-                            foreground = UIUtil.getContextHelpForeground()
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        })
-                        val registerLink = ActionLink("Register") { BrowserUtil.browse(registerUrl) }.apply {
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        }
-                        add(registerLink)
-                        add(JBLabel(") ").apply {
-                            foreground = UIUtil.getContextHelpForeground()
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        })
-                        // Add the rest of description without the provider name prefix
-                        val restOfDesc = description.removePrefix(providerName).trimStart()
-                        add(JBLabel(restOfDesc).apply {
-                            foreground = UIUtil.getContextHelpForeground()
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        })
-                    } else {
-                        // No register URL, just show the full description
-                        add(JBLabel(description).apply {
-                            foreground = UIUtil.getContextHelpForeground()
-                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-                        })
-                    }
-                }
-            }
 
             // Create header with checkbox, icon, and text
             enabledCheckbox = JBCheckBox("", initialConfig?.isEnabled ?: false)

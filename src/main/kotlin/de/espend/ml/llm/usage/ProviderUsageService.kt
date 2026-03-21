@@ -41,8 +41,6 @@ class ProviderUsageService {
         providers[provider.providerInfo.providerId] = provider
     }
 
-    fun hasProvider(providerId: String): Boolean = providers.containsKey(providerId)
-
     fun getProvider(providerId: String): UsageProvider? = providers[providerId]
 
     fun getAllProviders(): Collection<UsageProvider> = providers.values

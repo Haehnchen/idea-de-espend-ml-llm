@@ -34,8 +34,8 @@ object JsHandlers {
 
         return buildString {
             if (!isStandalone) {
-                val routerCall = jsQueryRouter!!.inject("href")
-                val cursorCall = jsQueryCursor!!.inject("isClickable")
+                val routerCall = jsQueryRouter.inject("href")
+                val cursorCall = jsQueryCursor.inject("isClickable")
 
                 // Link handler (JCEF only)
                 appendLine("// Centralized link handler - intercepts all anchor clicks")

@@ -47,7 +47,7 @@ object CodexSessionParser {
                 messages = messages,
                 metadata = metadata
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

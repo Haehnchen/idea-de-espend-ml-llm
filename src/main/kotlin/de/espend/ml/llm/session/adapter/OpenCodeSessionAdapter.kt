@@ -165,6 +165,7 @@ data class RawOpenCodeMessage(
  * OpenCode stores messages in storage/message/{sessionId}/ and parts in storage/part/{messageId}/.
  * This function returns a path object that resolves "message" and "part" to the correct locations.
  */
+@Suppress("JavaDefaultMethodsNotOverriddenByDelegation")
 fun OpenCodeStorageLayout(storageDir: JavaPath, sessionId: String): JavaPath {
     return object : JavaPath by storageDir {
         override fun resolve(other: String): JavaPath = when (other) {
@@ -426,7 +427,7 @@ class OpenCodeSessionAdapter(private val project: Project) {
             return try {
                 val instant = Instant.ofEpochMilli(epochMillis)
                 DateTimeFormatter.ISO_INSTANT.format(instant)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 ""
             }
         }
@@ -840,7 +841,7 @@ class OpenCodeSessionAdapter(private val project: Project) {
         return try {
             val instant = Instant.ofEpochMilli(epochMillis)
             DateTimeFormatter.ISO_INSTANT.format(instant)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }

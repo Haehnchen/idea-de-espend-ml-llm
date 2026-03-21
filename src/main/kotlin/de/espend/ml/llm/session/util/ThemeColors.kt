@@ -20,7 +20,7 @@ object ThemeColors {
             val jbColorClass = Class.forName("com.intellij.ui.JBColor")
             val isBrightMethod = jbColorClass.getMethod("isBright")
             !(isBrightMethod.invoke(null) as Boolean)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Not running in IntelliJ - default to dark theme
             true
         }

@@ -40,7 +40,7 @@ object ClaudeSessionParser {
                 messages = messages,
                 metadata = metadata
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -328,9 +328,7 @@ object ClaudeSessionParser {
         var hasOnlyThinking = true
         var thinkingContent: String? = null
 
-        var hasText = false
         var hasToolUse = false
-        var hasThinking = false
 
         val contentBlocks = mutableListOf<MessageContent>()
         // Map to collect tool results by their tool_use_id within the same assistant message
@@ -341,14 +339,12 @@ object ClaudeSessionParser {
             when (val itemType = obj["type"]?.jsonPrimitive?.content) {
                 "text" -> {
                     hasOnlyThinking = false
-                    hasText = true
                     val text = obj["text"]?.jsonPrimitive?.content ?: ""
                     if (text.isNotEmpty()) {
                         contentBlocks.add(MessageContent.Markdown(text))
                     }
                 }
                 "thinking" -> {
-                    hasThinking = true
                     val thinking = obj["thinking"]?.jsonPrimitive?.content
                     if (thinking != null) {
                         thinkingContent = thinking

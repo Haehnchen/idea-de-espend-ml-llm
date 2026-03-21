@@ -25,7 +25,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, messages.size)
         assertTrue(messages[0] is ParsedMessage.User)
@@ -42,7 +42,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, messages.size)
         assertTrue(messages[0] is ParsedMessage.AssistantThinking)
@@ -57,7 +57,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, messages.size)
         assertTrue(messages[0] is ParsedMessage.ToolUse)
@@ -74,7 +74,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, messages.size)
         assertTrue(messages[0] is ParsedMessage.Info)
@@ -89,7 +89,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, messages.size)
         assertTrue(messages[0] is ParsedMessage.Info)
@@ -142,7 +142,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JSON.parseToJsonElement("""{"cwd": "/home/user/myproject"}""").jsonObject
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals("/home/user/myproject", sessionMetadata.cwd)
     }
@@ -153,7 +153,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JSON.parseToJsonElement("""{"files_in_context": [{"path": "/home/user/myproject/src/file.ts"}]}""").jsonObject
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals("/home/user/myproject/src", sessionMetadata.cwd)
     }
@@ -167,7 +167,7 @@ class KiloSessionParserTest {
         val apiHistory = JsonArray(emptyList())
         val metadata = JsonObject(emptyMap())
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(java.time.Instant.ofEpochMilli(1700000000000).toString(), sessionMetadata.created)
         assertEquals(java.time.Instant.ofEpochMilli(1700000100000).toString(), sessionMetadata.modified)
@@ -181,7 +181,7 @@ class KiloSessionParserTest {
         ]""").jsonArray
         val metadata = JsonObject(emptyMap())
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(1, sessionMetadata.models.size)
         assertEquals("minimax/minimax-m2.1:free", sessionMetadata.models[0].first)
@@ -196,7 +196,7 @@ class KiloSessionParserTest {
         ]""").jsonArray
         val metadata = JsonObject(emptyMap())
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata, "/test/task")
+        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
 
         assertEquals(0, sessionMetadata.models.size)
     }
@@ -253,7 +253,7 @@ class KiloSessionParserTest {
         }
 
         val (messages, sessionMetadata) = KiloSessionParser.parseContent(
-            uiMessages, apiHistory, metadata, "/test/task"
+            uiMessages, apiHistory, metadata
         )
 
         assertTrue(messages.isNotEmpty())

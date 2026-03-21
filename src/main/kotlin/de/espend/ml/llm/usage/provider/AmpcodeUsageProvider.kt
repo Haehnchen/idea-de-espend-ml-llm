@@ -24,7 +24,6 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
-import java.awt.GridBagLayout
 import java.awt.event.ItemEvent
 import java.io.File
 import javax.swing.BoxLayout
@@ -184,7 +183,7 @@ class AmpcodeUsageProvider : UsageProvider {
             val json = JsonParser.parseString(secretsFile.readText()).asJsonObject
             json.get("apiKey@https://ampcode.com/")?.asString
                 ?: json.get("apiKey")?.asString
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

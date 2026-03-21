@@ -83,7 +83,7 @@ object DroidSessionParser {
 
         val sessionTitle = firstLine["title"]?.jsonPrimitive?.content
         val sessionTitleAlt = firstLine["sessionTitle"]?.jsonPrimitive?.content
-        val title = extractTitle(sessionTitle, sessionTitleAlt, messages)
+        val title = extractTitle(sessionTitle, messages)
 
         return SessionDetail(
             sessionId = sessionId,
@@ -193,7 +193,6 @@ object DroidSessionParser {
 
     private fun extractTitle(
         sessionTitle: String?,
-        sessionTitleAlt: String?,
         messages: List<ParsedMessage>
     ): String {
         // Use title from session_start if available and not generic

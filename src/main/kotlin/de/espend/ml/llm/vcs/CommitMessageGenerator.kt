@@ -38,7 +38,7 @@ object CommitMessageGenerator {
         }
 
         // Build diff from changes
-        val diff = buildDiff(project, changes)
+        val diff = buildDiff(changes)
         if (diff.isBlank()) {
             return ApiResult.Error("Could not build diff from changes")
         }
@@ -58,7 +58,7 @@ object CommitMessageGenerator {
     /**
      * Builds a unified diff string from the list of changes.
      */
-    private fun buildDiff(project: Project, changes: List<Change>): String {
+    private fun buildDiff(changes: List<Change>): String {
         val diffBuilder = StringBuilder()
 
         for (change in changes) {

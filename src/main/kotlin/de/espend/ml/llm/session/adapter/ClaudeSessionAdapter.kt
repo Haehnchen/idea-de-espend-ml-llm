@@ -11,7 +11,6 @@ import de.espend.ml.llm.session.model.ParsedMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -202,7 +201,7 @@ class ClaudeSessionAdapter(private val project: Project) {
     private fun parseTimestamp(timestamp: String): Long {
         return try {
             java.time.Instant.parse(timestamp).toEpochMilli()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0L
         }
     }

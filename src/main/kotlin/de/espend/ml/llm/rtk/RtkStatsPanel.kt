@@ -4,7 +4,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.GridLayout
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
@@ -104,7 +103,4 @@ class RtkStatsPanel : JPanel() {
         alignmentX = 0f
     }
 
-    companion object {
-        private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yy-MM-dd")
-    }
 }

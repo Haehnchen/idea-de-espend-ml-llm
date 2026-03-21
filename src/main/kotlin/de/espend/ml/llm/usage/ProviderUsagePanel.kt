@@ -159,7 +159,7 @@ class ProviderUsagePanel(
         if (service.isCacheValid()) {
             showCachedResults()
         } else {
-            doRefresh(forceRefresh = false)
+            doRefresh()
         }
 
         if (UsagePlatformRegistry.getInstance().state.showRtkStats) {
@@ -191,7 +191,7 @@ class ProviderUsagePanel(
         currentPopup?.pack(true, true)
     }
 
-    private fun doRefresh(forceRefresh: Boolean = true) {
+    private fun doRefresh() {
         isLoading = true
         refreshIconLabel.icon = AnimatedIcon.Default()
 

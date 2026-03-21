@@ -5,20 +5,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * Represents a Codex session with basic metadata extracted from the first line.
- */
-data class CodexSession(
-    val sessionId: String,
-    val cwd: String?,
-    val originator: String?,
-    val cliVersion: String?,
-    val model: String?,
-    val gitBranch: String?,
-    val created: Long,
-    val updated: Long
-)
-
-/**
  * Utility to find Codex session files.
  * Searches in multiple locations:
  * - JetBrains IDE: ~/.cache/JetBrains/{IDE}/aia/codex/sessions/{year}/{month}/{day}/
@@ -156,7 +142,7 @@ object CodexSessionFinder {
                 } else {
                     false
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             }
         }
