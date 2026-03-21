@@ -15,11 +15,13 @@ Includes a Session Browser with MCP for viewing / search chat sessions from exte
 
 ## Features
 
-### Provider Usage Toolbar
+### Provider Usage Toolbar & Status Bar
 
-Monitor your AI provider quota usage across multiple accounts directly from the toolbar. Click the usage icon in the main toolbar to see current usage percentages and reset times.
+Monitor your AI provider quota usage across multiple accounts directly from the toolbar or status bar. Click the usage icon to see current usage percentages and reset times.
 
-**Location** (when configured): Main toolbar (right side) → Usage icon
+**Locations** (when configured):
+- **Main toolbar** (right side) → Usage icon
+- **Status bar** (bottom of IDE) → Usage widget
 
 Configure accounts in **Settings → Tools → Account Usage Toolbar**.
 

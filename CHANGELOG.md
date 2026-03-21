@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.8.1
+* Add AI Provider Usage status bar widget and associated settings integration (Daniel Espendiller)</li>
+
 # 0.8.0
 * Add RTK token savings stats panel to usage popup (Daniel Espendiller)
 * Add support for Ollama usage provider (Daniel Espendiller)

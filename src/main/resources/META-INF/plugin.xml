@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
     <id>de.espend.ml.llm</id>
-    <version>0.8.0</version>
+    <version>0.8.1</version>
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
@@ -71,9 +71,13 @@
             </li>
         </ol>
 
-        <h2>Provider Usage Toolbar</h3>
-        <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar. Click the usage icon in the main toolbar to see current usage percentages and reset times.</p>
-        <p><b>Location</b> (when configured): Main toolbar (right side) → Usage icon</p>
+        <h2>Provider Usage Toolbar & Status Bar</h3>
+        <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar or status bar. Click the usage icon to see current usage percentages and reset times.</p>
+        <p><b>Locations</b>:</p>
+        <ul>
+            <li><b>Main toolbar</b> (right side) → Usage icon</li>
+            <li><b>Status bar</b> (bottom of IDE) → Usage widget</li>
+        </ul>
         <p>Configure accounts in <b>Settings → Tools → Account Usage Toolbar</b>.</p>
 
         <table>
