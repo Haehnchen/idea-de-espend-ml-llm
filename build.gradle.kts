@@ -77,6 +77,25 @@ tasks {
         changeNotes.set(file("src/main/resources/META-INF/change-notes.html").readText().replace("<html>", "").replace("</html>", ""))
     }
 
+    // HOT-RELOAD FIX:
+    // PrepareSandboxTask extends Sync and includes ALL plugin dependencies (including compatiblePlugins)
+    // in pluginsClasspath. When the user's plugin changes, Sync re-executes and re-syncs EVERYTHING
+    // to the sandbox — including the compatible plugin com.intellij.ml.llm — updating JAR timestamps.
+    // The running IDE's VFS listener detects these timestamp changes and tries to hot-reload
+    // com.intellij.ml.llm, which fails because it's not unload-safe.
+    //
+    // Fix: exclude compatible plugins from the sandbox sync. They're already bundled in the IDE
+    // installation — the sandbox doesn't need its own copy. This prevents Sync from touching their
+    // JARs when only the user's plugin has changed.
+    named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("prepareSandbox") {
+        pluginsClasspath.setFrom(
+            pluginsClasspath.filter { file ->
+                // Exclude compatible plugins (they're bundled in the IDE, no need to sync to sandbox)
+                !file.path.contains("com.intellij.ml.llm") && !file.path.contains("org.intellij.plugins.markdown")
+            }
+        )
+    }
+
     publishPlugin {
         token.set(System.getenv("PUBLISH_TOKEN"))
     }
