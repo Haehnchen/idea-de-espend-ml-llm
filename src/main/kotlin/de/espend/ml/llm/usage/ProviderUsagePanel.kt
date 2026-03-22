@@ -153,7 +153,6 @@ class ProviderUsagePanel : JPanel() {
     fun start(popup: JBPopup) {
         currentPopup = popup
 
-        println("[Panel] registering cache listener")
         removeCacheListener = service.addCacheListener {
             ApplicationManager.getApplication().invokeLater {
                 if (!popup.isDisposed) {
@@ -164,7 +163,6 @@ class ProviderUsagePanel : JPanel() {
 
         popup.addListener(object : JBPopupListener {
             override fun onClosed(event: LightweightWindowEvent) {
-                println("[Panel] unregistering cache listener")
                 removeCacheListener?.invoke()
                 removeCacheListener = null
             }

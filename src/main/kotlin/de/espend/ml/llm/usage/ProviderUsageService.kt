@@ -76,7 +76,6 @@ class ProviderUsageService {
     suspend fun fetchUsage(account: UsageAccountConfig): ProviderUsageResponse {
         val provider = providers[account.providerId] ?: return ProviderUsageResponse.error("No provider for ${account.providerId}")
 
-        println("[ProviderUsage] fetch provider=${account.providerId} account=${account.id} (${account.name})")
         LOG.debug("Fetching usage: provider=${account.providerId}, account=${account.id} (${account.name})")
         return try {
             val result = provider.fetchUsage(account)

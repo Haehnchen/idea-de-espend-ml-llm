@@ -53,7 +53,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
 
     private data class AccountLabels(val iconLabel: JBLabel, val textLabel: JBLabel)
     private val accountLabels = mutableListOf<AccountLabels>()
-    private data class StatusBarItem(val icon: javax.swing.Icon?, val text: String, val isError: Boolean)
+    private data class StatusBarItem(val icon: javax.swing.Icon?, val text: String)
 
     override fun ID(): String = WIDGET_ID
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = NoPresentation()
@@ -65,7 +65,6 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
         })
         contentPanel.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
 
-        println("[StatusBar] registering cache listener")
         removeCacheListener = ProviderUsageService.getInstance().addCacheListener {
             rebuildFromCache()
         }
@@ -81,7 +80,6 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
     }
 
     override fun dispose() {
-        println("[StatusBar] unregistering cache listener")
         removeCacheListener?.invoke()
         removeCacheListener = null
         scheduledFuture?.cancel(false)
@@ -115,7 +113,6 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                 .filter { registry.isShowInStatusBar(it.id) }
 
             if (statusBarAccounts.isEmpty()) {
-                println("[StatusBar] cache update received: 0 status-bar account(s) configured, skipping rebuild")
                 return@launch
             }
 
@@ -129,7 +126,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                         val entryCount = provider?.getAccountPanelInfo(account)?.usageEntryCount ?: 1
                         val errText = (1..entryCount.coerceAtLeast(1))
                             .joinToString(" \u00B7 ") { "err" }
-                        StatusBarItem(icon, errText, isError = true)
+                        StatusBarItem(icon, errText)
                     } else {
                         val usage = response.usage ?: return@mapNotNull null
                         val displayText = when {
@@ -140,11 +137,9 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                             usage.lines.isNotEmpty() -> usage.lines.first().text
                             else -> return@mapNotNull null
                         }
-                        StatusBarItem(icon, displayText, isError = false)
+                        StatusBarItem(icon, displayText)
                     }
                 }
-
-            println("[StatusBar] cache update received: ${items.size} account(s)")
 
             withContext(Dispatchers.Main) {
                 rebuildPanel(items)
@@ -188,7 +183,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
             }
             val textLabel = JBLabel(item.text).apply {
                 font = font.deriveFont(font.size2D - 1f)
-                foreground = if (item.isError) JBColor.RED else JBColor(0x555555, 0xAAAAAA)
+                foreground = JBColor(0x555555, 0xAAAAAA)
                 alignmentY = java.awt.Component.CENTER_ALIGNMENT
             }
 
