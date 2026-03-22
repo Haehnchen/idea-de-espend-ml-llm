@@ -134,6 +134,8 @@ The Session Browser works out of the box - no additional setup required. Simply 
 
 ![Toolbar Account Quotas / Usages](docs/toolbar_ai_accounts.webp)
 
+![Toolbar Account Quotas / Usages Statusbar](docs/statusbar.webp)
+
 ![Gemini](docs/gemini.webp)
 
 ![AI Assistant](docs/ai_assistant.webp)
