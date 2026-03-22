@@ -232,7 +232,10 @@ class ProviderUsagePanel : JPanel() {
         val entryCount = panelInfo.usageEntryCount
         val lineCount = panelInfo.lineCount
 
-        val displayLabel = if (accountLabel.isNotBlank()) "$providerLabel · $accountLabel" else providerLabel
+        val displayLabel = if (accountLabel.isNotBlank()) {
+            val full = "$providerLabel · $accountLabel"
+            if (full.length > 28) full.take(27) + "\u2026" else full
+        } else providerLabel
         val nameLabel = JBLabel(displayLabel).apply {
             if (icon != null) this.icon = icon
             alignmentX = 0f
