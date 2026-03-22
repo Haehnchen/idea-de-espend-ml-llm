@@ -137,9 +137,10 @@ class ProviderUsageService {
                 results[account.id] = fetchUsage(account)
             } catch (e: Exception) {
                 LOG.debug("Fetch failed: provider=${account.providerId}, account=${account.id}: ${e.message}")
+                results[account.id] = ProviderUsageResponse.error(e.message ?: "Unknown error")
             }
         }
-        if (results.isNotEmpty()) updateCache(results)
+        updateCache(results)
     }
 
     /**

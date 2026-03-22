@@ -53,6 +53,7 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
 
     private data class AccountLabels(val iconLabel: JBLabel, val textLabel: JBLabel)
     private val accountLabels = mutableListOf<AccountLabels>()
+    private data class StatusBarItem(val icon: javax.swing.Icon?, val text: String, val isError: Boolean)
 
     override fun ID(): String = WIDGET_ID
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = NoPresentation()
@@ -110,26 +111,40 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
             val service = ProviderUsageService.getInstance()
             val registry = UsagePlatformRegistry.getInstance()
 
-            val items = service.getSupportedAccounts()
+            val statusBarAccounts = service.getSupportedAccounts()
                 .filter { registry.isShowInStatusBar(it.id) }
+
+            if (statusBarAccounts.isEmpty()) {
+                println("[StatusBar] cache update received: 0 status-bar account(s) configured, skipping rebuild")
+                return@launch
+            }
+
+            val items = statusBarAccounts
                 .mapNotNull { account ->
                     val response = service.getCachedResponse(account.id) ?: return@mapNotNull null
-                    val usage = response.usage ?: return@mapNotNull null
-                    val displayText = when {
-                        usage.entries.isNotEmpty() ->
-                            usage.entries
-                                .map { it.percentageUsed.toInt().coerceIn(0, 999) }
-                                .joinToString(" \u00B7 ") { "$it%" }
-                        usage.lines.isNotEmpty() -> usage.lines.first().text
-                        else -> return@mapNotNull null
-                    }
-                    val icon = service.getProvider(account.providerId)
-                        ?.providerInfo?.icon
+                    val provider = service.getProvider(account.providerId)
+                    val icon = provider?.providerInfo?.icon
                         ?.let { PluginIcons.scaleIcon(it, JBUI.scale(13)) }
-                    Triple(account.id, icon, displayText)
+                    if (response.error != null) {
+                        val entryCount = provider?.getAccountPanelInfo(account)?.usageEntryCount ?: 1
+                        val errText = (1..entryCount.coerceAtLeast(1))
+                            .joinToString(" \u00B7 ") { "err" }
+                        StatusBarItem(icon, errText, isError = true)
+                    } else {
+                        val usage = response.usage ?: return@mapNotNull null
+                        val displayText = when {
+                            usage.entries.isNotEmpty() ->
+                                usage.entries
+                                    .map { it.percentageUsed.toInt().coerceIn(0, 999) }
+                                    .joinToString(" \u00B7 ") { "$it%" }
+                            usage.lines.isNotEmpty() -> usage.lines.first().text
+                            else -> return@mapNotNull null
+                        }
+                        StatusBarItem(icon, displayText, isError = false)
+                    }
                 }
 
-            println("[StatusBar] cache update received: ${items.size} account(s) → ${items.joinToString { (id, _, text) -> "$id=$text" }}")
+            println("[StatusBar] cache update received: ${items.size} account(s)")
 
             withContext(Dispatchers.Main) {
                 rebuildPanel(items)
@@ -154,11 +169,11 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
         }
     }
 
-    private fun rebuildPanel(items: List<Triple<String, javax.swing.Icon?, String>>) {
+    private fun rebuildPanel(items: List<StatusBarItem>) {
         contentPanel.removeAll()
         accountLabels.clear()
 
-        items.forEachIndexed { index, (_, icon, displayText) ->
+        items.forEachIndexed { index, item ->
             if (index > 0) {
                 contentPanel.add(JBLabel(" \u00B7 ").apply {
                     foreground = JBColor(0xAAAAAA, 0x666666)
@@ -167,13 +182,13 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                 })
             }
 
-            val iconLabel = JBLabel(icon).apply {
+            val iconLabel = JBLabel(item.icon).apply {
                 border = JBUI.Borders.emptyRight(JBUI.scale(4))
                 alignmentY = java.awt.Component.CENTER_ALIGNMENT
             }
-            val textLabel = JBLabel(displayText).apply {
+            val textLabel = JBLabel(item.text).apply {
                 font = font.deriveFont(font.size2D - 1f)
-                foreground = JBColor(0x555555, 0xAAAAAA)
+                foreground = if (item.isError) JBColor.RED else JBColor(0x555555, 0xAAAAAA)
                 alignmentY = java.awt.Component.CENTER_ALIGNMENT
             }
 
