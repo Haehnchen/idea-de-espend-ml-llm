@@ -2,261 +2,255 @@ package de.espend.ml.llm.session.adapter.kilocode
 
 import de.espend.ml.llm.session.model.MessageContent
 import de.espend.ml.llm.session.model.ParsedMessage
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import org.junit.After
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import java.io.File
-import java.nio.file.Paths
+import java.sql.DriverManager
 
 class KiloSessionParserTest {
 
-    private val fixturesDir = Paths.get("src/test/kotlin/de/espend/ml/llm/session/adapter/fixtures/kilocode")
-    private val JSON = Json { ignoreUnknownKeys = true }
+    private lateinit var dbFile: File
+    private lateinit var dbUrl: String
+
+    @Before
+    fun setUp() {
+        dbFile = File.createTempFile("kilo-test-", ".db")
+        dbUrl = "jdbc:sqlite:${dbFile.absolutePath}"
+        KiloSessionFinder.dbPathOverride = dbFile.absolutePath
+
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.executeUpdate("""
+                    CREATE TABLE project (
+                        id TEXT PRIMARY KEY, worktree TEXT NOT NULL, name TEXT,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, sandboxes TEXT NOT NULL
+                    )
+                """)
+                stmt.executeUpdate("""
+                    CREATE TABLE session (
+                        id TEXT PRIMARY KEY, project_id TEXT NOT NULL, parent_id TEXT, slug TEXT NOT NULL,
+                        directory TEXT NOT NULL, title TEXT NOT NULL, version TEXT NOT NULL,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, time_archived INTEGER
+                    )
+                """)
+                stmt.executeUpdate("""
+                    CREATE TABLE message (
+                        id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, data TEXT NOT NULL
+                    )
+                """)
+                stmt.executeUpdate("""
+                    CREATE TABLE part (
+                        id TEXT PRIMARY KEY, message_id TEXT NOT NULL, session_id TEXT NOT NULL,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, data TEXT NOT NULL
+                    )
+                """)
+            }
+        }
+    }
+
+    @After
+    fun tearDown() {
+        KiloSessionFinder.dbPathOverride = null
+        dbFile.delete()
+    }
+
+    private fun insertSession(sessionId: String, title: String, directory: String = "/home/user/project") {
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated) VALUES (?,?,?,?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, sessionId)
+                stmt.setString(2, "proj1")
+                stmt.setString(3, "slug")
+                stmt.setString(4, directory)
+                stmt.setString(5, title)
+                stmt.setString(6, "1")
+                stmt.setLong(7, 1700000000000L)
+                stmt.setLong(8, 1700000100000L)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    private fun insertMessage(msgId: String, sessionId: String, role: String, model: String? = null, createdMs: Long = 1700000000000L) {
+        val modelPart = if (model != null) ""","modelID":"$model"""" else ""
+        val data = """{"role":"$role","time":{"created":$createdMs}$modelPart}"""
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, msgId)
+                stmt.setString(2, sessionId)
+                stmt.setLong(3, createdMs)
+                stmt.setLong(4, createdMs)
+                stmt.setString(5, data)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    private fun insertPart(partId: String, msgId: String, sessionId: String, data: String, createdMs: Long = 1700000000000L) {
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?,?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, partId)
+                stmt.setString(2, msgId)
+                stmt.setString(3, sessionId)
+                stmt.setLong(4, createdMs)
+                stmt.setLong(5, createdMs)
+                stmt.setString(6, data)
+                stmt.executeUpdate()
+            }
+        }
+    }
 
     @Test
-    fun `parseContent should parse user text message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000000, "type": "say", "say": "text", "text": "Hello, how can I help?"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
+    fun `parseSession should return null for missing DB`() {
+        KiloSessionFinder.dbPathOverride = "/nonexistent/path/kilo.db"
+        assertNull(KiloSessionParser.parseSession("any-id"))
+    }
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+    @Test
+    fun `parseSession should return null for unknown session id`() {
+        assertNull(KiloSessionParser.parseSession("unknown-session"))
+    }
 
-        assertEquals(1, messages.size)
-        assertTrue(messages[0] is ParsedMessage.User)
-        val user = messages[0] as ParsedMessage.User
+    @Test
+    fun `parseSession should parse user text message`() {
+        insertSession("ses_001", "Test session")
+        insertMessage("msg_001", "ses_001", "user")
+        insertPart("prt_001", "msg_001", "ses_001", """{"type":"text","text":"Hello, what is this project?"}""")
+
+        val session = KiloSessionParser.parseSession("ses_001")
+
+        assertNotNull(session)
+        assertEquals("ses_001", session!!.sessionId)
+        assertEquals("Test session", session.title)
+        assertEquals(1, session.messages.size)
+        assertTrue(session.messages[0] is ParsedMessage.User)
+        val user = session.messages[0] as ParsedMessage.User
         assertTrue(user.content[0] is MessageContent.Text)
-        assertEquals("Hello, how can I help?", (user.content[0] as MessageContent.Text).text)
+        assertEquals("Hello, what is this project?", (user.content[0] as MessageContent.Text).text)
     }
 
     @Test
-    fun `parseContent should parse reasoning message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000100, "type": "say", "say": "reasoning", "text": "Let me think about this..."}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
+    fun `parseSession should parse assistant text message`() {
+        insertSession("ses_002", "Test session")
+        insertMessage("msg_001", "ses_002", "assistant", model = "claude-sonnet-4-5")
+        insertPart("prt_001", "msg_001", "ses_002", """{"type":"text","text":"This is my answer."}""")
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+        val session = KiloSessionParser.parseSession("ses_002")
 
-        assertEquals(1, messages.size)
-        assertTrue(messages[0] is ParsedMessage.AssistantThinking)
-        assertEquals("Let me think about this...", (messages[0] as ParsedMessage.AssistantThinking).thinking)
+        assertNotNull(session)
+        assertEquals(1, session!!.messages.size)
+        assertTrue(session.messages[0] is ParsedMessage.AssistantText)
     }
 
     @Test
-    fun `parseContent should parse tool use message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000400, "type": "ask", "ask": "tool", "text": "{\"tool\": \"readFile\", \"path\": \"/test/file.txt\"}"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
+    fun `parseSession should parse reasoning message`() {
+        insertSession("ses_003", "Test session")
+        insertMessage("msg_001", "ses_003", "assistant")
+        insertPart("prt_001", "msg_001", "ses_003", """{"type":"reasoning","text":"Let me think about this..."}""")
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+        val session = KiloSessionParser.parseSession("ses_003")
 
-        assertEquals(1, messages.size)
-        assertTrue(messages[0] is ParsedMessage.ToolUse)
-        val toolUse = messages[0] as ParsedMessage.ToolUse
-        assertEquals("readFile", toolUse.toolName)
-        assertEquals("/test/file.txt", toolUse.input["path"])
+        assertNotNull(session)
+        assertEquals(1, session!!.messages.size)
+        assertTrue(session.messages[0] is ParsedMessage.AssistantThinking)
+        assertEquals("Let me think about this...", (session.messages[0] as ParsedMessage.AssistantThinking).thinking)
     }
 
     @Test
-    fun `parseContent should parse followup message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000600, "type": "ask", "ask": "followup", "text": "Would you like me to continue?"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
+    fun `parseSession should parse tool use with output`() {
+        insertSession("ses_004", "Test session")
+        insertMessage("msg_001", "ses_004", "assistant")
+        insertPart("prt_001", "msg_001", "ses_004", """
+            {"type":"tool","callID":"call_abc","tool":"read","state":{"status":"completed","input":{"filePath":"/home/user/file.txt"},"output":"file contents here"}}
+        """.trimIndent())
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+        val session = KiloSessionParser.parseSession("ses_004")
 
-        assertEquals(1, messages.size)
-        assertTrue(messages[0] is ParsedMessage.Info)
-        assertEquals("followup", (messages[0] as ParsedMessage.Info).title)
+        assertNotNull(session)
+        assertEquals(1, session!!.messages.size)
+        assertTrue(session.messages[0] is ParsedMessage.ToolUse)
+        val tool = session.messages[0] as ParsedMessage.ToolUse
+        assertEquals("read", tool.toolName)
+        assertEquals("call_abc", tool.toolCallId)
+        assertEquals("/home/user/file.txt", tool.input["filePath"])
+        assertTrue(tool.hasResults())
     }
 
     @Test
-    fun `parseContent should parse error message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000700, "type": "say", "say": "error", "text": "Something went wrong"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
+    fun `parseSession should skip step-start and step-finish parts`() {
+        insertSession("ses_005", "Test session")
+        insertMessage("msg_001", "ses_005", "assistant")
+        insertPart("prt_001", "msg_001", "ses_005", """{"type":"step-start","snapshot":"abc123"}""")
+        insertPart("prt_002", "msg_001", "ses_005", """{"type":"text","text":"The answer is 42."}""")
+        insertPart("prt_003", "msg_001", "ses_005", """{"type":"step-finish","reason":"stop","cost":0}""")
 
-        val (messages, _) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+        val session = KiloSessionParser.parseSession("ses_005")
 
-        assertEquals(1, messages.size)
-        assertTrue(messages[0] is ParsedMessage.Info)
-        val info = messages[0] as ParsedMessage.Info
-        assertEquals("error", info.title)
-        assertEquals(ParsedMessage.InfoStyle.ERROR, info.style)
+        assertNotNull(session)
+        assertEquals(1, session!!.messages.size)
+        assertTrue(session.messages[0] is ParsedMessage.AssistantText)
     }
 
     @Test
-    fun `extractTitle should extract title from first user message`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000000, "type": "say", "say": "text", "text": "This is my question"},
-            {"ts": 1700000000100, "type": "say", "say": "reasoning", "text": "Thinking..."}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
+    fun `parseSession should extract model from assistant messages`() {
+        insertSession("ses_006", "Test session")
+        insertMessage("msg_001", "ses_006", "assistant", model = "xiaomi/mimo-v2-pro:free")
+        insertPart("prt_001", "msg_001", "ses_006", """{"type":"text","text":"Answer"}""")
 
-        val title = KiloSessionParser.extractTitle(uiMessages, apiHistory)
+        val session = KiloSessionParser.parseSession("ses_006")
 
-        assertEquals("This is my question", title)
+        assertNotNull(session)
+        assertEquals(1, session!!.metadata!!.models.size)
+        assertEquals("xiaomi/mimo-v2-pro:free", session.metadata?.models?.get(0)?.first)
     }
 
     @Test
-    fun `extractTitle should truncate long titles`() {
-        val longText = "a".repeat(150)
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000000, "type": "say", "say": "text", "text": "$longText"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
+    fun `parseSession should populate metadata with directory and timestamps`() {
+        insertSession("ses_007", "My session", directory = "/home/user/myproject")
 
-        val title = KiloSessionParser.extractTitle(uiMessages, apiHistory)
+        val session = KiloSessionParser.parseSession("ses_007")
 
-        assertEquals("a".repeat(100) + "...", title)
+        assertNotNull(session)
+        assertEquals("/home/user/myproject", session!!.metadata?.cwd)
+        assertNotNull(session.metadata?.created)
+        assertNotNull(session.metadata?.modified)
     }
 
     @Test
-    fun `extractTitle should extract title from API history if no UI messages`() {
-        val uiMessages = JsonArray(emptyList())
-        val apiHistory = JSON.parseToJsonElement("""[
-            {"role": "user", "content": [{"type": "text", "text": "API question"}]}
-        ]""").jsonArray
+    fun `listSessionFiles should return sessions from DB`() {
+        insertSession("ses_a", "Session A", "/home/user/project-a")
+        insertSession("ses_b", "Session B", "/home/user/project-b")
 
-        val title = KiloSessionParser.extractTitle(uiMessages, apiHistory)
+        val sessions = KiloSessionFinder.listSessionFiles()
 
-        assertEquals("API question", title)
+        assertEquals(2, sessions.size)
+        assertTrue(sessions.any { it.sessionId == "ses_a" && it.title == "Session A" })
+        assertTrue(sessions.any { it.sessionId == "ses_b" && it.title == "Session B" })
     }
 
     @Test
-    fun `parseContent should extract workspace from metadata cwd`() {
-        val uiMessages = JsonArray(emptyList())
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JSON.parseToJsonElement("""{"cwd": "/home/user/myproject"}""").jsonObject
+    fun `findSession should return correct session info`() {
+        insertSession("ses_find", "Find me", "/home/user/proj")
 
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
+        val info = KiloSessionFinder.findSession("ses_find")
 
-        assertEquals("/home/user/myproject", sessionMetadata.cwd)
+        assertNotNull(info)
+        assertEquals("ses_find", info!!.sessionId)
+        assertEquals("Find me", info.title)
+        assertEquals("/home/user/proj", info.projectPath)
     }
 
     @Test
-    fun `parseContent should extract workspace from files_in_context`() {
-        val uiMessages = JsonArray(emptyList())
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JSON.parseToJsonElement("""{"files_in_context": [{"path": "/home/user/myproject/src/file.ts"}]}""").jsonObject
-
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
-
-        assertEquals("/home/user/myproject/src", sessionMetadata.cwd)
-    }
-
-    @Test
-    fun `parseContent should track timestamps`() {
-        val uiMessages = JSON.parseToJsonElement("""[
-            {"ts": 1700000000000, "type": "say", "say": "text", "text": "First"},
-            {"ts": 1700000100000, "type": "say", "say": "text", "text": "Last"}
-        ]""").jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadata = JsonObject(emptyMap())
-
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
-
-        assertEquals(java.time.Instant.ofEpochMilli(1700000000000).toString(), sessionMetadata.created)
-        assertEquals(java.time.Instant.ofEpochMilli(1700000100000).toString(), sessionMetadata.modified)
-    }
-
-    @Test
-    fun `parseContent should extract model from API history`() {
-        val uiMessages = JsonArray(emptyList())
-        val apiHistory = JSON.parseToJsonElement("""[
-            {"role": "user", "content": [{"type": "text", "text": "<environment_details>\n<model>minimax/minimax-m2.1:free</model>\n</environment_details>"}]}
-        ]""").jsonArray
-        val metadata = JsonObject(emptyMap())
-
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
-
-        assertEquals(1, sessionMetadata.models.size)
-        assertEquals("minimax/minimax-m2.1:free", sessionMetadata.models[0].first)
-        assertEquals(1, sessionMetadata.models[0].second)
-    }
-
-    @Test
-    fun `parseContent should handle API history without model tag`() {
-        val uiMessages = JsonArray(emptyList())
-        val apiHistory = JSON.parseToJsonElement("""[
-            {"role": "user", "content": [{"type": "text", "text": "<environment_details>\n</environment_details>"}]}
-        ]""").jsonArray
-        val metadata = JsonObject(emptyMap())
-
-        val (_, sessionMetadata) = KiloSessionParser.parseContent(uiMessages, apiHistory, metadata)
-
-        assertEquals(0, sessionMetadata.models.size)
-    }
-
-    @Test
-    fun `parseSession should return null for non-existent task path`() {
-        val result = KiloSessionParser.parseSession("/nonexistent/path", "test-session")
-        assertNull(result)
-    }
-
-    @Test
-    fun `parseSession should parse complete session from files`() {
-        val taskDir = File.createTempFile("kilo-test-task-", "").also {
-            it.delete()
-            it.mkdirs()
-        }
-
-        try {
-            File(taskDir, "ui_messages.json").writeText("""[
-                {"ts": 1700000000000, "type": "say", "say": "text", "text": "Test question"},
-                {"ts": 1700000000100, "type": "say", "say": "reasoning", "text": "Let me analyze"}
-            ]""")
-
-            File(taskDir, "api_conversation_history.json").writeText("""[
-                {"role": "user", "content": [{"type": "text", "text": "Test question"}]}
-            ]""")
-
-            File(taskDir, "task_metadata.json").writeText("""{"cwd": "/home/user/project"}""")
-
-            val session = KiloSessionParser.parseSession(taskDir.absolutePath, "test-session-123")
-
-            assertNotNull(session)
-            assertEquals("test-session-123", session!!.sessionId)
-            assertEquals("Test question", session.title)
-            assertEquals(2, session.messages.size)
-            assertEquals("/home/user/project", session.metadata?.cwd)
-        } finally {
-            taskDir.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun `should parse fixture files`() {
-        val uiMessagesPath = fixturesDir.resolve("ui_messages.json")
-        if (!uiMessagesPath.toFile().exists()) return
-
-        val uiMessages = JSON.parseToJsonElement(uiMessagesPath.toFile().readText()).jsonArray
-        val apiHistory = JsonArray(emptyList())
-        val metadataPath = fixturesDir.resolve("task_metadata.json")
-        val metadata = if (metadataPath.toFile().exists()) {
-            JSON.parseToJsonElement(metadataPath.toFile().readText()).jsonObject
-        } else {
-            JsonObject(emptyMap())
-        }
-
-        val (messages, sessionMetadata) = KiloSessionParser.parseContent(
-            uiMessages, apiHistory, metadata
-        )
-
-        assertTrue(messages.isNotEmpty())
-        assertNotNull(sessionMetadata)
+    fun `findSession should return null for missing session`() {
+        assertNull(KiloSessionFinder.findSession("nonexistent"))
     }
 }

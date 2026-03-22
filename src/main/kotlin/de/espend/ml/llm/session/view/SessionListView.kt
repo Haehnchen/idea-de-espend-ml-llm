@@ -70,10 +70,11 @@ class SessionListView(
         }
         val actionUrl = JsHandlers.sessionDetailUrl(session.sessionId, providerKey)
         val providerIcon = getProviderIconSvg(session.provider)
+        val providerName = getProviderName(session.provider)
 
         sb.appendLine("                <a href=\"$actionUrl\" class=\"session-item\" data-session-id=\"${session.sessionId}\" data-provider=\"$providerKey\">")
         sb.appendLine("                    <div class=\"session-header\">")
-        sb.appendLine("                        <div class=\"provider-icon\">$providerIcon</div>")
+        sb.appendLine("                        <div class=\"provider-icon\" data-tooltip=\"$providerName\">$providerIcon</div>")
         sb.appendLine("                        <div class=\"session-title\">${HtmlBuilder.escapeHtml(session.title)}</div>")
         sb.appendLine("                    </div>")
         sb.appendLine("                    <div class=\"session-meta\">")
@@ -153,14 +154,20 @@ class SessionListView(
         private const val GEMINI_ICON_LIGHT_SVG = """<svg class="gemini-light" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>"""
 
         /**
-         * Kilo Code icon SVG for dark theme (light blue #60A5FA on dark background).
+         * Kilo Code icon SVG - uses currentColor for theme support (adapts to dark/light).
          */
-        private const val KILO_ICON_DARK_SVG = """<svg class="kilo-dark" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#60A5FA" d="M0,0v100h100V0H0ZM92.5925926,92.5925926H7.4074074V7.4074074h85.1851852v85.1851852ZM61.1111044,71.9096084h9.2592593v7.4074074h-11.6402116l-5.026455-5.026455v-11.6402116h7.4074074v9.2592593ZM77.7777711,71.9096084h-7.4074074v-9.2592593h-9.2592593v-7.4074074h11.6402116l5.026455,5.026455v11.6402116ZM46.2962963,61.1114207h-7.4074074v-7.4074074h7.4074074v7.4074074ZM22.2222222,53.7040133h7.4074074v16.6666667h16.6666667v7.4074074h-19.047619l-5.026455-5.026455v-19.047619ZM77.7777711,38.8888889v7.4074074h-24.0740741v-7.4074074h8.2781918v-9.2592593h-8.2781918v-7.4074074h10.6591442l5.026455,5.026455v11.6402116h8.3884749ZM29.6296296,30.5555556h9.2592593l7.4074074,7.4074074v8.3333333h-7.4074074v-8.3333333h-9.2592593v8.3333333h-7.4074074v-24.0740741h7.4074074v8.3333333ZM46.2962963,30.5555556h-7.4074074v-8.3333333h7.4074074v8.3333333Z"/></svg>"""
+        private const val KILO_ICON_SVG = """<svg class="provider-svg kilo-svg" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M0,0v100h100V0H0ZM92.5925926,92.5925926H7.4074074V7.4074074h85.1851852v85.1851852ZM61.1111044,71.9096084h9.2592593v7.4074074h-11.6402116l-5.026455-5.026455v-11.6402116h7.4074074v9.2592593ZM77.7777711,71.9096084h-7.4074074v-9.2592593h-9.2592593v-7.4074074h11.6402116l5.026455,5.026455v11.6402116ZM46.2962963,61.1114207h-7.4074074v-7.4074074h7.4074074v7.4074074ZM22.2222222,53.7040133h7.4074074v16.6666667h16.6666667v7.4074074h-19.047619l-5.026455-5.026455v-19.047619ZM77.7777711,38.8888889v7.4074074h-24.0740741v-7.4074074h8.2781918v-9.2592593h-8.2781918v-7.4074074h10.6591442l5.026455,5.026455v11.6402116h8.3884749ZM29.6296296,30.5555556h9.2592593l7.4074074,7.4074074v8.3333333h-7.4074074v-8.3333333h-9.2592593v8.3333333h-7.4074074v-24.0740741h7.4074074v8.3333333ZM46.2962963,30.5555556h-7.4074074v-8.3333333h7.4074074v8.3333333Z"/></svg>"""
+    }
 
-        /**
-         * Kilo Code icon SVG for light theme (blue #2563EB on light background).
-         */
-        private const val KILO_ICON_LIGHT_SVG = """<svg class="kilo-light" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#2563EB" d="M0,0v100h100V0H0ZM92.5925926,92.5925926H7.4074074V7.4074074h85.1851852v85.1851852ZM61.1111044,71.9096084h9.2592593v7.4074074h-11.6402116l-5.026455-5.026455v-11.6402116h7.4074074v9.2592593ZM77.7777711,71.9096084h-7.4074074v-9.2592593h-9.2592593v-7.4074074h11.6402116l5.026455,5.026455v11.6402116ZM46.2962963,61.1114207h-7.4074074v-7.4074074h7.4074074v7.4074074ZM22.2222222,53.7040133h7.4074074v16.6666667h16.6666667v7.4074074h-19.047619l-5.026455-5.026455v-19.047619ZM77.7777711,38.8888889v7.4074074h-24.0740741v-7.4074074h8.2781918v-9.2592593h-8.2781918v-7.4074074h10.6591442l5.026455,5.026455v11.6402116h8.3884749ZM29.6296296,30.5555556h9.2592593l7.4074074,7.4074074v8.3333333h-7.4074074v-8.3333333h-9.2592593v8.3333333h-7.4074074v-24.0740741h7.4074074v8.3333333ZM46.2962963,30.5555556h-7.4074074v-8.3333333h7.4074074v8.3333333Z"/></svg>"""
+    private fun getProviderName(provider: SessionProvider): String = when (provider) {
+        SessionProvider.CLAUDE_CODE -> "Claude Code"
+        SessionProvider.OPENCODE -> "OpenCode"
+        SessionProvider.CODEX -> "Codex"
+        SessionProvider.AMP -> "Amp"
+        SessionProvider.JUNIE -> "Junie"
+        SessionProvider.DROID -> "Droid"
+        SessionProvider.GEMINI -> "Gemini"
+        SessionProvider.KILO_CODE -> "Kilo Code"
     }
 
     /**
@@ -175,7 +182,7 @@ class SessionListView(
             SessionProvider.JUNIE -> JUNIE_ICON_DARK_SVG + JUNIE_ICON_LIGHT_SVG
             SessionProvider.DROID -> DROID_ICON_DARK_SVG + DROID_ICON_LIGHT_SVG
             SessionProvider.GEMINI -> GEMINI_ICON_DARK_SVG + GEMINI_ICON_LIGHT_SVG
-            SessionProvider.KILO_CODE -> KILO_ICON_DARK_SVG + KILO_ICON_LIGHT_SVG
+            SessionProvider.KILO_CODE -> KILO_ICON_SVG
         }
     }
 }

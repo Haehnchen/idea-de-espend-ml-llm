@@ -1,94 +1,98 @@
 package de.espend.ml.llm.session.adapter.kilocode
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.sql.DriverManager
 
 /**
- * Session file info for a Kilo Code CLI task.
+ * Session info for a Kilo Code session.
  */
 data class KiloTaskInfo(
-    val taskPath: String,
-    val taskId: String,
     val sessionId: String,
-    val projectPath: String
+    val title: String,
+    val projectPath: String,
+    val timeCreated: Long,
+    val timeUpdated: Long
 )
 
 /**
- * Standalone finder for Kilo Code CLI session files.
- * Locates sessions in ~/.kilocode/cli/ directory structure.
+ * Standalone finder for Kilo Code sessions stored in ~/.local/share/kilo/kilo.db.
  * No IntelliJ dependencies.
  */
 object KiloSessionFinder {
 
-    private val JSON = Json { ignoreUnknownKeys = true }
+    /** Overrides the default DB path; intended for tests only. */
+    internal var dbPathOverride: String? = null
 
-    private fun getBaseDir(): File {
+    private fun getDbFile(): File {
+        dbPathOverride?.let { return File(it) }
         val homeDir = System.getProperty("user.home")
-        return File(homeDir, ".kilocode/cli")
+        return File(homeDir, ".local/share/kilo/kilo.db")
     }
 
+    fun getDbPath(): String = getDbFile().absolutePath
+
     /**
-     * Lists all Kilo CLI sessions by iterating through workspace projects.
+     * Lists all non-archived sessions from the SQLite database.
      */
     fun listSessionFiles(): List<KiloTaskInfo> {
-        val baseDir = getBaseDir()
-        val sessions = mutableListOf<KiloTaskInfo>()
-
-        val workspaceMap = loadWorkspaceMap(baseDir) ?: return sessions
-        val tasksDir = File(baseDir, "global/tasks")
-
-        for ((projectPath, workspaceDir) in workspaceMap) {
-            val sessionFile = File(baseDir, "workspaces/$workspaceDir/session.json")
-            if (!sessionFile.exists()) continue
-
-            try {
-                val content = sessionFile.readText()
-                val data = JSON.parseToJsonElement(content).jsonObject
-                val taskSessionMap = data["taskSessionMap"]?.jsonObject ?: continue
-
-                for ((taskId, sessionIdElement) in taskSessionMap) {
-                    val sessionId = sessionIdElement.jsonPrimitive.content
-                    val taskPath = File(tasksDir, taskId)
-
-                    if (taskPath.exists()) {
-                        sessions.add(KiloTaskInfo(
-                            taskPath = taskPath.absolutePath,
-                            taskId = taskId,
-                            sessionId = sessionId,
-                            projectPath = projectPath
-                        ))
-                    }
-                }
-            } catch (_: Exception) {
-                // Skip this workspace on error
-            }
-        }
-
-        return sessions
-    }
-
-    /**
-     * Find a specific task directory by session ID.
-     */
-    fun findSessionFile(sessionId: String): File? {
-        val allSessions = listSessionFiles()
-        val info = allSessions.find { it.sessionId == sessionId || it.taskId == sessionId }
-        return if (info != null) File(info.taskPath) else null
-    }
-
-    /**
-     * Load workspace-map.json which maps project paths to workspace directories.
-     */
-    private fun loadWorkspaceMap(baseDir: File): Map<String, String>? {
-        val workspaceMapFile = File(baseDir, "workspaces/workspace-map.json")
-        if (!workspaceMapFile.exists()) return null
+        val dbFile = getDbFile()
+        if (!dbFile.exists()) return emptyList()
 
         return try {
-            val content = workspaceMapFile.readText()
-            val json = JSON.parseToJsonElement(content).jsonObject
-            json.entries.associate { (key, value) -> key to value.jsonPrimitive.content }
+            Class.forName("org.sqlite.JDBC")
+            DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery("""
+                        SELECT id, title, directory, time_created, time_updated
+                        FROM session
+                        WHERE time_archived IS NULL
+                        ORDER BY time_updated DESC
+                    """.trimIndent())
+
+                    val sessions = mutableListOf<KiloTaskInfo>()
+                    while (rs.next()) {
+                        sessions.add(KiloTaskInfo(
+                            sessionId = rs.getString("id"),
+                            title = rs.getString("title") ?: "",
+                            projectPath = rs.getString("directory") ?: "",
+                            timeCreated = rs.getLong("time_created"),
+                            timeUpdated = rs.getLong("time_updated")
+                        ))
+                    }
+                    sessions
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Find a specific session by ID.
+     */
+    fun findSession(sessionId: String): KiloTaskInfo? {
+        val dbFile = getDbFile()
+        if (!dbFile.exists()) return null
+
+        return try {
+            Class.forName("org.sqlite.JDBC")
+            DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                conn.prepareStatement(
+                    "SELECT id, title, directory, time_created, time_updated FROM session WHERE id = ?"
+                ).use { stmt ->
+                    stmt.setString(1, sessionId)
+                    val rs = stmt.executeQuery()
+                    if (rs.next()) {
+                        KiloTaskInfo(
+                            sessionId = rs.getString("id"),
+                            title = rs.getString("title") ?: "",
+                            projectPath = rs.getString("directory") ?: "",
+                            timeCreated = rs.getLong("time_created"),
+                            timeUpdated = rs.getLong("time_updated")
+                        )
+                    } else null
+                }
+            }
         } catch (_: Exception) {
             null
         }

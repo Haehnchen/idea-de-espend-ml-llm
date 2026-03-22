@@ -6,317 +6,163 @@ import de.espend.ml.llm.session.model.MessageContent
 import de.espend.ml.llm.session.model.ParsedMessage
 import kotlinx.serialization.json.*
 import java.io.File
+import java.sql.DriverManager
+import java.time.Instant
 
 /**
- * Standalone parser for Kilo Code CLI session files.
- * Parses ui_messages.json and api_conversation_history.json into unified SessionDetail format.
+ * Standalone parser for Kilo Code sessions from ~/.local/share/kilo/kilo.db.
+ * Reads messages and parts from SQLite and converts to unified SessionDetail format.
  * No IntelliJ dependencies.
  */
 object KiloSessionParser {
 
     private val JSON = Json { ignoreUnknownKeys = true }
-    private val MODEL_TAG_REGEX = Regex("<model>([^<]+)</model>")
 
     /**
-     * Parse a Kilo CLI session from task directory.
+     * Parse a session from the SQLite database by session ID.
      */
-    fun parseSession(taskPath: String, sessionId: String?): SessionDetail? {
-        val taskDir = File(taskPath)
-        val uiMessagesFile = File(taskDir, "ui_messages.json")
-        if (!uiMessagesFile.exists()) return null
+    fun parseSession(sessionId: String): SessionDetail? {
+        val dbFile = File(KiloSessionFinder.getDbPath())
+        if (!dbFile.exists()) return null
 
         return try {
-            val uiMessages = JSON.parseToJsonElement(uiMessagesFile.readText()).jsonArray
-            val apiHistoryFile = File(taskDir, "api_conversation_history.json")
-            val apiHistory = if (apiHistoryFile.exists()) {
-                JSON.parseToJsonElement(apiHistoryFile.readText()).jsonArray
-            } else {
-                JsonArray(emptyList())
+            Class.forName("org.sqlite.JDBC")
+            DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                val sessionInfo = KiloSessionFinder.findSession(sessionId) ?: return null
+
+                // Load messages ordered by creation time
+                val messages = mutableListOf<Pair<String, JsonObject>>()
+                conn.prepareStatement(
+                    "SELECT id, data FROM message WHERE session_id = ? ORDER BY time_created"
+                ).use { stmt ->
+                    stmt.setString(1, sessionId)
+                    val rs = stmt.executeQuery()
+                    while (rs.next()) {
+                        try {
+                            val data = JSON.parseToJsonElement(rs.getString("data")).jsonObject
+                            messages.add(rs.getString("id") to data)
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                // Load parts ordered by creation time, grouped by message
+                val partsByMessage = mutableMapOf<String, MutableList<JsonObject>>()
+                conn.prepareStatement(
+                    "SELECT message_id, data FROM part WHERE session_id = ? ORDER BY time_created"
+                ).use { stmt ->
+                    stmt.setString(1, sessionId)
+                    val rs = stmt.executeQuery()
+                    while (rs.next()) {
+                        try {
+                            val data = JSON.parseToJsonElement(rs.getString("data")).jsonObject
+                            partsByMessage.getOrPut(rs.getString("message_id")) { mutableListOf() }.add(data)
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                buildSessionDetail(sessionInfo, messages, partsByMessage)
             }
-            val metadataFile = File(taskDir, "task_metadata.json")
-            val metadata = if (metadataFile.exists()) {
-                JSON.parseToJsonElement(metadataFile.readText()).jsonObject
-            } else {
-                JsonObject(emptyMap())
-            }
-
-            val taskId = taskDir.name
-            val finalSessionId = sessionId ?: taskId
-
-            val (messages, sessionMetadata) = parseContent(uiMessages, apiHistory, metadata)
-            val title = extractTitle(uiMessages, apiHistory) ?: "Kilo Session ${finalSessionId.take(8)}"
-
-            SessionDetail(
-                sessionId = finalSessionId,
-                title = title,
-                messages = messages,
-                metadata = sessionMetadata
-            )
         } catch (_: Exception) {
             null
         }
     }
 
-    /**
-     * Parse content from UI messages and API history.
-     */
-    fun parseContent(
-        uiMessages: JsonArray,
-        apiHistory: JsonArray,
-        metadata: JsonObject
-    ): Pair<List<ParsedMessage>, SessionMetadata> {
-        val messages = mutableListOf<ParsedMessage>()
-        var firstTimestamp: Long? = null
-        var lastTimestamp: Long? = null
+    private fun buildSessionDetail(
+        sessionInfo: KiloTaskInfo,
+        messages: List<Pair<String, JsonObject>>,
+        partsByMessage: Map<String, List<JsonObject>>
+    ): SessionDetail {
+        val parsedMessages = mutableListOf<ParsedMessage>()
+        val modelCounts = mutableMapOf<String, Int>()
 
-        // Track tool uses from API history to avoid duplicates
-        val apiToolCallIds = mutableSetOf<String>()
+        for ((msgId, msgData) in messages) {
+            val role = msgData["role"]?.jsonPrimitive?.content ?: continue
+            val timestamp = msgData["time"]?.jsonObject?.get("created")?.jsonPrimitive?.longOrNull
+                ?.let { Instant.ofEpochMilli(it).toString() } ?: ""
 
-        // Process API history first for tool uses
-        for (apiMsgElement in apiHistory) {
-            val apiMsg = apiMsgElement.jsonObject
-            val role = apiMsg["role"]?.jsonPrimitive?.content ?: continue
+            val parts = partsByMessage[msgId] ?: emptyList()
 
-            if (role == "assistant") {
-                val contentField = apiMsg["content"]
-                val contentArray = when {
-                    contentField is JsonArray -> contentField
-                    else -> continue
+            when (role) {
+                "user" -> {
+                    val textContent = parts
+                        .filter { it["type"]?.jsonPrimitive?.content == "text" }
+                        .mapNotNull { it["text"]?.jsonPrimitive?.content?.takeIf { t -> t.isNotEmpty() } }
+                        .map { MessageContent.Text(it) }
+
+                    if (textContent.isNotEmpty()) {
+                        parsedMessages.add(ParsedMessage.User(timestamp = timestamp, content = textContent))
+                    }
                 }
 
-                for (item in contentArray) {
-                    val itemObj = item.jsonObject
-                    if (itemObj["type"]?.jsonPrimitive?.content == "tool_use") {
-                        val id = itemObj["id"]?.jsonPrimitive?.content ?: continue
-                        val name = itemObj["name"]?.jsonPrimitive?.content ?: "unknown"
-                        val inputElement = itemObj["input"]?.jsonObject
-                        val inputMap = mutableMapOf<String, String>()
+                "assistant" -> {
+                    val model = msgData["modelID"]?.jsonPrimitive?.content
+                    if (model != null) modelCounts[model] = (modelCounts[model] ?: 0) + 1
 
-                        inputElement?.entries?.forEach { (key, value) ->
-                            inputMap[key] = when {
-                                value is JsonPrimitive && value.isString -> value.content
-                                else -> value.toString()
+                    for (part in parts) {
+                        val type = part["type"]?.jsonPrimitive?.content ?: continue
+                        when (type) {
+                            "text" -> {
+                                val text = part["text"]?.jsonPrimitive?.content?.takeIf { it.isNotEmpty() } ?: continue
+                                parsedMessages.add(ParsedMessage.AssistantText(
+                                    timestamp = timestamp,
+                                    content = listOf(MessageContent.Markdown(text))
+                                ))
+                            }
+                            "reasoning" -> {
+                                val text = part["text"]?.jsonPrimitive?.content?.takeIf { it.isNotEmpty() } ?: continue
+                                parsedMessages.add(ParsedMessage.AssistantThinking(
+                                    timestamp = timestamp,
+                                    thinking = text
+                                ))
+                            }
+                            "tool" -> {
+                                val toolName = part["tool"]?.jsonPrimitive?.content ?: "unknown"
+                                val callId = part["callID"]?.jsonPrimitive?.content
+                                val state = part["state"]?.jsonObject
+                                val inputObj = state?.get("input")?.jsonObject
+                                val output = state?.get("output")?.jsonPrimitive?.content
+
+                                val inputMap = mutableMapOf<String, String>()
+                                inputObj?.entries?.forEach { (key, value) ->
+                                    inputMap[key] = if (value is JsonPrimitive && value.isString) value.content else value.toString()
+                                }
+
+                                val results = if (output != null) listOf(
+                                    ParsedMessage.ToolResult(
+                                        timestamp = timestamp,
+                                        toolName = toolName,
+                                        toolCallId = callId,
+                                        output = listOf(MessageContent.Text(output))
+                                    )
+                                ) else emptyList()
+
+                                parsedMessages.add(ParsedMessage.ToolUse(
+                                    timestamp = timestamp,
+                                    toolName = toolName,
+                                    toolCallId = callId,
+                                    input = inputMap,
+                                    results = results
+                                ))
                             }
                         }
-
-                        messages.add(ParsedMessage.ToolUse(
-                            timestamp = "",
-                            toolName = name,
-                            toolCallId = id,
-                            input = inputMap,
-                            results = emptyList()
-                        ))
-                        apiToolCallIds.add(id)
                     }
                 }
             }
         }
 
-        // Process UI messages
-        for (uiMsgElement in uiMessages) {
-            val uiMsg = uiMsgElement.jsonObject
-            val ts = uiMsg["ts"]?.jsonPrimitive?.longOrNull
+        val models = modelCounts.entries.sortedByDescending { it.value }.map { it.key to it.value }
 
-            if (ts != null) {
-                if (firstTimestamp == null) firstTimestamp = ts
-                lastTimestamp = ts
-            }
-
-            val parsed = parseUiMessage(uiMsg)
-            if (parsed != null) {
-                // Skip UI tool uses that we already have from API history
-                if (parsed is ParsedMessage.ToolUse && parsed.toolCallId != null && apiToolCallIds.contains(parsed.toolCallId)) {
-                    continue
-                }
-                messages.add(parsed)
-            }
-        }
-
-        // Extract model from API history
-        val model = extractModelFromApiHistory(apiHistory)
-
-        val sessionMetadata = SessionMetadata(
-            cwd = extractWorkspace(metadata),
-            models = if (model != null) listOf(model to 1) else emptyList(),
-            messageCount = messages.size,
-            created = firstTimestamp?.let { java.time.Instant.ofEpochMilli(it).toString() },
-            modified = lastTimestamp?.let { java.time.Instant.ofEpochMilli(it).toString() }
+        return SessionDetail(
+            sessionId = sessionInfo.sessionId,
+            title = sessionInfo.title,
+            messages = parsedMessages,
+            metadata = SessionMetadata(
+                cwd = sessionInfo.projectPath,
+                models = models,
+                messageCount = parsedMessages.size,
+                created = Instant.ofEpochMilli(sessionInfo.timeCreated).toString(),
+                modified = Instant.ofEpochMilli(sessionInfo.timeUpdated).toString()
+            )
         )
-
-        return Pair(messages, sessionMetadata)
-    }
-
-    private fun parseUiMessage(uiMsg: JsonObject): ParsedMessage? {
-        val ts = uiMsg["ts"]?.jsonPrimitive?.longOrNull
-        val timestamp = if (ts != null) java.time.Instant.ofEpochMilli(ts).toString() else ""
-        val type = uiMsg["type"]?.jsonPrimitive?.content ?: return null
-
-        return when (type) {
-            "say" -> parseSayMessage(uiMsg, timestamp)
-            "ask" -> parseAskMessage(uiMsg, timestamp)
-            else -> null
-        }
-    }
-
-    private fun parseSayMessage(uiMsg: JsonObject, timestamp: String): ParsedMessage? {
-        val say = uiMsg["say"]?.jsonPrimitive?.content ?: return null
-        val text = uiMsg["text"]?.jsonPrimitive?.content ?: ""
-
-        return when (say) {
-            "text" -> ParsedMessage.User(
-                timestamp = timestamp,
-                content = listOf(MessageContent.Text(text))
-            )
-            "reasoning" -> ParsedMessage.AssistantThinking(
-                timestamp = timestamp,
-                thinking = text
-            )
-            "error" -> ParsedMessage.Info(
-                timestamp = timestamp,
-                title = "error",
-                content = MessageContent.Text(text.ifEmpty { "Unknown error" }),
-                style = ParsedMessage.InfoStyle.ERROR
-            )
-            "checkpoint_saved", "api_req_started", "api_req_finished" -> null
-            else -> null
-        }
-    }
-
-    private fun parseAskMessage(uiMsg: JsonObject, timestamp: String): ParsedMessage? {
-        val ask = uiMsg["ask"]?.jsonPrimitive?.content ?: return null
-        val text = uiMsg["text"]?.jsonPrimitive?.content ?: ""
-
-        return when (ask) {
-            "tool" -> {
-                try {
-                    val toolData = JSON.parseToJsonElement(text).jsonObject
-                    val toolName = toolData["tool"]?.jsonPrimitive?.content ?: "unknown"
-                    val inputMap = mutableMapOf<String, String>()
-
-                    for ((key, value) in toolData.entries) {
-                        if (key != "tool") {
-                            inputMap[key] = when {
-                                value is JsonPrimitive && value.isString -> value.content
-                                else -> value.toString()
-                            }
-                        }
-                    }
-
-                    ParsedMessage.ToolUse(
-                        timestamp = timestamp,
-                        toolName = toolName,
-                        input = inputMap,
-                        results = emptyList()
-                    )
-                } catch (_: Exception) {
-                    ParsedMessage.Info(
-                        timestamp = timestamp,
-                        title = "tool_error",
-                        content = MessageContent.Text("Failed to parse tool: $text"),
-                        style = ParsedMessage.InfoStyle.ERROR
-                    )
-                }
-            }
-            "followup" -> ParsedMessage.Info(
-                timestamp = timestamp,
-                title = "followup",
-                subtitle = "question",
-                content = MessageContent.Text(text),
-                style = ParsedMessage.InfoStyle.DEFAULT
-            )
-            "command" -> ParsedMessage.Info(
-                timestamp = timestamp,
-                title = "command",
-                content = MessageContent.Text(text),
-                style = ParsedMessage.InfoStyle.DEFAULT
-            )
-            else -> null
-        }
-    }
-
-    private fun extractModelFromApiHistory(apiHistory: JsonArray): String? {
-        for (msgElement in apiHistory) {
-            val msg = msgElement.jsonObject
-            if (msg["role"]?.jsonPrimitive?.content != "user") continue
-
-            val contentField = msg["content"]
-            when {
-                contentField is JsonArray -> {
-                    for (item in contentField) {
-                        val itemObj = item.jsonObject
-                        if (itemObj["type"]?.jsonPrimitive?.content == "text") {
-                            val text = itemObj["text"]?.jsonPrimitive?.content ?: continue
-                            if (text.contains("<environment_details>")) {
-                                val match = MODEL_TAG_REGEX.find(text)
-                                if (match != null) return match.groupValues[1]
-                            }
-                        }
-                    }
-                }
-                contentField is JsonPrimitive -> {
-                    val text = contentField.content
-                    if (text.contains("<environment_details>")) {
-                        val match = MODEL_TAG_REGEX.find(text)
-                        if (match != null) return match.groupValues[1]
-                    }
-                }
-            }
-        }
-        return null
-    }
-
-    private fun extractWorkspace(metadata: JsonObject): String? {
-        val cwd = metadata["cwd"]?.jsonPrimitive?.content
-        if (cwd != null) return cwd
-
-        val filesInContext = metadata["files_in_context"]?.jsonArray
-        if (filesInContext != null && filesInContext.isNotEmpty()) {
-            val firstFile = filesInContext[0].jsonObject
-            val path = firstFile["path"]?.jsonPrimitive?.content
-            if (path != null) {
-                return File(path).parent
-            }
-        }
-
-        return null
-    }
-
-    /**
-     * Extract title from first user message.
-     */
-    fun extractTitle(uiMessages: JsonArray, apiHistory: JsonArray): String? {
-        // Try UI messages first
-        for (msgElement in uiMessages) {
-            val msg = msgElement.jsonObject
-            if (msg["type"]?.jsonPrimitive?.content == "say" &&
-                msg["say"]?.jsonPrimitive?.content == "text") {
-                val text = msg["text"]?.jsonPrimitive?.content?.trim() ?: continue
-                if (text.isNotEmpty()) {
-                    return if (text.length > 100) text.take(100) + "..." else text
-                }
-            }
-        }
-
-        // Fallback to API history
-        for (msgElement in apiHistory) {
-            val msg = msgElement.jsonObject
-            if (msg["role"]?.jsonPrimitive?.content != "user") continue
-
-            val contentField = msg["content"]
-            val text = when {
-                contentField is JsonArray -> {
-                    contentField.firstOrNull { it.jsonObject["type"]?.jsonPrimitive?.content == "text" }
-                        ?.jsonObject?.get("text")?.jsonPrimitive?.content
-                }
-                contentField is JsonPrimitive -> contentField.content
-                else -> null
-            }?.trim() ?: continue
-
-            if (text.isNotEmpty()) {
-                return if (text.length > 100) text.take(100) + "..." else text
-            }
-        }
-
-        return null
     }
 }

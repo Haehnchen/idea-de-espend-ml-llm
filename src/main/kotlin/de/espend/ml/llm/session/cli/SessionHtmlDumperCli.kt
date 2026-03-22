@@ -147,11 +147,11 @@ private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail
     }
 
     // Try Kilo Code
-    val kiloFile = KiloSessionFinder.findSessionFile(sessionId)
-    if (kiloFile != null) {
-        val detail = KiloSessionParser.parseSession(kiloFile.absolutePath, sessionId)
+    val kiloSession = KiloSessionFinder.findSession(sessionId)
+    if (kiloSession != null) {
+        val detail = KiloSessionParser.parseSession(sessionId)
         if (detail != null) {
-            return Triple("kilocode", detail, kiloFile.absolutePath)
+            return Triple("kilocode", detail, KiloSessionFinder.getDbPath())
         }
     }
 
@@ -296,7 +296,10 @@ private fun listSessions() {
         println("  No sessions found")
     } else {
         kiloSessions.take(50).forEach { session ->
-            println("  ${session.taskId} (session: ${session.sessionId}) - ${session.projectPath}")
+            val updated = Instant.ofEpochMilli(session.timeUpdated)
+                .atZone(ZoneId.systemDefault())
+                .format(formatter)
+            println("  [$updated] ${session.sessionId} - ${session.title.take(60)}")
         }
         if (kiloSessions.size > 50) {
             println("  ... and ${kiloSessions.size - 50} more")
