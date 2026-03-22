@@ -1,5 +1,13 @@
 package de.espend.ml.llm.usage.action
 
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.CustomStatusBarWidget
 import com.intellij.openapi.wm.StatusBar
@@ -12,12 +20,14 @@ import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
+import de.espend.ml.llm.usage.ui.UsageSettingsConfigurable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -34,7 +44,7 @@ import javax.swing.JPanel
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
-class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : CustomStatusBarWidget {
+class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusBarWidget {
 
     private val contentPanel = createContentPanel()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -45,10 +55,15 @@ class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : Custo
     private val accountLabels = mutableListOf<AccountLabels>()
 
     override fun ID(): String = WIDGET_ID
-    override fun getPresentation(): StatusBarWidget.WidgetPresentation = NoClickPresentation()
+    override fun getPresentation(): StatusBarWidget.WidgetPresentation = NoPresentation()
     override fun getComponent(): JComponent = contentPanel
 
     override fun install(statusBar: StatusBar) {
+        contentPanel.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) = showDropupMenu()
+        })
+        contentPanel.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+
         println("[StatusBar] registering cache listener")
         removeCacheListener = ProviderUsageService.getInstance().addCacheListener {
             rebuildFromCache()
@@ -113,8 +128,6 @@ class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : Custo
                         ?.let { PluginIcons.scaleIcon(it, JBUI.scale(13)) }
                     Triple(account.id, icon, displayText)
                 }
-
-            if (items.isEmpty()) return@launch
 
             println("[StatusBar] cache update received: ${items.size} account(s) → ${items.joinToString { (id, _, text) -> "$id=$text" }}")
 
@@ -187,7 +200,58 @@ class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : Custo
         }
     }
 
-    private class NoClickPresentation : StatusBarWidget.WidgetPresentation {
+    private fun showDropupMenu() {
+        val service = ProviderUsageService.getInstance()
+        val registry = UsagePlatformRegistry.getInstance()
+        val group = DefaultActionGroup()
+        val menuComponent = ActionManager.getInstance().createActionPopupMenu("LlmStatusBar", group).component
+
+        registry.getAccountStates()
+            .filter { it.isEnabled }
+            .forEach { account ->
+                val provider = service.getProvider(account.providerId)
+                val icon = provider?.providerInfo?.icon
+                    ?.let { PluginIcons.scaleIcon(it, JBUI.scale(12)) }
+                val providerName = provider?.providerInfo?.providerName ?: account.providerId
+                val label = if (account.label.isBlank()) {
+                    providerName
+                } else {
+                    val name = account.label.let { if (it.length > 15) it.take(14) + "…" else it }
+                    "$name ($providerName)"
+                }
+                val accountId = account.id
+                group.add(object : ToggleAction(label, null, icon) {
+                    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+                    override fun isSelected(e: AnActionEvent) =
+                        registry.getAccountStates().find { it.id == accountId }?.enableStatusBar ?: false
+                    override fun setSelected(e: AnActionEvent, state: Boolean) {
+                        menuComponent.isVisible = false
+                        registry.setEnableStatusBar(accountId, state)
+                        rebuildFromCache()
+                        refreshWidget(project)
+                    }
+                })
+            }
+
+        group.addSeparator()
+
+        group.add(object : AnAction("Settings", null, AllIcons.General.Settings) {
+            override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            override fun actionPerformed(e: AnActionEvent) {
+                menuComponent.isVisible = false
+                ShowSettingsUtil.getInstance().showSettingsDialog(null, UsageSettingsConfigurable::class.java)
+            }
+        })
+
+        menuComponent.show(contentPanel, 0, 0)
+        val loc = contentPanel.locationOnScreen
+        menuComponent.setLocation(
+            loc.x + contentPanel.width - menuComponent.width,
+            loc.y - menuComponent.height
+        )
+    }
+
+    private class NoPresentation : StatusBarWidget.WidgetPresentation {
         override fun getClickConsumer(): com.intellij.util.Consumer<MouseEvent>? = null
         override fun getTooltipText(): String? = null
     }
