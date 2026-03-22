@@ -1,293 +1,213 @@
 package de.espend.ml.llm.session.adapter
 
+import com.intellij.openapi.project.Project
+import de.espend.ml.llm.session.adapter.opencode.OpenCodeSessionFinder
 import de.espend.ml.llm.session.model.MessageContent
 import de.espend.ml.llm.session.model.ParsedMessage
-import de.espend.ml.llm.session.util.ToolInputFormatter
+import org.junit.After
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
-import java.nio.file.Paths
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
+import java.io.File
+import java.sql.DriverManager
 
 class OpenCodeSessionAdapterTest {
 
-    private val fixturesDir = Paths.get("src/test/kotlin/de/espend/ml/llm/session/adapter/fixtures")
+    private lateinit var dbFile: File
+    private lateinit var dbUrl: String
+    private lateinit var project: Project
 
-    private fun contentToString(content: List<MessageContent>): String {
-        return content.joinToString("\n") { block ->
-            when (block) {
-                is MessageContent.Text -> block.text
-                is MessageContent.Code -> block.code
-                is MessageContent.Markdown -> block.markdown
-                is MessageContent.Json -> block.json
+    @Before
+    fun setUp() {
+        dbFile = File.createTempFile("opencode-adapter-test-", ".db")
+        dbUrl = "jdbc:sqlite:${dbFile.absolutePath}"
+        OpenCodeSessionFinder.dbPathOverride = dbFile.absolutePath
+
+        project = mock(Project::class.java)
+        `when`(project.basePath).thenReturn("/home/user/myproject")
+
+        Class.forName("org.sqlite.JDBC")
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.executeUpdate("""
+                    CREATE TABLE session (
+                        id TEXT PRIMARY KEY, project_id TEXT NOT NULL, parent_id TEXT,
+                        slug TEXT NOT NULL, directory TEXT NOT NULL, title TEXT NOT NULL,
+                        version TEXT NOT NULL, time_created INTEGER NOT NULL,
+                        time_updated INTEGER NOT NULL, time_archived INTEGER
+                    )
+                """)
+                stmt.executeUpdate("""
+                    CREATE TABLE message (
+                        id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL,
+                        data TEXT NOT NULL
+                    )
+                """)
+                stmt.executeUpdate("""
+                    CREATE TABLE part (
+                        id TEXT PRIMARY KEY, message_id TEXT NOT NULL, session_id TEXT NOT NULL,
+                        time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL,
+                        data TEXT NOT NULL
+                    )
+                """)
             }
         }
     }
 
-    private fun contentToString(input: Map<String, String>, toolName: String): String {
-        return ToolInputFormatter.formatToolInput(input)
+    @After
+    fun tearDown() {
+        OpenCodeSessionFinder.dbPathOverride = null
+        dbFile.delete()
     }
 
-    private fun containsContent(content: List<MessageContent>, key: String, value: String? = null): Boolean {
-        val fullText = contentToString(content)
-        return fullText.contains(key) && (value == null || fullText.contains(value))
-    }
-
-    private fun containsContent(input: Map<String, String>, toolName: String, key: String, value: String? = null): Boolean {
-        val fullText = contentToString(input, toolName)
-        return fullText.contains(key) && (value == null || fullText.contains(value))
-    }
-
-    @Test
-    fun `loadRawMessages should load messages and parts from fixtures`() {
-        val sessionDir = fixturesDir.resolve("opencode/3f71d252cffezp6k0JstQT7lWe")
-
-        val messages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        assertTrue("Should load messages", messages.isNotEmpty())
-        assertEquals("Should have 7 messages", 7, messages.size)
-
-        val userMessages = messages.filter { it.messageData?.role == "user" }
-        val assistantMessages = messages.filter { it.messageData?.role == "assistant" }
-
-        assertTrue("Should have user messages", userMessages.isNotEmpty())
-        assertTrue("Should have assistant messages", assistantMessages.isNotEmpty())
-
-        val messagesWithParts = messages.filter { it.parts.isNotEmpty() }
-        assertTrue("Some messages should have parts", messagesWithParts.isNotEmpty())
-
-        messages.forEach { msg ->
-            assertNotNull("Each message should have rawContent", msg.rawContent)
-            assertNotNull("Each message should have filePath", msg.filePath)
+    private fun insertSession(sessionId: String, title: String, directory: String, updatedMs: Long = 1700000100000L) {
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated) VALUES (?,?,?,?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, sessionId)
+                stmt.setString(2, "proj1")
+                stmt.setString(3, "slug")
+                stmt.setString(4, directory)
+                stmt.setString(5, title)
+                stmt.setString(6, "1")
+                stmt.setLong(7, 1700000000000L)
+                stmt.setLong(8, updatedMs)
+                stmt.executeUpdate()
+            }
         }
     }
 
+    private fun insertMessage(msgId: String, sessionId: String, role: String, model: String? = null, createdMs: Long = 1700000000000L) {
+        val modelPart = if (model != null) ""","modelID":"$model"""" else ""
+        val data = """{"role":"$role","time":{"created":$createdMs}$modelPart}"""
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, msgId)
+                stmt.setString(2, sessionId)
+                stmt.setLong(3, createdMs)
+                stmt.setLong(4, createdMs)
+                stmt.setString(5, data)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    private fun insertPart(partId: String, msgId: String, sessionId: String, data: String, createdMs: Long = 1700000000000L) {
+        DriverManager.getConnection(dbUrl).use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?,?,?,?,?,?)"
+            ).use { stmt ->
+                stmt.setString(1, partId)
+                stmt.setString(2, msgId)
+                stmt.setString(3, sessionId)
+                stmt.setLong(4, createdMs)
+                stmt.setLong(5, createdMs)
+                stmt.setString(6, data)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    // --- findSessions() ---
+
     @Test
-    fun `loadRawMessages should return empty list for non-existent session`() {
-        val sessionDir = fixturesDir.resolve("opencode/non_existent_session")
+    fun `findSessions should return only sessions matching project directory`() {
+        insertSession("ses_match", "Match", "/home/user/myproject")
+        insertSession("ses_other", "Other", "/home/user/otherproject")
 
-        val messages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+        val adapter = OpenCodeSessionAdapter(project)
+        val sessions = adapter.findSessions()
 
-        assertTrue("Should return empty list", messages.isEmpty())
+        assertEquals(1, sessions.size)
+        assertEquals("ses_match", sessions[0].sessionId)
+        assertEquals("Match", sessions[0].title)
     }
 
     @Test
-    fun `loadRawMessages should sort messages by creation time`() {
-        val sessionDir = fixturesDir.resolve("opencode/3f71d252cffezp6k0JstQT7lWe")
+    fun `findSessions should return empty list when no sessions match project`() {
+        insertSession("ses_x", "Unrelated", "/home/user/unrelated")
 
-        val messages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+        val sessions = OpenCodeSessionAdapter(project).findSessions()
 
-        val creationTimes = messages.mapNotNull { it.messageData?.time?.created }
-        val sortedTimes = creationTimes.sorted()
-
-        assertEquals("Messages should be sorted by creation time", sortedTimes, creationTimes)
+        assertTrue(sessions.isEmpty())
     }
 
     @Test
-    fun `parseRawMessage should parse user message with text content`() {
-        val sessionDir = fixturesDir.resolve("opencode/user_message")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+    fun `findSessions should return empty list when project basePath is null`() {
+        `when`(project.basePath).thenReturn(null)
+        insertSession("ses_a", "Session", "/home/user/myproject")
 
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
+        val sessions = OpenCodeSessionAdapter(project).findSessions()
 
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        assertEquals("Should produce 1 message", 1, parsed.size)
-        assertTrue("Message should be User type", parsed[0] is ParsedMessage.User)
-        val userMsg = parsed[0] as ParsedMessage.User
-        val content = contentToString(userMsg.content)
-        assertEquals("Message content should be text", "Hello, this is a user message", content)
+        assertTrue(sessions.isEmpty())
     }
 
     @Test
-    fun `parseRawMessage should handle unknown role`() {
-        val sessionDir = fixturesDir.resolve("opencode/unknown_role")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+    fun `findSessions should include message count`() {
+        insertSession("ses_a", "With messages", "/home/user/myproject")
+        insertMessage("msg_1", "ses_a", "user")
+        insertMessage("msg_2", "ses_a", "assistant")
 
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
+        val sessions = OpenCodeSessionAdapter(project).findSessions()
 
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        assertEquals("Should produce 1 message", 1, parsed.size)
-        assertTrue("Message should be Info type", parsed[0] is ParsedMessage.Info)
-        val infoMsg = parsed[0] as ParsedMessage.Info
-        assertEquals("Title should be the role", "system", infoMsg.title)
-        assertTrue("Content should contain unknown role text", (infoMsg.content as? MessageContent.Json)?.json?.contains("role") == true)
+        assertEquals(1, sessions.size)
+        assertEquals(2, sessions[0].messageCount)
     }
 
     @Test
-    fun `parseRawMessage should handle parse error with null messageData`() {
-        val sessionDir = fixturesDir.resolve("opencode/parse_error")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+    fun `findSessions should return multiple matching sessions`() {
+        insertSession("ses_1", "First", "/home/user/myproject", updatedMs = 1700000200000L)
+        insertSession("ses_2", "Second", "/home/user/myproject", updatedMs = 1700000100000L)
+        insertSession("ses_3", "Other", "/home/user/other")
 
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
-        assertNull("messageData should be null for broken JSON", rawMessages[0].messageData)
-        assertNotNull("parseError should be set", rawMessages[0].parseError)
+        val sessions = OpenCodeSessionAdapter(project).findSessions()
 
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
+        assertEquals(2, sessions.size)
+        assertTrue(sessions.any { it.sessionId == "ses_1" })
+        assertTrue(sessions.any { it.sessionId == "ses_2" })
+    }
 
-        assertEquals("Should produce 1 message", 1, parsed.size)
-        assertTrue("Message should be Info type with ERROR style", parsed[0] is ParsedMessage.Info)
-        val errorMsg = parsed[0] as ParsedMessage.Info
-        assertEquals("Style should be ERROR", ParsedMessage.InfoStyle.ERROR, errorMsg.style)
-        assertTrue("Content should contain failure text", (errorMsg.content as? MessageContent.Text)?.text?.contains("Failed to parse message file") == true)
+    // --- getSessionDetail() ---
+
+    @Test
+    fun `getSessionDetail should return null for unknown session`() {
+        val detail = OpenCodeSessionAdapter(project).getSessionDetail("nonexistent")
+        assertNull(detail)
     }
 
     @Test
-    fun `parseRawMessage should parse assistant with text and reasoning parts`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_text_reasoning")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+    fun `getSessionDetail should return parsed session detail`() {
+        insertSession("ses_detail", "Detail session", "/home/user/myproject")
+        insertMessage("msg_1", "ses_detail", "user")
+        insertPart("prt_1", "msg_1", "ses_detail", """{"type":"text","text":"What does this do?"}""")
+        insertMessage("msg_2", "ses_detail", "assistant", model = "claude-sonnet-4-6", createdMs = 1700000010000L)
+        insertPart("prt_2", "msg_2", "ses_detail", """{"type":"text","text":"This is an IntelliJ plugin."}""", createdMs = 1700000010000L)
 
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
+        val detail = OpenCodeSessionAdapter(project).getSessionDetail("ses_detail")
 
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-        assertEquals("Should produce 2 messages", 2, parsed.size)
-
-        val textMessages = parsed.filterIsInstance<ParsedMessage.AssistantText>()
-        assertEquals("Should have 1 text message", 1, textMessages.size)
-        val textMsg = textMessages[0]
-        val textContent = contentToString(textMsg.content)
-        assertTrue("Text content should contain the response", textContent.contains("Here is my response to your question."))
-
-        val reasoningMessages = parsed.filterIsInstance<ParsedMessage.AssistantThinking>()
-        assertEquals("Should have 1 reasoning message", 1, reasoningMessages.size)
-        val reasoningMsg = reasoningMessages[0]
-        assertEquals("Reasoning content should match", "Let me think about this problem step by step...", reasoningMsg.thinking)
+        assertNotNull(detail)
+        assertEquals("ses_detail", detail!!.sessionId)
+        assertEquals("Detail session", detail.title)
+        assertEquals(2, detail.messages.size)
+        assertTrue(detail.messages[0] is ParsedMessage.User)
+        assertTrue(detail.messages[1] is ParsedMessage.AssistantText)
+        val text = (detail.messages[1] as ParsedMessage.AssistantText).content[0] as MessageContent.Markdown
+        assertEquals("This is an IntelliJ plugin.", text.markdown)
     }
 
     @Test
-    fun `parseRawMessage should format Edit tool with structured parameters`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_tool_edit")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
+    fun `getSessionDetail should populate metadata with project directory`() {
+        insertSession("ses_meta", "Meta session", "/home/user/myproject")
 
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
+        val detail = OpenCodeSessionAdapter(project).getSessionDetail("ses_meta")
 
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        val toolUseMessages = parsed.filterIsInstance<ParsedMessage.ToolUse>()
-        assertEquals("Should have 1 tool_use message", 1, toolUseMessages.size)
-
-        val toolUse = toolUseMessages[0]
-        assertEquals("Tool name should be Edit", "Edit", toolUse.toolName)
-
-        // Edit tool now stores parameters as Map
-        assertTrue("Input should contain old_string key", toolUse.input.containsKey("old_string"))
-        assertTrue("Input should contain new_string key", toolUse.input.containsKey("new_string"))
-        assertNotNull("oldString should not be null", toolUse.input["old_string"])
-        assertNotNull("newString should not be null", toolUse.input["new_string"])
-    }
-
-    @Test
-    fun `parseRawMessage should format Bash tool with description and command`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_tool_bash")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
-
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        val toolUseMessages = parsed.filterIsInstance<ParsedMessage.ToolUse>()
-        assertEquals("Should have 1 tool_use message", 1, toolUseMessages.size)
-
-        val toolUse = toolUseMessages[0]
-        assertEquals("Tool name should be Bash", "Bash", toolUse.toolName)
-
-        assertTrue("Should contain description", containsContent(toolUse.input, toolUse.toolName, "description", "List files in directory"))
-        assertTrue("Should contain command", containsContent(toolUse.input, toolUse.toolName, "command", "ls -la"))
-    }
-
-    @Test
-    fun `parseRawMessage should nest ToolResult directly inside ToolUse`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_tool_bash")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        // ToolResult should be nested directly inside ToolUse (no separate messages)
-        val toolResultMessages = parsed.filterIsInstance<ParsedMessage.ToolResult>()
-        assertEquals("Should have 0 standalone tool_result messages", 0, toolResultMessages.size)
-
-        val toolUseMessages = parsed.filterIsInstance<ParsedMessage.ToolUse>()
-        assertEquals("Should have 1 tool_use message", 1, toolUseMessages.size)
-
-        val toolUse = toolUseMessages[0]
-        assertTrue("ToolUse should have results", toolUse.hasResults())
-        assertEquals("ToolUse should have 1 result", 1, toolUse.results.size)
-
-        val toolResult = toolUse.results[0]
-        val content = contentToString(toolResult.output)
-        assertTrue("Should contain directory listing", content.contains("drwxr-xr-x"))
-        assertTrue("Should contain file1.txt", content.contains("file1.txt"))
-    }
-
-    @Test
-    fun `parseRawMessage should handle assistant message with error and 0 parts`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_error")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
-        assertEquals("Should have 0 parts", 0, rawMessages[0].parts.size)
-        assertNotNull("Should have error data", rawMessages[0].messageData?.error)
-
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        assertEquals("Should produce 1 message", 1, parsed.size)
-        assertTrue("Message should be Info type with ERROR style", parsed[0] is ParsedMessage.Info)
-        val errorMsg = parsed[0] as ParsedMessage.Info
-        assertEquals("Style should be ERROR", ParsedMessage.InfoStyle.ERROR, errorMsg.style)
-        assertEquals("Subtitle should be APIError", "APIError", errorMsg.subtitle)
-        assertTrue("Content should be error message", (errorMsg.content as? MessageContent.Text)?.text?.contains("Key limit exceeded") == true)
-    }
-
-    @Test
-    fun `parseRawMessage should format Edit tool with camelCase parameters`() {
-        val sessionDir = fixturesDir.resolve("opencode/assistant_tool_edit_camelcase")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        assertEquals("Should have 1 raw message", 1, rawMessages.size)
-
-        val parsed = OpenCodeSessionAdapter.parseRawMessage(rawMessages[0])
-
-        val toolUseMessages = parsed.filterIsInstance<ParsedMessage.ToolUse>()
-        assertEquals("Should have 1 tool_use message", 1, toolUseMessages.size)
-
-        val toolUse = toolUseMessages[0]
-        assertEquals("Tool name should be Edit", "Edit", toolUse.toolName)
-
-        // Edit tool with camelCase parameters should still be parsed correctly
-        assertTrue("Input should contain filePath key (camelCase)", toolUse.input.containsKey("filePath"))
-        assertTrue("Input should contain oldString key (camelCase)", toolUse.input.containsKey("oldString"))
-        assertTrue("Input should contain newString key (camelCase)", toolUse.input.containsKey("newString"))
-        assertNotNull("filePath should not be null", toolUse.input["filePath"])
-        assertNotNull("oldString should not be null", toolUse.input["oldString"])
-        assertNotNull("newString should not be null", toolUse.input["newString"])
-    }
-
-    @Test
-    fun `parseRawMessage should nest tool results for file edit session`() {
-        val sessionDir = fixturesDir.resolve("opencode/ses_3e2c36a5affeiKvkpFK5CEOZ1W")
-        val rawMessages = OpenCodeSessionAdapter.loadRawMessages(sessionDir)
-
-        assertTrue("Should have messages", rawMessages.isNotEmpty())
-
-        // Parse all messages - ToolResults should be nested directly
-        val allParsed = rawMessages.flatMap { OpenCodeSessionAdapter.parseRawMessage(it) }
-
-        // ToolResults should be nested inside ToolUse, not standalone
-        val standaloneToolResults = allParsed.filterIsInstance<ParsedMessage.ToolResult>()
-        assertEquals("Should have 0 standalone tool_result messages", 0, standaloneToolResults.size)
-
-        // Find completed tool calls (those with results)
-        val toolUseMessages = allParsed.filterIsInstance<ParsedMessage.ToolUse>()
-        val completedTools = toolUseMessages.filter { it.hasResults() }
-        assertTrue("Should have completed tool calls with results", completedTools.isNotEmpty())
-
-        // Check edit tool specifically
-        val editTools = completedTools.filter { it.toolName == "edit" }
-        assertTrue("Should have edit tool calls", editTools.isNotEmpty())
-
-        // Verify edit tool has result with output
-        val editTool = editTools.first()
-        assertTrue("Edit tool should have results", editTool.results.isNotEmpty())
-        val editResult = editTool.results.first()
-        assertTrue("Edit result should have output", editResult.output.isNotEmpty())
+        assertNotNull(detail)
+        assertEquals("/home/user/myproject", detail!!.metadata?.cwd)
     }
 }

@@ -1,11 +1,8 @@
 package de.espend.ml.llm.session.adapter.opencode
 
-import java.nio.file.Paths
-import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
-import kotlin.io.path.listDirectoryEntries
-import kotlin.io.path.readText
-import java.nio.file.Path as JavaPath
+import java.io.File
+import java.nio.file.Path
+import java.sql.DriverManager
 
 /**
  * Represents an OpenCode session.
@@ -14,107 +11,106 @@ data class OpenCodeSession(
     val sessionId: String,
     val slug: String,
     val title: String,
+    val directory: String,
     val created: Long,
     val updated: Long,
     val messageCount: Int = 0
 )
 
 /**
- * Standalone utility to find OpenCode session files.
- * No IntelliJ dependencies - can be used from CLI or tests.
+ * Standalone finder for OpenCode sessions stored in ~/.local/share/opencode/opencode.db.
+ * No IntelliJ dependencies.
  */
 object OpenCodeSessionFinder {
 
-    /**
-     * Gets the OpenCode storage directory.
-     */
-    fun getStorageDir(): JavaPath? {
-        val homeDir = System.getProperty("user.home")
-        val storageDir = Paths.get(homeDir, ".local", "share", "opencode", "storage")
-        return if (storageDir.exists()) storageDir else null
+    /** Overrides the default DB path; intended for tests only. */
+    internal var dbPathOverride: String? = null
+
+    private fun getDbFile(): File {
+        dbPathOverride?.let { return File(it) }
+        return File(System.getProperty("user.home"), ".local/share/opencode/opencode.db")
     }
 
+    fun getDbPath(): String = getDbFile().absolutePath
+
     /**
-     * Lists all OpenCode sessions.
+     * Lists all non-archived sessions from the SQLite database.
      */
     fun listSessions(): List<OpenCodeSession> {
-        val storageDir = getStorageDir() ?: return emptyList()
-        val sessionDir = storageDir.resolve("session")
-        val messageDir = storageDir.resolve("message")
+        val dbFile = getDbFile()
+        if (!dbFile.exists()) return emptyList()
 
-        if (!sessionDir.exists()) {
-            return emptyList()
-        }
-
-        val allSessions = mutableListOf<OpenCodeSession>()
-
-        // Collect sessions from all project directories
-        sessionDir.listDirectoryEntries().forEach { projectSessionDir ->
-            if (!projectSessionDir.isDirectory()) return@forEach
-
-            projectSessionDir.listDirectoryEntries("*.json").forEach { sessionFile ->
-                try {
-                    val content = sessionFile.readText()
-                    val session = OpenCodeSessionParser.JSON.decodeFromString<OpenCodeSessionData>(content)
-                    val msgCount = countMessages(messageDir, session.id)
-                    allSessions.add(
-                        OpenCodeSession(
-                            sessionId = session.id,
-                            slug = session.slug,
-                            title = session.title,
-                            created = session.time.created,
-                            updated = session.time.updated,
-                            messageCount = msgCount
-                        )
-                    )
-                } catch (_: Exception) {
-                    // Skip invalid sessions
-                }
-            }
-        }
-
-        return allSessions.sortedByDescending { it.updated }
-    }
-
-    /**
-     * Finds a session file by ID.
-     */
-    fun findSessionFile(sessionId: String): JavaPath? {
-        val storageDir = getStorageDir() ?: return null
-        val sessionDir = storageDir.resolve("session")
-
-        // Search through all project directories for the session file
-        sessionDir.listDirectoryEntries().forEach { projectDir ->
-            if (!projectDir.isDirectory()) return@forEach
-
-            projectDir.listDirectoryEntries("*.json").forEach { sessionFile ->
-                try {
-                    val content = sessionFile.readText()
-                    val session = OpenCodeSessionParser.JSON.decodeFromString<OpenCodeSessionData>(content)
-                    if (session.id == sessionId) {
-                        return sessionFile
-                    }
-                } catch (_: Exception) {
-                    // Continue searching
-                }
-            }
-        }
-
-        return null
-    }
-
-    /**
-     * Counts messages for a session by checking the message directory.
-     */
-    private fun countMessages(messageDir: JavaPath, sessionId: String): Int {
-        val sessionMessageDir = messageDir.resolve(sessionId)
-        if (!sessionMessageDir.exists()) {
-            return 0
-        }
         return try {
-            sessionMessageDir.listDirectoryEntries("*.json").size
+            Class.forName("org.sqlite.JDBC")
+            DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                conn.createStatement().use { stmt ->
+                    val rs = stmt.executeQuery("""
+                        SELECT s.id, s.slug, s.title, s.directory, s.time_created, s.time_updated,
+                               COUNT(m.id) as message_count
+                        FROM session s
+                        LEFT JOIN message m ON m.session_id = s.id
+                        WHERE s.time_archived IS NULL
+                        GROUP BY s.id
+                        ORDER BY s.time_updated DESC
+                    """.trimIndent())
+
+                    val sessions = mutableListOf<OpenCodeSession>()
+                    while (rs.next()) {
+                        sessions.add(OpenCodeSession(
+                            sessionId = rs.getString("id"),
+                            slug = rs.getString("slug") ?: "",
+                            title = rs.getString("title") ?: "",
+                            directory = rs.getString("directory") ?: "",
+                            created = rs.getLong("time_created"),
+                            updated = rs.getLong("time_updated"),
+                            messageCount = rs.getInt("message_count")
+                        ))
+                    }
+                    sessions
+                }
+            }
         } catch (_: Exception) {
-            0
+            emptyList()
         }
+    }
+
+    /**
+     * Finds a specific session by ID.
+     */
+    fun findSession(sessionId: String): OpenCodeSession? {
+        val dbFile = getDbFile()
+        if (!dbFile.exists()) return null
+
+        return try {
+            Class.forName("org.sqlite.JDBC")
+            DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                conn.prepareStatement(
+                    "SELECT id, slug, title, directory, time_created, time_updated FROM session WHERE id = ?"
+                ).use { stmt ->
+                    stmt.setString(1, sessionId)
+                    val rs = stmt.executeQuery()
+                    if (rs.next()) {
+                        OpenCodeSession(
+                            sessionId = rs.getString("id"),
+                            slug = rs.getString("slug") ?: "",
+                            title = rs.getString("title") ?: "",
+                            directory = rs.getString("directory") ?: "",
+                            created = rs.getLong("time_created"),
+                            updated = rs.getLong("time_updated")
+                        )
+                    } else null
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Returns the DB file path if the session exists, or null if not found.
+     * Used by the CLI for session existence checks; actual parsing is done via SQLite.
+     */
+    fun findSessionFile(sessionId: String): Path? {
+        return if (findSession(sessionId) != null) getDbFile().toPath() else null
     }
 }
