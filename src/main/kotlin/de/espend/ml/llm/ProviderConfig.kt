@@ -6,6 +6,7 @@ object ProviderConfig {
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
+    const val PROVIDER_KILO = "kilo"
     const val PROVIDER_DROID = "droid"
     const val PROVIDER_ZAI = "zai"
     const val PROVIDER_OLLAMA = "ollama"
@@ -83,6 +84,17 @@ object ProviderConfig {
             label = "Cursor",
             icon = PluginIcons.CURSOR,
             description = "Uses Cursor's built-in ACP support via `agent acp`.",
+            baseUrl = null,
+            models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
+            autoDiscoveryText = "",
+            modelsUrl = null
+        ),
+        ProviderInfo(
+            provider = PROVIDER_KILO,
+            label = "Kilo Code",
+            icon = PluginIcons.KILO,
+            description = "Uses the Kilo Code CLI via `kilo acp`.",
             baseUrl = null,
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),

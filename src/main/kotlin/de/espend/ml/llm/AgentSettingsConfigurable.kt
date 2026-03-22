@@ -390,14 +390,36 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
                 ProviderConfig.PROVIDER_CURSOR,
+                ProviderConfig.PROVIDER_KILO,
                 ProviderConfig.PROVIDER_DROID -> {
                     // Description and executable field for these providers
                     apiKeyField = null
                     baseUrlField = null
                     descriptionArea = null
 
-                    // Description panel with install link for Cursor
-                    if (provider == ProviderConfig.PROVIDER_CURSOR) {
+                    // Description panel with install link for Cursor/Kilo
+                    if (provider == ProviderConfig.PROVIDER_KILO) {
+                        val descPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                            isOpaque = false
+                            add(JBLabel("Uses Kilo Code CLI via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel("kilo acp").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel(". Install via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(PackageActionLink.forKilo())
+                        }
+                        inputsPanel.add(descPanel, GridBagConstraints().apply {
+                            gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                            anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                        })
+                    } else if (provider == ProviderConfig.PROVIDER_CURSOR) {
                         // Cursor: Special handling with install link dropdown
                         val descPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
                             isOpaque = false
@@ -445,6 +467,7 @@ class AgentSettingsConfigurable : Configurable {
                         ProviderConfig.PROVIDER_GEMINI -> "gemini"
                         ProviderConfig.PROVIDER_OPENCODE -> "opencode"
                         ProviderConfig.PROVIDER_CURSOR -> "agent"
+                        ProviderConfig.PROVIDER_KILO -> "kilo"
                         ProviderConfig.PROVIDER_DROID -> "droid"
                         else -> provider
                     }
@@ -462,6 +485,7 @@ class AgentSettingsConfigurable : Configurable {
                                 ProviderConfig.PROVIDER_GEMINI -> CommandPathUtils.findGeminiPath()
                                 ProviderConfig.PROVIDER_OPENCODE -> CommandPathUtils.findOpenCodePath()
                                 ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentPath()
+                                ProviderConfig.PROVIDER_KILO -> CommandPathUtils.findKiloPath()
                                 ProviderConfig.PROVIDER_DROID -> CommandPathUtils.findDroidPath()
                                 else -> null
                             }

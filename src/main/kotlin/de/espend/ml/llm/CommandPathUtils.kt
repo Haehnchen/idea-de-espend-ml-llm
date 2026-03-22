@@ -113,6 +113,28 @@ object CommandPathUtils {
     }
 
     /**
+     * Finds the kilo command (Kilo Code CLI) with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findKiloPath(): String? {
+        findCommandPath("kilo")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/kilo").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/kilo").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/kilo")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
+
+    /**
      * Finds the claude command with specific fallback paths.
      * Order: PATH -> $HOME/bin -> $HOME/.local/bin
      * Returns null if not found (user can manually specify).

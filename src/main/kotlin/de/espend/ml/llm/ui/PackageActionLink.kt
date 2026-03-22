@@ -78,6 +78,17 @@ class PackageActionLink(
         }
 
         /**
+         * Creates a PackageActionLink for Kilo Code installation.
+         */
+        fun forKilo(): PackageActionLink {
+            return PackageActionLink(
+                packageName = "@kilocode/cli",
+                githubUrl = "https://github.com/Kilo-Org/kilocode",
+                installCommand = "npm install -g @kilocode/cli"
+            )
+        }
+
+        /**
          * Creates a PackageActionLink for Cursor installation.
          */
         fun forCursor(): PackageActionLink {

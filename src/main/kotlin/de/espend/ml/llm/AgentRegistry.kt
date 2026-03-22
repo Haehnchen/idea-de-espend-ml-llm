@@ -114,7 +114,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val baseUrl = when (config.provider) {
             ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
             ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
-            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_DROID -> ""
+            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_KILO, ProviderConfig.PROVIDER_DROID -> ""
             else -> providerInfo.baseUrl ?: ""
         }
         val apiKey = when (config.provider) {
@@ -122,6 +122,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             ProviderConfig.PROVIDER_GEMINI,
             ProviderConfig.PROVIDER_OPENCODE,
             ProviderConfig.PROVIDER_CURSOR,
+            ProviderConfig.PROVIDER_KILO,
             ProviderConfig.PROVIDER_DROID -> ""
             else -> config.apiKey
         }
@@ -153,6 +154,20 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             }
             return AgentServerConfig(
                 command = opencodePath,
+                args = listOf("acp"),
+                env = buildBaseEnv()
+            )
+        }
+
+        // Kilo Code uses `kilo acp` subcommand
+        if (config.provider == ProviderConfig.PROVIDER_KILO) {
+            val kiloPath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findKiloPath() ?: "kilo"
+            }
+            return AgentServerConfig(
+                command = kiloPath,
                 args = listOf("acp"),
                 env = buildBaseEnv()
             )
