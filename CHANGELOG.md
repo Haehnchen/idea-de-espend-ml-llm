@@ -1,6 +1,17 @@
 Changelog
 =========
 
+# 0.9.0
+* Add AI Provider Usage status bar widget and associated settings integration (Daniel Espendiller)
+* change for Gemini CLI provider binary, including installation link and UI description (Daniel Espendiller)
+* Add support for Kilo Code provider, including CLI path resolution, configuration, and installation links (Daniel Espendiller)
+* Migrate `OpenCodeSessionParser` and `OpenCodeSessionFinder` to use SQLite database instead of file-based storage for session data, improving performance and scalability. (Daniel Espendiller)
+* Truncate long provider labels in `ProviderUsagePanel` to improve UI readability (Daniel Espendiller)
+* Migrate `KiloSessionFinder` and `KiloSessionParser` to use SQLite database instead of file-based storage for session data (Daniel Espendiller)
+* Improve error handling in `ProviderUsageService` (Daniel Espendiller)
+* Enhance status bar widget with drop-up menu for account toggling and settings access (Daniel Espendiller)
+* Refactor `ProviderUsageService` to add per-account caching, cache listeners, and enhanced concurrency handling (Daniel Espendiller)
+
 # 0.8.1
 * Add AI Provider Usage status bar widget and associated settings integration (Daniel Espendiller)</li>
 
