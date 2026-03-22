@@ -441,6 +441,27 @@ class AgentSettingsConfigurable : Configurable {
                             gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
                             anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
                         })
+                    } else if (provider == ProviderConfig.PROVIDER_GEMINI) {
+                        val descPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                            isOpaque = false
+                            add(JBLabel("Uses Gemini CLI via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel("gemini").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(JBLabel(". Install via ").apply {
+                                foreground = UIUtil.getContextHelpForeground()
+                                font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                            })
+                            add(PackageActionLink.forGemini())
+                        }
+                        inputsPanel.add(descPanel, GridBagConstraints().apply {
+                            gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                            anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                        })
                     } else {
                         // Other providers: Standard description label
                         val descLabel = JTextArea(providerInfo?.description ?: "").apply {
