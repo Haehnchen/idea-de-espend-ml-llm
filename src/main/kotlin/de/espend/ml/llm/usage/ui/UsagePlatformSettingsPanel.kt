@@ -1,6 +1,7 @@
 package de.espend.ml.llm.usage.ui
 
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.ui.AnActionButton
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.ActionLink
@@ -189,7 +190,12 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
     fun applyTo(registryState: UsagePlatformRegistry.State) {
         registryState.showRtkStats = rtkStatsCheckBox.isSelected
-        registryState.accounts = toAccountStates().toMutableList()
+        val accounts = toAccountStates()
+        LOG.debug("Updating provider accounts: ${accounts.size} account(s)")
+        accounts.forEach { state ->
+            LOG.debug("  Account: id=${state.id}, provider=${state.providerId}, label=${state.label}, enabled=${state.isEnabled}, statusBar=${state.enableStatusBar}")
+        }
+        registryState.accounts = accounts.toMutableList()
     }
 
     private fun toAccountStates(): List<UsageAccountState> {
@@ -401,6 +407,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
     }
 
     companion object {
+        private val LOG = Logger.getInstance(UsagePlatformSettingsPanel::class.java)
         private fun scaleIcon(icon: Icon, size: Int): Icon {
             val targetSize = JBUI.scale(size)
             val currentSize = icon.iconWidth.coerceAtLeast(1)

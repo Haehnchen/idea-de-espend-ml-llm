@@ -53,8 +53,9 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
     }
 
     fun isShowInStatusBar(accountId: String): Boolean =
-        myState.accounts.find { it.id == accountId }?.enableStatusBar ?: false
+        myState.accounts.find { it.id == accountId }
+            ?.let { it.isEnabled && it.enableStatusBar } ?: false
 
     fun hasAnyStatusBarAccount(): Boolean =
-        myState.accounts.any { it.enableStatusBar }
+        myState.accounts.any { it.isEnabled && it.enableStatusBar }
 }

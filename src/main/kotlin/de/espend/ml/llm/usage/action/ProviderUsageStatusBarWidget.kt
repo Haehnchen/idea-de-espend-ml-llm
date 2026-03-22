@@ -26,46 +26,56 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * Status bar widget displaying AI provider usage as icons + percentages for all entries.
- * Only shows accounts with "showInStatusBar" enabled (toggled per-account in the usage popup).
- * Refreshes every 2 minutes, fetches immediately on install.
+ * Status bar widget displaying AI provider usage as icons + percentages.
+ *
+ * Registers a cache listener on [ProviderUsageService] so it rebuilds the display
+ * whenever any source (popup panel, scheduled fetch, etc.) writes fresh data.
+ * A 2-minute scheduler triggers background fetches for stale status-bar accounts.
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
 class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : CustomStatusBarWidget {
 
     private val contentPanel = createContentPanel()
-    private var scheduledFuture: ScheduledFuture<*>? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var scheduledFuture: ScheduledFuture<*>? = null
+    private var removeCacheListener: (() -> Unit)? = null
 
-    // Labels maintained per account: icon label + text label
     private data class AccountLabels(val iconLabel: JBLabel, val textLabel: JBLabel)
     private val accountLabels = mutableListOf<AccountLabels>()
 
     override fun ID(): String = WIDGET_ID
-
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = NoClickPresentation()
-
     override fun getComponent(): JComponent = contentPanel
 
     override fun install(statusBar: StatusBar) {
-        scheduledFuture?.cancel(false)
-        fetchAndUpdate()
+        println("[StatusBar] registering cache listener")
+        removeCacheListener = ProviderUsageService.getInstance().addCacheListener {
+            rebuildFromCache()
+        }
+
+        // Show whatever is already cached, then kick off a fetch if stale
+        rebuildFromCache()
+        triggerFetch()
+
         scheduledFuture = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
-            { fetchAndUpdate() },
+            { triggerFetch() },
             REFRESH_INTERVAL_MIN, REFRESH_INTERVAL_MIN, TimeUnit.MINUTES
         )
     }
 
     override fun dispose() {
+        println("[StatusBar] unregistering cache listener")
+        removeCacheListener?.invoke()
+        removeCacheListener = null
         scheduledFuture?.cancel(false)
         scheduledFuture = null
         scope.cancel()
     }
 
-    /** Called by the popup panel when pin state changes or by the settings configurable. */
+    /** Called externally (e.g. settings configurable) to force a fresh fetch. */
     fun refresh() {
-        fetchAndUpdate()
+        triggerFetch()
     }
 
     private fun createContentPanel(): JPanel {
@@ -76,50 +86,58 @@ class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : Custo
         }
     }
 
-    private fun fetchAndUpdate() {
+    /**
+     * Rebuild the status bar display from whatever is currently in the cache.
+     * Called by the cache listener — no network access.
+     */
+    private fun rebuildFromCache() {
         scope.launch {
             val service = ProviderUsageService.getInstance()
             val registry = UsagePlatformRegistry.getInstance()
 
-            // Only accounts with showInStatusBar enabled
-            val statusBarAccounts = service.getSupportedAccounts()
+            val items = service.getSupportedAccounts()
                 .filter { registry.isShowInStatusBar(it.id) }
-
-            data class AccountResult(
-                val providerId: String,
-                val accountId: String,
-                val displayText: String
-            )
-
-            val results = mutableListOf<AccountResult>()
-            for (account in statusBarAccounts) {
-                try {
-                    val response = service.fetchUsage(account)
-                    if (response.usage != null) {
-                        val displayText = when {
-                            response.usage.entries.isNotEmpty() ->
-                                response.usage.entries
-                                    .map { it.percentageUsed.toInt().coerceIn(0, 999) }
-                                    .joinToString(" \u00B7 ") { "$it%" }
-                            response.usage.lines.isNotEmpty() ->
-                                response.usage.lines.first().text
-                            else -> continue
-                        }
-                        results.add(AccountResult(account.providerId, account.id, displayText))
+                .mapNotNull { account ->
+                    val response = service.getCachedResponse(account.id) ?: return@mapNotNull null
+                    val usage = response.usage ?: return@mapNotNull null
+                    val displayText = when {
+                        usage.entries.isNotEmpty() ->
+                            usage.entries
+                                .map { it.percentageUsed.toInt().coerceIn(0, 999) }
+                                .joinToString(" \u00B7 ") { "$it%" }
+                        usage.lines.isNotEmpty() -> usage.lines.first().text
+                        else -> return@mapNotNull null
                     }
-                } catch (_: Exception) {
-                    // Skip silently
+                    val icon = service.getProvider(account.providerId)
+                        ?.providerInfo?.icon
+                        ?.let { PluginIcons.scaleIcon(it, JBUI.scale(13)) }
+                    Triple(account.id, icon, displayText)
                 }
-            }
 
+            if (items.isEmpty()) return@launch
+
+            println("[StatusBar] cache update received: ${items.size} account(s) → ${items.joinToString { (id, _, text) -> "$id=$text" }}")
 
             withContext(Dispatchers.Main) {
-                rebuildPanel(results.map { result ->
-                    val provider = service.getProvider(result.providerId)
-                    val icon = provider?.providerInfo?.icon?.let { PluginIcons.scaleIcon(it, JBUI.scale(13)) }
-                    Triple(result.accountId, icon, result.displayText)
-                })
+                rebuildPanel(items)
             }
+        }
+    }
+
+    /**
+     * Fetch stale status-bar accounts in the background.
+     * [updateCache] on the service fires the cache listener which triggers [rebuildFromCache].
+     */
+    private fun triggerFetch() {
+        scope.launch {
+            val service = ProviderUsageService.getInstance()
+            val registry = UsagePlatformRegistry.getInstance()
+
+            val staleAccounts = service.getSupportedAccounts()
+                .filter { registry.isShowInStatusBar(it.id) }
+                .filter { !service.isCacheValidForAccount(it.id, ProviderUsageService.STATUS_BAR_CACHE_TTL_MS) }
+
+            service.fetchAndUpdateAccounts(staleAccounts) // updates cache → fires listener → rebuildFromCache()
         }
     }
 
@@ -159,12 +177,8 @@ class ProviderUsageStatusBarWidget(@Suppress("unused") project: Project) : Custo
         const val WIDGET_ID = "de.espend.ml.llm.ProviderUsageWidget"
         private const val REFRESH_INTERVAL_MIN = 2L
 
-        /**
-         * Refresh the statusbar widget for a given project after config changes.
-         * Handles both widget availability (install/remove) and data refresh.
-         */
         fun refreshWidget(project: Project) {
-            @Suppress("IncorrectServiceRetrieving") // StatusBarWidgetsManager is @Service(PROJECT) — false positive
+            @Suppress("IncorrectServiceRetrieving")
             project.getService(StatusBarWidgetsManager::class.java)
                 ?.updateWidget(ProviderUsageStatusBarWidgetFactory::class.java)
             com.intellij.openapi.wm.WindowManager.getInstance().getStatusBar(project)

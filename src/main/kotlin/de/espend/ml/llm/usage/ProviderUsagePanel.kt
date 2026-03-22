@@ -3,8 +3,9 @@ package de.espend.ml.llm.usage
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.ShowSettingsUtil
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
+import com.intellij.openapi.ui.popup.JBPopupListener
+import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
@@ -15,10 +16,10 @@ import de.espend.ml.llm.rtk.RtkStatsReader
 import de.espend.ml.llm.usage.ui.UsageSettingsConfigurable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Dimension
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 import javax.swing.*
 
@@ -28,14 +29,14 @@ import javax.swing.*
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
-class ProviderUsagePanel(
-    private val providers: List<UsageAccountConfig>,
-    private val service: ProviderUsageService,
-    private val scope: CoroutineScope
-) : JPanel() {
+class ProviderUsagePanel : JPanel() {
+
+    private val service = ProviderUsageService.getInstance()
+    private val providers = service.getSupportedAccounts()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var currentPopup: JBPopup? = null
-    private var currentProject: Project? = null
+    private var removeCacheListener: (() -> Unit)? = null
     private var isLoading = false
     private val rtkPanel = RtkStatsPanel()
 
@@ -138,7 +139,7 @@ class ProviderUsagePanel(
             override fun mouseExited(evt: java.awt.event.MouseEvent) { settingsIconButton.hovered = false; settingsIconButton.repaint() }
             override fun mouseClicked(evt: java.awt.event.MouseEvent) {
                 currentPopup?.cancel()
-                ShowSettingsUtil.getInstance().showSettingsDialog(currentProject, UsageSettingsConfigurable::class.java)
+                ShowSettingsUtil.getInstance().showSettingsDialog(null, UsageSettingsConfigurable::class.java)
             }
         })
 
@@ -149,16 +150,33 @@ class ProviderUsagePanel(
         })
     }
 
-    fun start(
-        popup: JBPopup,
-        project: Project?
-    ) {
+    fun start(popup: JBPopup) {
         currentPopup = popup
-        currentProject = project
 
-        if (service.isCacheValid()) {
+        println("[Panel] registering cache listener")
+        removeCacheListener = service.addCacheListener {
+            ApplicationManager.getApplication().invokeLater {
+                if (!popup.isDisposed) {
+                    showCachedResults()
+                }
+            }
+        }
+
+        popup.addListener(object : JBPopupListener {
+            override fun onClosed(event: LightweightWindowEvent) {
+                println("[Panel] unregistering cache listener")
+                removeCacheListener?.invoke()
+                removeCacheListener = null
+            }
+        })
+
+        val accountIds = providers.map { it.id }
+        if (service.areCachesValidForAccounts(accountIds, ProviderUsageService.PANEL_CACHE_TTL_MS)) {
+            // Cache is fresh (< 15 s): show cached values immediately, no network call
             showCachedResults()
         } else {
+            // Cache is stale or missing: show whatever is cached first, then refresh in background
+            showCachedResults()
             doRefresh()
         }
 
@@ -195,44 +213,13 @@ class ProviderUsagePanel(
         isLoading = true
         refreshIconLabel.icon = AnimatedIcon.Default()
 
-        val results = mutableMapOf<String, ProviderUsageResponse>()
-        val pending = AtomicInteger(providers.size)
-        providers.forEach { config ->
-            providerWidgets[config.id]?.let { widgets ->
-                fetchAndUpdate(config, widgets, results) {
-                    if (pending.decrementAndGet() <= 0) {
-                        service.updateCache(results)
-                        isLoading = false
-                        refreshIconLabel.icon = AllIcons.Actions.Refresh
-                    }
-                }
-            }
-        }
-    }
-
-    private fun fetchAndUpdate(config: UsageAccountConfig, widgets: ProviderWidgets, results: MutableMap<String, ProviderUsageResponse>, onDone: () -> Unit) {
         scope.launch {
-            try {
-                val response = service.fetchUsage(config)
-                synchronized(results) { results[config.id] = response }
-                ApplicationManager.getApplication().invokeLater {
-                    val popup = currentPopup ?: return@invokeLater
-                    if (!popup.isDisposed) {
-                        if (response.usage != null) updateWidgets(widgets, response.usage)
-                        else showWidgetError(widgets, response.error ?: "Unknown error")
-                        onDone()
-                        popup.pack(true, true)
-                    }
-                }
-            } catch (e: Exception) {
-                ApplicationManager.getApplication().invokeLater {
-                    val popup = currentPopup ?: return@invokeLater
-                    if (!popup.isDisposed) {
-                        showWidgetError(widgets, e.message ?: "Error")
-                        onDone()
-                        popup.pack(true, true)
-                    }
-                }
+            service.fetchAndUpdateAccounts(providers) // updates cache + fires listeners
+            ApplicationManager.getApplication().invokeLater {
+                showCachedResults()
+                isLoading = false
+                refreshIconLabel.icon = AllIcons.Actions.Refresh
+                currentPopup?.takeIf { !it.isDisposed }?.pack(true, true)
             }
         }
     }
