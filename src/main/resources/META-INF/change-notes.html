@@ -1,12 +1,5 @@
 <html>
 <ul>
- <li>change for Gemini CLI provider binary, including installation link and UI description (Daniel Espendiller)</li>
- <li>Add support for Kilo Code provider, including CLI path resolution, configuration, and installation links (Daniel Espendiller)</li>
- <li>Migrate `OpenCodeSessionParser` and `OpenCodeSessionFinder` to use SQLite database instead of file-based storage for session data, improving performance and scalability. (Daniel Espendiller)</li>
- <li>Truncate long provider labels in `ProviderUsagePanel` to improve UI readability (Daniel Espendiller)</li>
-  <li>Migrate `KiloSessionFinder` and `KiloSessionParser` to use SQLite database instead of file-based storage for session data (Daniel Espendiller)</li>
- <li>Improve error handling in `ProviderUsageService` (Daniel Espendiller)</li>
- <li>Enhance status bar widget with drop-up menu for account toggling and settings access (Daniel Espendiller)</li>
- <li>Refactor `ProviderUsageService` to add per-account caching, cache listeners, and enhanced concurrency handling (Daniel Espendiller)</li>
+ <li>Add node bridge to strip gateway call: Problem: IntelliJ 253+ sends `auth._meta.gateway=true` (ml-llm-253.32098.66) to ALL ACP agents. claude-agent-acp responds by advertising a "gateway" auth method (Daniel Espendiller)</li>
 </ul>
 </html>
