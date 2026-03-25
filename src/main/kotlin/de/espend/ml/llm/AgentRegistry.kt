@@ -114,7 +114,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val baseUrl = when (config.provider) {
             ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
             ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
-            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_KILO, ProviderConfig.PROVIDER_DROID -> ""
+            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_KILO, ProviderConfig.PROVIDER_DROID, ProviderConfig.PROVIDER_CODEX -> ""
             else -> providerInfo.baseUrl ?: ""
         }
         val apiKey = when (config.provider) {
@@ -123,7 +123,8 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             ProviderConfig.PROVIDER_OPENCODE,
             ProviderConfig.PROVIDER_CURSOR,
             ProviderConfig.PROVIDER_KILO,
-            ProviderConfig.PROVIDER_DROID -> ""
+            ProviderConfig.PROVIDER_DROID,
+            ProviderConfig.PROVIDER_CODEX -> ""
             else -> config.apiKey
         }
         val models = providerInfo.models
@@ -212,6 +213,29 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                 command = geminiPath,
                 args = listOf("--experimental-acp"),
                 env = buildBaseEnv()
+            )
+        }
+
+        // Codex (OpenAI) uses @zed-industries/codex-acp with CODEX_API_KEY or OPENAI_API_KEY
+        if (config.provider == ProviderConfig.PROVIDER_CODEX) {
+            val codexPath = if (config.executable.isNotEmpty()) {
+                config.executable
+            } else {
+                CommandPathUtils.findCodexAcpPath() ?: "codex-acp"
+            }
+            return AgentServerConfig(
+                command = codexPath,
+                args = emptyList(),
+                env = buildMap {
+                    putAll(buildBaseEnv())
+                    if (config.apiKey.isNotEmpty()) {
+                        put("OPENAI_API_KEY", config.apiKey)
+                    }
+                    if (config.apiKeySecondary.isNotEmpty()) {
+                        put("CODEX_API_KEY", config.apiKeySecondary)
+                    }
+                    put("API_TIMEOUT_MS", "3000000")
+                }
             )
         }
 

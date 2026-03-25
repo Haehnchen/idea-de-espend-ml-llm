@@ -224,6 +224,7 @@ class AgentSettingsConfigurable : Configurable {
 
         private val enabledCheckbox: JBCheckBox
         private val apiKeyField: JBTextField?
+        private val apiKeySecondaryField: JBTextField?
         private val baseUrlField: JBTextField?
         private var modelField: JBTextField? = null
         private val descriptionArea: JTextArea?
@@ -292,6 +293,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> {
                     // Anthropic Default: Show install command with package link
                     apiKeyField = null
+                    apiKeySecondaryField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -311,6 +313,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> {
                     // Anthropic Compatible: API key, Base URL, Model fields + install command
                     apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    apiKeySecondaryField = null
                     baseUrlField = JBTextField(initialConfig?.baseUrl ?: "", 20)
                     val modelField = JBTextField(initialConfig?.model ?: "", 20)
                     descriptionArea = null
@@ -394,6 +397,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_DROID -> {
                     // Description and executable field for these providers
                     apiKeyField = null
+                    apiKeySecondaryField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -517,9 +521,68 @@ class AgentSettingsConfigurable : Configurable {
                         gridx = 2; gridy = 1; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
                     })
                 }
+                ProviderConfig.PROVIDER_CODEX -> {
+                    // Codex (OpenAI): OPENAI_API_KEY, CODEX_API_KEY, and Executable fields
+                    apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    apiKeySecondaryField = JBTextField(initialConfig?.apiKeySecondary ?: "", 20)
+                    baseUrlField = null
+                    descriptionArea = null
+
+                    // Install command with package link
+                    val installPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                        isOpaque = false
+                        add(JBLabel("OpenAI Codex via ACP adapter. Install: ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(PackageActionLink.forCodex())
+                    }
+                    inputsPanel.add(installPanel, GridBagConstraints().apply {
+                        gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                        anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                    })
+
+                    // OpenAI API Key
+                    inputsPanel.add(JBLabel("OpenAI Key:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(apiKeyField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 1; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    // Codex API Key
+                    inputsPanel.add(JBLabel("Codex Key:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 2; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(apiKeySecondaryField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 2; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    // Executable
+                    inputsPanel.add(JBLabel("Executable:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 3; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    executableField = JBTextField(initialConfig?.executable ?: "", 20).apply {
+                        emptyText.setText("Auto-detection (codex-acp)")
+                    }
+                    inputsPanel.add(executableField!!, GridBagConstraints().apply {
+                        gridx = 1; gridy = 3; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    // Auto-detect button
+                    val autoDetectButton = JButton("Auto-Detect").apply {
+                        addActionListener {
+                            executableField?.text = CommandPathUtils.findCodexAcpPath() ?: ""
+                        }
+                    }
+                    inputsPanel.add(autoDetectButton, GridBagConstraints().apply {
+                        gridx = 2; gridy = 3; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
+                    })
+                }
                 else -> {
                     // Standard providers: use ProviderInfo for metadata
                     apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    apiKeySecondaryField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -658,6 +721,7 @@ class AgentSettingsConfigurable : Configurable {
                 id = provider,
                 provider = provider,
                 apiKey = apiKeyField?.text?.trim() ?: "",
+                apiKeySecondary = apiKeySecondaryField?.text?.trim() ?: "",
                 baseUrl = baseUrlField?.text?.trim() ?: "",
                 model = modelField?.text?.trim() ?: "",
                 isEnabled = enabledCheckbox.isSelected,
@@ -667,6 +731,7 @@ class AgentSettingsConfigurable : Configurable {
 
         fun loadConfig(config: AgentConfig?) {
             apiKeyField?.text = config?.apiKey ?: ""
+            apiKeySecondaryField?.text = config?.apiKeySecondary ?: ""
             baseUrlField?.text = config?.baseUrl ?: ""
             modelField?.text = config?.model ?: ""
             executableField?.text = config?.executable ?: ""

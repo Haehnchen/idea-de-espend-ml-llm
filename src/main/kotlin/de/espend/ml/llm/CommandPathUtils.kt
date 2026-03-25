@@ -174,4 +174,26 @@ object CommandPathUtils {
             .takeIf { it.exists() && it.canExecute() }
             ?.absolutePath
     }
+
+    /**
+     * Finds the codex-acp command (OpenAI Codex ACP adapter) with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findCodexAcpPath(): String? {
+        findCommandPath("codex-acp")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/codex-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/codex-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/codex-acp")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
 }

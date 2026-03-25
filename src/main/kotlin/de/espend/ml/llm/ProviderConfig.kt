@@ -8,6 +8,7 @@ object ProviderConfig {
     const val PROVIDER_CURSOR = "cursor"
     const val PROVIDER_KILO = "kilo"
     const val PROVIDER_DROID = "droid"
+    const val PROVIDER_CODEX = "codex"
     const val PROVIDER_ZAI = "zai"
     const val PROVIDER_OLLAMA = "ollama"
 
@@ -109,6 +110,17 @@ object ProviderConfig {
             baseUrl = null,
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
+            autoDiscoveryText = "",
+            modelsUrl = null
+        ),
+        ProviderInfo(
+            provider = PROVIDER_CODEX,
+            label = "Codex (OpenAI)",
+            icon = PluginIcons.CODEX,
+            description = "Uses OpenAI's Codex CLI via ACP adapter. Install: npm install -g @zed-industries/codex-acp",
+            baseUrl = null,
+            models = Triple("codex", "codex", "codex"),
+            modelIds = ModelIds(smart = "codex", quick = "codex"),
             autoDiscoveryText = "",
             modelsUrl = null
         ),

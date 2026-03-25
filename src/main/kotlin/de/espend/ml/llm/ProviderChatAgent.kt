@@ -44,6 +44,7 @@ data class AgentConfig(
     var id: String = "",
     var provider: String = "",
     var apiKey: String = "",
+    var apiKeySecondary: String = "",
     var baseUrl: String = "",
     var model: String = "",
     var isEnabled: Boolean = true,

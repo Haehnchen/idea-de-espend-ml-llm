@@ -109,5 +109,16 @@ class PackageActionLink(
                 installCommand = "npm install -g @google/gemini-cli"
             )
         }
+
+        /**
+         * Creates a PackageActionLink for Codex ACP adapter installation.
+         */
+        fun forCodex(): PackageActionLink {
+            return PackageActionLink(
+                packageName = "@zed-industries/codex-acp",
+                githubUrl = "https://github.com/zed-industries/codex-acp",
+                installCommand = "npm install -g @zed-industries/codex-acp"
+            )
+        }
     }
 }
