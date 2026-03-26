@@ -42,9 +42,7 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 ### Development Notes
 
 - **Language**: Kotlin 2.1.20 with JVM 21 target
-- **Build System**: Gradle with IntelliJ Platform Plugin 2.10.2
-- **Compatibility**: IntelliJ IDEA 2025.3.2+ (since-build 253)
-- **No external libraries**: Uses only IntelliJ Platform and standard Kotlin APIs
+- **Build System**: Gradle with IntelliJ Platform Plugin
 
 ### Adding a New Provider
 

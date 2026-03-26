@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.9.2
+* Remove `untilBuild` restriction in `ideaVersion` configuration (Daniel Espendiller)
+
 # 0.9.1
 * Add node bridge to strip gateway call: Problem: IntelliJ 253+ sends `auth._meta.gateway=true` (ml-llm-253.32098.66) to ALL ACP agents. claude-agent-acp responds by advertising a "gateway" auth method (Daniel Espendiller)
 
