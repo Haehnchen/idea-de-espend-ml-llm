@@ -289,26 +289,54 @@ class AmpcodeUsageProvider : UsageProvider {
         /** Regex to extract hourly replenishment rate: matches "replenishes +$X.XX/hour" capturing the dollar amount */
         private val replenishRegex = Regex("""replenishes\s*\+\$(\d+(?:\.\d+)?)/hour""", RegexOption.IGNORE_CASE)
 
+        /** Regex to extract individual credits: matches "Individual credits: $X.XX remaining" */
+        private val individualCreditsRegex = Regex("""Individual credits:\s*\$(\d+(?:\.\d+)?)\s*remaining""")
+
         /**
          * Parses display text directly for testing purposes.
          * Extracts balance and replenishment info from the raw API displayText.
          *
-         * @param displayText The raw display text, e.g., "Amp Free: $8.78/$10 remaining (replenishes +$0.42/hour) - http"
+         * Supports two response formats:
+         * - Old: "Amp Free: $8.78/$10 remaining (replenishes +$0.42/hour) - http"
+         * - New: "Individual credits: $1.99 remaining\nWorkspace symfony-plugin: $0 remaining"
+         *
+         * @param displayText The raw display text
          * @return Triple of (percentageUsed, subtitle, remaining) or null if parsing fails
          */
         fun parseDisplayText(displayText: String): Triple<Float, String?, Double>? {
-            val match = freeBalanceRegex.find(displayText) ?: return null
+            // Try old format first: "Free: $X/$Y remaining"
+            val freeMatch = freeBalanceRegex.find(displayText)
+            if (freeMatch != null) {
+                val remaining = freeMatch.groupValues[1].toDoubleOrNull() ?: return null
+                val total = freeMatch.groupValues[2].toDoubleOrNull() ?: return null
 
-            val remaining = match.groupValues[1].toDoubleOrNull() ?: return null
-            val total = match.groupValues[2].toDoubleOrNull() ?: return null
+                if (total <= 0.0) return null
 
-            if (total <= 0.0) return null
+                val used = (total - remaining).coerceAtLeast(0.0)
+                val percentageUsed = ((used / total) * 100.0).toFloat().coerceIn(0f, 100f)
+                val subtitle = buildSubtitleFromText(displayText, remaining, total)
 
-            val used = (total - remaining).coerceAtLeast(0.0)
-            val percentageUsed = ((used / total) * 100.0).toFloat().coerceIn(0f, 100f)
-            val subtitle = buildSubtitleFromText(displayText, remaining, total)
+                return Triple(percentageUsed, subtitle, remaining)
+            }
 
-            return Triple(percentageUsed, subtitle, remaining)
+            // Fallback: new format "Individual credits: $X remaining"
+            val individualMatch = individualCreditsRegex.find(displayText) ?: return null
+            val remaining = individualMatch.groupValues[1].toDoubleOrNull() ?: return null
+
+            val subtitle = buildNewFormatSubtitle(displayText, remaining)
+            return Triple(0f, subtitle, remaining)
+        }
+
+        /**
+         * Builds a subtitle string from the new API format.
+         * Shows individual remaining credits.
+         *
+         * @param displayText The raw display text
+         * @param individualRemaining The individual credits remaining
+         * @return A formatted subtitle like "$1.99 remaining"
+         */
+        fun buildNewFormatSubtitle(displayText: String, individualRemaining: Double): String {
+            return "\$${"%.2f".format(individualRemaining)} remaining"
         }
 
         /**

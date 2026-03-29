@@ -232,4 +232,54 @@ class AmpcodeUsageProviderTest {
         assertNotNull(result)
         assertEquals(8.78, result!!.third, 0.01)
     }
+
+    @Test
+    fun `parseDisplayText should fallback to individual credits format`() {
+        val displayText = "Signed in as user@example.com\nIndividual credits: \$1.99 remaining (set up automatic top-up to avoid running out) - https://ampcode.com/settings\nWorkspace foobar: \$0 remaining"
+
+        val result = AmpcodeUsageProvider.parseDisplayText(displayText)
+
+        assertNotNull(result)
+        val (percentageUsed, subtitle, remaining) = result!!
+
+        assertEquals(0f, percentageUsed)
+        assertEquals(1.99, remaining, 0.01)
+        assertNotNull(subtitle)
+        assertTrue("Subtitle should contain remaining amount", subtitle!!.contains("\$1.99 remaining"))
+    }
+
+    @Test
+    fun `parseDisplayText should parse individual credits with zero balance`() {
+        val displayText = "Signed in as user@example.com\nIndividual credits: \$0 remaining - https://ampcode.com/settings"
+
+        val result = AmpcodeUsageProvider.parseDisplayText(displayText)
+
+        assertNotNull(result)
+        assertEquals(0f, result!!.first)
+        assertEquals(0.0, result.third, 0.01)
+    }
+
+    @Test
+    fun `parseDisplayText should prefer old format over new format`() {
+        val displayText = "Free: \$8.78/\$10 remaining (replenishes +\$0.42/hour)\nIndividual credits: \$1.99 remaining"
+
+        val result = AmpcodeUsageProvider.parseDisplayText(displayText)
+
+        assertNotNull(result)
+        assertEquals(12.2f, result!!.first, 0.1f)
+    }
+
+    @Test
+    fun `buildNewFormatSubtitle should format remaining amount`() {
+        val subtitle = AmpcodeUsageProvider.buildNewFormatSubtitle("", 1.99)
+
+        assertEquals("\$1.99 remaining", subtitle)
+    }
+
+    @Test
+    fun `buildNewFormatSubtitle should format zero amount`() {
+        val subtitle = AmpcodeUsageProvider.buildNewFormatSubtitle("", 0.0)
+
+        assertEquals("\$0.00 remaining", subtitle)
+    }
 }
