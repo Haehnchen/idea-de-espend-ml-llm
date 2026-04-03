@@ -128,7 +128,6 @@ class ProviderUsageStatusBarWidget(
                     override fun setSelected(e: AnActionEvent, state: Boolean) {
                         registry.setEnableStatusBar(accountId, state)
                         rebuildFromCache()
-                        refreshWidget(project)
                     }
                 })
             }
