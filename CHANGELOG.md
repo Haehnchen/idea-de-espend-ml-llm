@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.9.4
+* Fix null project context in global widgets and popups (Daniel Espendiller)
+* refresh widgets for all projects (Daniel Espendiller)
+* property wayland support for elements position use intellij (Daniel Espendiller)
+* fix deprecation for kotlin java script in plugin verifier (Daniel Espendiller)
+
 # 0.9.3
 * Shorten Junie license display names in status bar (Daniel Espendiller)
 * Centralize status bar widget refresh in UsagePlatformRegistry (Daniel Espendiller)
