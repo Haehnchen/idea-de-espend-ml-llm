@@ -1,7 +1,6 @@
 package de.espend.ml.llm.usage.ui
 
 import com.intellij.openapi.options.Configurable
-import com.intellij.openapi.project.ProjectManager
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidget
@@ -30,16 +29,10 @@ class UsageSettingsConfigurable : Configurable {
     override fun apply() {
         usagePlatformSettingsPanel.applyTo(UsagePlatformRegistry.getInstance().state)
         ProviderUsageService.getInstance().clearCache()
-        updateStatusBarWidgets()
+        ProviderUsageStatusBarWidget.refreshAllWidgets()
     }
 
     override fun reset() {
         usagePlatformSettingsPanel.loadFrom(UsagePlatformRegistry.getInstance().state)
-    }
-
-    private fun updateStatusBarWidgets() {
-        ProjectManager.getInstance().openProjects.forEach { project ->
-            ProviderUsageStatusBarWidget.refreshWidget(project)
-        }
     }
 }

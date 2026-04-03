@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.vfs.VirtualFile
@@ -128,6 +129,7 @@ class ProviderUsageStatusBarWidget(
                     override fun setSelected(e: AnActionEvent, state: Boolean) {
                         registry.setEnableStatusBar(accountId, state)
                         rebuildFromCache()
+                        refreshAllWidgets()
                     }
                 })
             }
@@ -252,6 +254,12 @@ class ProviderUsageStatusBarWidget(
     companion object {
         const val WIDGET_ID = "de.espend.ml.llm.ProviderUsageWidget"
         private const val REFRESH_INTERVAL_MIN = 2L
+
+        fun refreshAllWidgets() {
+            ProjectManager.getInstance().openProjects.forEach { project ->
+                refreshWidget(project)
+            }
+        }
 
         fun refreshWidget(project: Project) {
             @Suppress("IncorrectServiceRetrieving")
