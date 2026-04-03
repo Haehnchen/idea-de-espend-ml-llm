@@ -1,6 +1,14 @@
 Changelog
 =========
 
+# 0.9.3
+* Shorten Junie license display names in status bar (Daniel Espendiller)
+* Centralize status bar widget refresh in UsagePlatformRegistry (Daniel Espendiller)
+* Refactor status bar widget to use EditorBasedStatusBarPopup (Daniel Espendiller)
+* Bump Kotlin, Gradle, and IntelliJ platform versions (Daniel Espendiller)
+* Simplify status bar popup positioning using JBPopupFactory (Daniel Espendiller)
+* Add support for parsing individual credits format in `AmpcodeUsageProvider` (Daniel Espendiller)
+
 # 0.9.2
 * Remove `untilBuild` restriction in `ideaVersion` configuration (Daniel Espendiller)
 
