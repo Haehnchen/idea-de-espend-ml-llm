@@ -1,6 +1,7 @@
 import java.util.jar.JarFile
 import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.api.attributes.Attribute
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -89,6 +90,7 @@ tasks {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
     }
 }
 
