@@ -5,10 +5,7 @@ import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
-import com.intellij.openapi.project.ProjectManager
-import com.intellij.util.messages.Topic
 import com.intellij.util.xmlb.XmlSerializerUtil
-import de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidget
 
 /**
  * Registry for usage platform configurations.
@@ -26,10 +23,6 @@ import de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidget
 )
 class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.State> {
 
-    interface Listener {
-        fun stateChanged()
-    }
-
     class State {
         var accounts: MutableList<UsageAccountState> = mutableListOf()
         var showRtkStats: Boolean = false
@@ -38,9 +31,6 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
     private var myState = State()
 
     companion object {
-        @JvmField
-        val TOPIC: Topic<Listener> = Topic.create("usage platform registry changes", Listener::class.java)
-
         fun getInstance(): UsagePlatformRegistry {
             return ApplicationManager.getApplication().getService(UsagePlatformRegistry::class.java)
         }
@@ -50,7 +40,6 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
 
     override fun loadState(state: State) {
         XmlSerializerUtil.copyBean(state, myState)
-        notifyStateChanged()
     }
 
     fun getAccountStates(): List<UsageAccountState> = myState.accounts.toList()
@@ -71,22 +60,6 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
         myState.accounts.any { it.isEnabled && it.enableStatusBar }
 
     fun setEnableStatusBar(accountId: String, enabled: Boolean) {
-        val account = myState.accounts.find { it.id == accountId } ?: return
-        if (account.enableStatusBar == enabled) {
-            return
-        }
-
-        account.enableStatusBar = enabled
-        notifyStateChanged()
-    }
-
-    fun notifyStateChanged() {
-        ApplicationManager.getApplication().messageBus
-            .syncPublisher(TOPIC)
-            .stateChanged()
-
-        ProjectManager.getInstance().openProjects.forEach { project ->
-            ProviderUsageStatusBarWidget.refreshWidget(project)
-        }
+        myState.accounts.find { it.id == accountId }?.enableStatusBar = enabled
     }
 }
