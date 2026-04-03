@@ -287,10 +287,10 @@ class JunieUsageProvider : UsageProvider {
 
     private fun getLicenseDisplayName(licenseType: String?): String? {
         return when (licenseType) {
-            "JUNP" -> "Junie EAP"
-            "AIF" -> "JetBrains AI Free"
-            "AIP" -> "JetBrains AI Pro"
-            "AIU" -> "JetBrains AI Ultimate"
+            "JUNP" -> "EAP"
+            "AIF" -> "Free"
+            "AIP" -> "Pro"
+            "AIU" -> "Ultimate"
             "NONE" -> "No active license"
             else -> licenseType
         }
