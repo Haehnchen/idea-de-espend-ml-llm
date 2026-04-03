@@ -14,7 +14,7 @@ class OpenAgentProvidersSettingsAction : DumbAwareAction(
     PluginIcons.AI_PROVIDER_16
 ) {
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
+        val project = ProjectResolutionUtils.resolveProject(e) ?: return
         ShowSettingsUtil.getInstance().showSettingsDialog(project, AgentSettingsConfigurable::class.java)
     }
 

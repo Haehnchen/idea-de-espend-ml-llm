@@ -140,7 +140,7 @@ class ProviderUsageStatusBarWidget(
             override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
             override fun actionPerformed(e: AnActionEvent) {
-                ShowSettingsUtil.getInstance().showSettingsDialog(null, UsageSettingsConfigurable::class.java)
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, UsageSettingsConfigurable::class.java)
             }
         })
 

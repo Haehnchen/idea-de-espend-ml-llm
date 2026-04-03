@@ -8,6 +8,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.usage.ProviderUsagePanel
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
@@ -27,7 +28,7 @@ class ProviderUsageAction : AnAction(), DumbAware {
 
     override fun actionPerformed(e: AnActionEvent) {
         val popupWidth = JBUI.scale(POPUP_WIDTH)
-        val actualPanel = ProviderUsagePanel()
+        val actualPanel = ProviderUsagePanel(ProjectResolutionUtils.resolveProject(e))
 
         val popup = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(actualPanel, null)

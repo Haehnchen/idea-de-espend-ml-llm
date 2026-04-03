@@ -3,6 +3,7 @@ package de.espend.ml.llm.usage
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
@@ -11,6 +12,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
+import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.rtk.RtkStatsPanel
 import de.espend.ml.llm.rtk.RtkStatsReader
 import de.espend.ml.llm.usage.ui.UsageSettingsConfigurable
@@ -29,7 +31,9 @@ import javax.swing.*
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
-class ProviderUsagePanel : JPanel() {
+class ProviderUsagePanel(
+    private var contextProject: Project? = null
+) : JPanel() {
 
     private val service = ProviderUsageService.getInstance()
     private val providers = service.getSupportedAccounts()
@@ -139,7 +143,9 @@ class ProviderUsagePanel : JPanel() {
             override fun mouseExited(evt: java.awt.event.MouseEvent) { settingsIconButton.hovered = false; settingsIconButton.repaint() }
             override fun mouseClicked(evt: java.awt.event.MouseEvent) {
                 currentPopup?.cancel()
-                ShowSettingsUtil.getInstance().showSettingsDialog(null, UsageSettingsConfigurable::class.java)
+                ProjectResolutionUtils.resolveProject(contextProject, evt.component)?.let { project ->
+                    ShowSettingsUtil.getInstance().showSettingsDialog(project, UsageSettingsConfigurable::class.java)
+                }
             }
         })
 
@@ -165,6 +171,7 @@ class ProviderUsagePanel : JPanel() {
             override fun onClosed(event: LightweightWindowEvent) {
                 removeCacheListener?.invoke()
                 removeCacheListener = null
+                contextProject = null
             }
         })
 
