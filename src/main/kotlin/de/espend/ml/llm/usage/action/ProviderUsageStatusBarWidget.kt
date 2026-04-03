@@ -1,7 +1,6 @@
 package de.espend.ml.llm.usage.action
 
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -9,10 +8,12 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.wm.CustomStatusBarWidget
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
+import com.intellij.ide.DataManager
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -214,7 +215,6 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
         val service = ProviderUsageService.getInstance()
         val registry = UsagePlatformRegistry.getInstance()
         val group = DefaultActionGroup()
-        val menuComponent = ActionManager.getInstance().createActionPopupMenu("LlmStatusBar", group).component
 
         registry.getAccountStates()
             .filter { it.isEnabled }
@@ -235,7 +235,6 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
                     override fun isSelected(e: AnActionEvent) =
                         registry.getAccountStates().find { it.id == accountId }?.enableStatusBar ?: false
                     override fun setSelected(e: AnActionEvent, state: Boolean) {
-                        menuComponent.isVisible = false
                         registry.setEnableStatusBar(accountId, state)
                         rebuildFromCache()
                         refreshWidget(project)
@@ -248,17 +247,20 @@ class ProviderUsageStatusBarWidget(private val project: Project) : CustomStatusB
         group.add(object : AnAction("Settings", null, AllIcons.General.Settings) {
             override fun getActionUpdateThread() = ActionUpdateThread.BGT
             override fun actionPerformed(e: AnActionEvent) {
-                menuComponent.isVisible = false
                 ShowSettingsUtil.getInstance().showSettingsDialog(null, UsageSettingsConfigurable::class.java)
             }
         })
 
-        menuComponent.show(contentPanel, 0, 0)
-        val loc = contentPanel.locationOnScreen
-        menuComponent.setLocation(
-            loc.x + contentPanel.width - menuComponent.width,
-            loc.y - menuComponent.height
-        )
+        val dataContext = DataManager.getInstance().getDataContext(contentPanel)
+        JBPopupFactory.getInstance()
+            .createActionGroupPopup(
+                "AI Provider Usage",
+                group,
+                dataContext,
+                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                false
+            )
+            .showInBestPositionFor(dataContext)
     }
 
     private class NoPresentation : StatusBarWidget.WidgetPresentation {
