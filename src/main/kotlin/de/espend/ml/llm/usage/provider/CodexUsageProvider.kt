@@ -32,6 +32,7 @@ import java.time.Duration
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.ButtonGroup
+import javax.swing.JCheckBox
 import javax.swing.JPanel
 import javax.swing.JRadioButton
 
@@ -62,7 +63,10 @@ class CodexUsageProvider : UsageProvider {
 
     override val providerInfo = ProviderInfo(PROVIDER_ID, PROVIDER_NAME, PluginIcons.CODEX)
 
-    override fun getAccountPanelInfo(account: UsageAccountConfig) = AccountPanelInfo.progressbar(1)
+    override fun getAccountPanelInfo(account: UsageAccountConfig): AccountPanelInfo {
+        val config = account as? CodexUsageAccountConfig
+        return AccountPanelInfo.progressbar(if (config?.showSparkPrimaryWindow == true) 2 else 1)
+    }
     override val configClass = CodexUsageAccountConfig::class
 
     private val httpClient: HttpClient = HttpClient.newBuilder()
@@ -132,6 +136,12 @@ class CodexUsageProvider : UsageProvider {
             add(statusLabel)
         }
 
+        val sparkPrimaryWindowCheckbox = JCheckBox("Show GPT-5.3-Codex-Spark primary window", config.showSparkPrimaryWindow).apply {
+            font = smallFont
+            alignmentX = Component.LEFT_ALIGNMENT
+            isOpaque = false
+        }
+
         // Load button action
         loadButton.addActionListener {
             statusLabel.text = "Loading..."
@@ -172,6 +182,11 @@ class CodexUsageProvider : UsageProvider {
             add(JBLabel("Reuse refresh token from ~/.codex/auth.json to mint independent access tokens (requires valid login)").apply {
                 font = smallFont; foreground = hintColor; alignmentX = Component.LEFT_ALIGNMENT
             })
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+            add(sparkPrimaryWindowCheckbox)
+            add(JBLabel("Only shown when this additional Codex rate limit is available from the API.").apply {
+                font = smallFont; foreground = hintColor; alignmentX = Component.LEFT_ALIGNMENT
+            })
             add(Box.createVerticalStrut(JBUI.scale(2)))
             add(manualContentPanel)
         }
@@ -203,6 +218,7 @@ class CodexUsageProvider : UsageProvider {
 
         return {
             config.credentialMode = if (autoRadio.isSelected) "auto" else "manual"
+            config.showSparkPrimaryWindow = sparkPrimaryWindowCheckbox.isSelected
         }
     }
 
@@ -243,7 +259,7 @@ class CodexUsageProvider : UsageProvider {
         if (creds.accessToken.isNotEmpty()) {
             val response = fetchUsageHttp(creds.accessToken)
             if (response.statusCode() != 401 && response.statusCode() != 403) {
-                return parseUsageResponse(response)
+                return parseUsageResponse(response, config.showSparkPrimaryWindow)
             }
         }
 
@@ -269,7 +285,7 @@ class CodexUsageProvider : UsageProvider {
         )
 
         val response = fetchUsageHttp(refreshed.accessToken)
-        return parseUsageResponse(response)
+        return parseUsageResponse(response, config.showSparkPrimaryWindow)
     }
 
     private suspend fun fetchUsageHttp(accessToken: String): HttpResponse<String> {
@@ -329,10 +345,13 @@ class CodexUsageProvider : UsageProvider {
     // Response parsing
     // -------------------------------------------------------------------------
 
-    private fun parseUsageResponse(response: HttpResponse<String>): UsageFetchResult {
+    private fun parseUsageResponse(
+        response: HttpResponse<String>,
+        includeSparkPrimaryWindow: Boolean = false
+    ): UsageFetchResult {
         return when (response.statusCode()) {
             401, 403 -> UsageFetchResult.error("Authentication failed — re-authenticate with Codex CLI")
-            200 -> parseBodyWithHeaders(response.body(), response.headers())
+            200 -> parseBodyWithHeaders(response.body(), response.headers(), includeSparkPrimaryWindow)
             else -> UsageFetchResult.error("HTTP ${response.statusCode()} from Codex usage API")
         }
     }
@@ -345,51 +364,88 @@ class CodexUsageProvider : UsageProvider {
      * @param headerPercent Optional header value for used percent (for testing)
      * @return UsageFetchResult with percentage used and subtitle, or error
      */
-    fun parseResponseBody(body: String?, headerPercent: Double? = null): UsageFetchResult {
+    fun parseResponseBody(
+        body: String?,
+        headerPercent: Double? = null,
+        includeSparkPrimaryWindow: Boolean = false
+    ): UsageFetchResult {
         body ?: return UsageFetchResult.error("Empty response body")
 
         return try {
             val root = JsonParser.parseString(body).asJsonObject
-            val rateLimit = root.getAsJsonObject("rate_limit")
-            val primaryWindow = rateLimit?.getAsJsonObject("primary_window")
-
-            // Prefer provided header value, fall back to JSON body
-            val usedPercent: Double = headerPercent
-                ?: primaryWindow?.get("used_percent")?.asDouble
-                ?: return UsageFetchResult.error("No usage data found in response")
-
-            val percentageUsed = usedPercent.toFloat().coerceIn(0f, 100f)
-            val subtitle = buildSubtitle(primaryWindow)
-
-            UsageFetchResult.success(UsageData(percentageUsed = percentageUsed, subtitle = subtitle))
+            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow)
         } catch (e: Exception) {
             UsageFetchResult.error("Parse error: ${e.message}")
         }
     }
 
-    private fun parseBodyWithHeaders(body: String?, headers: java.net.http.HttpHeaders): UsageFetchResult {
+    private fun parseBodyWithHeaders(
+        body: String?,
+        headers: java.net.http.HttpHeaders,
+        includeSparkPrimaryWindow: Boolean
+    ): UsageFetchResult {
         body ?: return UsageFetchResult.error("Empty response body")
 
         return try {
             val root = JsonParser.parseString(body).asJsonObject
-            val rateLimit = root.getAsJsonObject("rate_limit")
-            val primaryWindow = rateLimit?.getAsJsonObject("primary_window")
-
-            // Prefer response header, fall back to JSON body
-            val usedPercent: Double = headers
+            val headerPercent: Double? = headers
                 .firstValue("x-codex-primary-used-percent")
                 .map { it.toDoubleOrNull() }
                 .orElse(null)
-                ?: primaryWindow?.get("used_percent")?.asDouble
-                ?: return UsageFetchResult.error("No usage data found in response")
-
-            val percentageUsed = usedPercent.toFloat().coerceIn(0f, 100f)
-            val subtitle = buildSubtitle(primaryWindow)
-
-            UsageFetchResult.success(UsageData(percentageUsed = percentageUsed, subtitle = subtitle))
+            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow)
         } catch (e: Exception) {
             UsageFetchResult.error("Parse error: ${e.message}")
         }
+    }
+
+    private fun parseUsageEntries(
+        root: com.google.gson.JsonObject,
+        headerPercent: Double?,
+        includeSparkPrimaryWindow: Boolean
+    ): UsageFetchResult {
+        val rateLimit = root.getAsJsonObject("rate_limit")
+        val primaryWindow = rateLimit?.getAsJsonObject("primary_window")
+
+        val usedPercent: Double = headerPercent
+            ?: primaryWindow?.get("used_percent")?.asDouble
+            ?: return UsageFetchResult.error("No usage data found in response")
+
+        val entries = mutableListOf(
+            de.espend.ml.llm.usage.UsageEntry(
+                percentageUsed = usedPercent.toFloat().coerceIn(0f, 100f),
+                subtitle = buildSubtitle(primaryWindow)
+            )
+        )
+
+        if (includeSparkPrimaryWindow) {
+            entries += parseSparkPrimaryWindowEntry(root)
+        }
+
+        return UsageFetchResult.success(entries)
+    }
+
+    private fun parseSparkPrimaryWindowEntry(root: com.google.gson.JsonObject): de.espend.ml.llm.usage.UsageEntry {
+        val sparkWindow = root.getAsJsonArray("additional_rate_limits")
+            ?.mapNotNull { element -> element?.asJsonObject }
+            ?.firstOrNull { entry ->
+                entry.get("limit_name")
+                    ?.asString
+                    ?.contains(SPARK_LIMIT_INDICATOR, ignoreCase = true) == true
+            }
+            ?.getAsJsonObject("rate_limit")
+            ?.getAsJsonObject("primary_window")
+
+        if (sparkWindow == null) {
+            return de.espend.ml.llm.usage.UsageEntry(
+                percentageUsed = 0f,
+                subtitle = "$SPARK_SHORT_LABEL unavailable"
+            )
+        }
+
+        return de.espend.ml.llm.usage.UsageEntry(
+            percentageUsed = (sparkWindow.get("used_percent")?.asDouble ?: 0.0).toFloat().coerceIn(0f, 100f),
+            subtitle = listOfNotNull(SPARK_SHORT_LABEL, buildSubtitle(sparkWindow)).joinToString(" · ")
+        )
     }
 
     private fun buildSubtitle(primaryWindow: com.google.gson.JsonObject?): String? {
@@ -435,6 +491,7 @@ class CodexUsageProvider : UsageProvider {
             credentialMode = state.getString("credentialMode", "auto")
             cachedAccessToken = state.getString("cachedAccessToken")
             cachedRefreshToken = state.getString("cachedRefreshToken")
+            showSparkPrimaryWindow = state.getString("showSparkPrimaryWindow").toBoolean()
         }
     }
 
@@ -444,6 +501,7 @@ class CodexUsageProvider : UsageProvider {
             putString("credentialMode", c.credentialMode)
             putString("cachedAccessToken", c.cachedAccessToken)
             putString("cachedRefreshToken", c.cachedRefreshToken)
+            putString("showSparkPrimaryWindow", c.showSparkPrimaryWindow.toString())
         }
     }
 
@@ -457,7 +515,8 @@ class CodexUsageProvider : UsageProvider {
         private const val USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
         private const val REFRESH_URL = "https://auth.openai.com/oauth/token"
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
-
+        private const val SPARK_LIMIT_INDICATOR = "spark"
+        private const val SPARK_SHORT_LABEL = "Spark"
     }
 
     private data class Credentials(
@@ -470,9 +529,13 @@ class CodexUsageProvider : UsageProvider {
         var credentialMode: String = "auto"       // "auto" or "manual"
         var cachedAccessToken: String = ""        // internal: updated after each token refresh
         var cachedRefreshToken: String = ""       // internal: updated after each token refresh
+        var showSparkPrimaryWindow: Boolean = false
 
         override fun getInfoString(): String {
             val parts = mutableListOf(credentialMode)
+            if (showSparkPrimaryWindow) {
+                parts += "spark"
+            }
             if (credentialMode == "manual" && cachedAccessToken.isNotEmpty()) {
                 parts += UsageFormatUtils.formatSecret(cachedAccessToken)
             }

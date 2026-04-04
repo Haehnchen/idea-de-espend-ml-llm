@@ -173,6 +173,60 @@ class CodexUsageProviderTest {
         assertTrue("Should be error", result.error != null)
     }
 
+    @Test
+    fun `parseResponseBody should include spark primary window when enabled`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 15.5,
+                        "reset_at": 1741443600.0
+                    }
+                },
+                "additional_rate_limits": [
+                    {
+                        "limit_name": "GPT-5.3-Codex-Spark",
+                        "rate_limit": {
+                            "primary_window": {
+                                "used_percent": 7.0,
+                                "reset_at": 1741447200.0
+                            }
+                        }
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(7.0f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertTrue(result.data!!.entries[1].subtitle?.contains("Spark") == true)
+    }
+
+    @Test
+    fun `parseResponseBody should use empty spark entry when enabled but unavailable`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 15.5,
+                        "reset_at": 1741443600.0
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertEquals("Spark unavailable", result.data!!.entries[1].subtitle)
+    }
+
     // ==================== parseResponseBody - Error Cases ====================
 
     @Test
@@ -234,6 +288,7 @@ class CodexUsageProviderTest {
         assertEquals("auto", config.credentialMode)
         assertEquals("", config.cachedAccessToken)
         assertEquals("", config.cachedRefreshToken)
+        assertFalse(config.showSparkPrimaryWindow)
     }
 
     @Test
@@ -267,6 +322,27 @@ class CodexUsageProviderTest {
         }
 
         assertEquals("manual · 123...vwx", config.getInfoString())
+    }
+
+    @Test
+    fun `config info string should include spark marker when enabled`() {
+        val config = CodexUsageProvider.CodexUsageAccountConfig().apply {
+            showSparkPrimaryWindow = true
+        }
+
+        assertEquals("auto · spark", config.getInfoString())
+    }
+
+    @Test
+    fun `getAccountPanelInfo should return two progress bars when spark is enabled`() {
+        val config = CodexUsageProvider.CodexUsageAccountConfig().apply {
+            showSparkPrimaryWindow = true
+        }
+
+        val panelInfo = provider.getAccountPanelInfo(config)
+
+        assertEquals(2, panelInfo.usageEntryCount)
+        assertEquals(0, panelInfo.lineCount)
     }
 
     // ==================== Real-world Examples ====================
