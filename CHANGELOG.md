@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.9.5
+* Add optional GPT-5.3-Codex-Spark rate limit display (Daniel Espendiller)
+
 # 0.9.4
 * Fix null project context in global widgets and popups (Daniel Espendiller)
 * refresh widgets for all projects (Daniel Espendiller)
