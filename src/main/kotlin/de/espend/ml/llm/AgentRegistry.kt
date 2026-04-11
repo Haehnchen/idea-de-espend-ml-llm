@@ -216,11 +216,9 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         }
 
         // Standard Anthropic-based providers
-        val acpCommand = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp"
-        val (command, baseArgs) = AcpGatewayFilter.wrapCommand(acpCommand)
         return AgentServerConfig(
-            command = command,
-            args = baseArgs,
+            command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
+            args = emptyList(),
             env = buildMap {
                 putAll(buildBaseEnv())
                 put("ANTHROPIC_AUTH_TOKEN", apiKey)
