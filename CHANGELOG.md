@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.9.7
+* remove proxy workaround and pipe auth interface for new "ml-llm-261.23567.33" (Daniel Espendiller)
+
 # 0.9.5
 * Add optional GPT-5.3-Codex-Spark rate limit display (Daniel Espendiller)
 
