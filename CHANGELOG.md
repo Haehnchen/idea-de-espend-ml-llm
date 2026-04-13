@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.9.8
+* Refactor provider config to use registry fallback and ACP helpers
+* Refactor usage popup to use CustomComponentAction (Daniel Espendiller)
+
 # 0.9.7
 * remove proxy workaround and pipe auth interface for new "ml-llm-261.23567.33" (Daniel Espendiller)
 
