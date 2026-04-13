@@ -166,6 +166,10 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             return createPiAcpServerConfig(config, buildBaseEnv())
         }
 
+        if (ProviderConfig.usesDroidCustomModel(config.provider)) {
+            return createDroidServerConfig(config, buildBaseEnv())
+        }
+
         if (ProviderConfig.usesClaudeAcp(config.provider)) {
             return createClaudeAcpServerConfig(config, buildClaudeAcpEnv())
         }
@@ -212,20 +216,6 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             )
         }
 
-        // Droid (Factory.ai) uses special command and args
-        if (config.provider == ProviderConfig.PROVIDER_DROID) {
-            val droidPath = if (config.executable.isNotEmpty()) {
-                config.executable
-            } else {
-                CommandPathUtils.findDroidPath() ?: "droid"
-            }
-            return AgentServerConfig(
-                command = droidPath,
-                args = listOf("exec", "--output-format", "acp"),
-                env = buildBaseEnv()
-            )
-        }
-
         // Gemini uses special command
         if (config.provider == ProviderConfig.PROVIDER_GEMINI) {
             val geminiPath = if (config.executable.isNotEmpty()) {
@@ -266,6 +256,34 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         return AgentServerConfig(
             command = CommandPathUtils.findPiAcpPath() ?: "pi-acp",
             args = emptyList(),
+            env = env
+        )
+    }
+
+    private fun createDroidServerConfig(config: AgentConfig, baseEnv: Map<String, String>): AgentServerConfig {
+        val tempHome = DroidTempConfig.createTempHome(config)
+        val env = buildMap {
+            putAll(baseEnv)
+            put("HOME", tempHome.toString())
+            put("FACTORY_API_KEY", "fk-fake-invalid-token")
+            put("FACTORY_CUSTOM_API_KEY", config.apiKey)
+        }
+
+        val droidPath = if (config.executable.isNotEmpty()) {
+            config.executable
+        } else {
+            CommandPathUtils.findDroidPath() ?: "droid"
+        }
+
+        return AgentServerConfig(
+            command = droidPath,
+            args = listOf(
+                "exec",
+                "--output-format",
+                "acp",
+                "--model",
+                DroidTempConfig.modelSelector(config)
+            ),
             env = env
         )
     }
@@ -358,6 +376,10 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         }
 
         if (ProviderConfig.usesPiAcp(config.provider)) {
+            return null
+        }
+
+        if (ProviderConfig.usesDroidCustomModel(config.provider)) {
             return null
         }
 

@@ -226,11 +226,17 @@ class AgentSettingsConfigurable : Configurable {
         }
 
         private companion object {
-            private val FORMAT_OPTIONS = listOf(
+            private val PI_FORMAT_OPTIONS = listOf(
                 FormatOption("Anthropic", "anthropic-messages"),
                 FormatOption("OpenAI", "openai-completions")
             )
-            private const val DEFAULT_FORMAT = "anthropic-messages"
+            private val DROID_TYPE_OPTIONS = listOf(
+                FormatOption("Anthropic", "anthropic"),
+                FormatOption("OpenAI", "openai"),
+                FormatOption("Generic Chat Completions", "generic-chat-completion-api")
+            )
+            private const val DEFAULT_PI_FORMAT = "anthropic-messages"
+            private const val DEFAULT_DROID_TYPE = "anthropic"
         }
 
         private val enabledCheckbox: JBCheckBox
@@ -403,7 +409,7 @@ class AgentSettingsConfigurable : Configurable {
                 }
                 ProviderConfig.PROVIDER_PI_ACP -> {
                     apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
-                    formatField = createFormatField(initialConfig?.format)
+                    formatField = createPiFormatField(initialConfig?.format)
                     baseUrlField = JBTextField(initialConfig?.baseUrl ?: "", 20)
                     val modelField = JBTextField(initialConfig?.model ?: "", 20)
                     descriptionArea = null
@@ -481,11 +487,88 @@ class AgentSettingsConfigurable : Configurable {
 
                     this.modelField = modelField
                 }
+                ProviderConfig.PROVIDER_DROID -> {
+                    apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    formatField = createDroidTypeField(initialConfig?.format)
+                    baseUrlField = JBTextField(initialConfig?.baseUrl ?: "", 20)
+                    val modelField = JBTextField(initialConfig?.model ?: "", 20)
+                    descriptionArea = null
+
+                    val installPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                        isOpaque = false
+                        add(JBLabel("Uses Factory Droid via ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(JBLabel("droid exec --output-format acp").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(JBLabel(". Install via ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(PackageActionLink.forDroid())
+                    }
+                    inputsPanel.add(installPanel, GridBagConstraints().apply {
+                        gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                        anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                    })
+
+                    inputsPanel.add(JBLabel("Type:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(formatField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 1; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("Base URL:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 2; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(baseUrlField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 2; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("API Key:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 3; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(apiKeyField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 3; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("Model:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 4; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(modelField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 4; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("Executable:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 5; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+
+                    executableField = JBTextField(initialConfig?.executable ?: "", 20).apply {
+                        emptyText.setText("Auto-detection (droid)")
+                    }
+                    inputsPanel.add(executableField!!, GridBagConstraints().apply {
+                        gridx = 1; gridy = 5; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    val autoDetectButton = JButton("Auto-Detect").apply {
+                        addActionListener {
+                            executableField?.text = CommandPathUtils.findDroidPath() ?: ""
+                        }
+                    }
+                    inputsPanel.add(autoDetectButton, GridBagConstraints().apply {
+                        gridx = 2; gridy = 5; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
+                    })
+
+                    this.modelField = modelField
+                }
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
                 ProviderConfig.PROVIDER_CURSOR,
-                ProviderConfig.PROVIDER_KILO,
-                ProviderConfig.PROVIDER_DROID -> {
+                ProviderConfig.PROVIDER_KILO -> {
                     // Description and executable field for these providers
                     apiKeyField = null
                     formatField = null
@@ -584,7 +667,6 @@ class AgentSettingsConfigurable : Configurable {
                         ProviderConfig.PROVIDER_OPENCODE -> "opencode"
                         ProviderConfig.PROVIDER_CURSOR -> "agent"
                         ProviderConfig.PROVIDER_KILO -> "kilo"
-                        ProviderConfig.PROVIDER_DROID -> "droid"
                         else -> provider
                     }
                     executableField = JBTextField(initialConfig?.executable ?: "", 20).apply {
@@ -602,7 +684,6 @@ class AgentSettingsConfigurable : Configurable {
                                 ProviderConfig.PROVIDER_OPENCODE -> CommandPathUtils.findOpenCodePath()
                                 ProviderConfig.PROVIDER_CURSOR -> CommandPathUtils.findCursorAgentPath()
                                 ProviderConfig.PROVIDER_KILO -> CommandPathUtils.findKiloPath()
-                                ProviderConfig.PROVIDER_DROID -> CommandPathUtils.findDroidPath()
                                 else -> null
                             }
                             executableField?.text = detected ?: ""
@@ -772,24 +853,38 @@ class AgentSettingsConfigurable : Configurable {
             updateInputsVisibility()
         }
 
-        private fun createFormatField(initialValue: String?): JComboBox<FormatOption> {
-            return JComboBox(FORMAT_OPTIONS.toTypedArray()).apply {
+        private fun createPiFormatField(initialValue: String?): JComboBox<FormatOption> {
+            return JComboBox(PI_FORMAT_OPTIONS.toTypedArray()).apply {
                 isEditable = false
-                selectedItem = findFormatOption(initialValue)
+                selectedItem = findOption(initialValue, PI_FORMAT_OPTIONS, DEFAULT_PI_FORMAT)
+            }
+        }
+
+        private fun createDroidTypeField(initialValue: String?): JComboBox<FormatOption> {
+            return JComboBox(DROID_TYPE_OPTIONS.toTypedArray()).apply {
+                isEditable = false
+                selectedItem = findOption(initialValue, DROID_TYPE_OPTIONS, DEFAULT_DROID_TYPE)
             }
         }
 
         private fun getSelectedFormat(field: JComboBox<FormatOption>?): String {
-            return (field?.selectedItem as? FormatOption)?.value ?: DEFAULT_FORMAT
+            return (field?.selectedItem as? FormatOption)?.value ?: DEFAULT_PI_FORMAT
         }
 
         private fun setSelectedFormat(field: JComboBox<FormatOption>?, value: String?) {
-            field?.selectedItem = findFormatOption(value)
+            val options = when {
+                field == null -> return
+                field.itemCount == DROID_TYPE_OPTIONS.size && (0 until field.itemCount).mapNotNull { field.getItemAt(it) }.map { it.value } == DROID_TYPE_OPTIONS.map { it.value } ->
+                    DROID_TYPE_OPTIONS to DEFAULT_DROID_TYPE
+                else -> PI_FORMAT_OPTIONS to DEFAULT_PI_FORMAT
+            }
+
+            field.selectedItem = findOption(value, options.first, options.second)
         }
 
-        private fun findFormatOption(value: String?): FormatOption {
-            val selectedValue = value?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_FORMAT
-            return FORMAT_OPTIONS.firstOrNull { it.value == selectedValue } ?: FORMAT_OPTIONS.first()
+        private fun findOption(value: String?, options: List<FormatOption>, defaultValue: String): FormatOption {
+            val selectedValue = value?.trim().takeUnless { it.isNullOrEmpty() } ?: defaultValue
+            return options.firstOrNull { it.value == selectedValue } ?: options.first()
         }
     }
 }

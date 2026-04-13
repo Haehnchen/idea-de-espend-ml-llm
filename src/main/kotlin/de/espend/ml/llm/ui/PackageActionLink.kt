@@ -120,5 +120,16 @@ class PackageActionLink(
                 installCommand = "npm install -g @google/gemini-cli"
             )
         }
+
+        /**
+         * Creates a PackageActionLink for Factory Droid installation.
+         */
+        fun forDroid(): PackageActionLink {
+            return PackageActionLink(
+                packageName = "app.factory.ai/cli",
+                githubUrl = null,
+                installCommand = "curl -fsSL https://app.factory.ai/cli | sh"
+            )
+        }
     }
 }

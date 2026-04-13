@@ -151,11 +151,11 @@ object ProviderConfig {
             provider = PROVIDER_DROID,
             label = "Factory.ai",
             icon = PluginIcons.DROID,
-            description = "Uses the Factory.ai Droid CLI. Install: curl -fsSL https://app.factory.ai/cli | sh",
+            description = "Uses Factory Droid via `droid exec --output-format acp` with a temporary customModels config for Anthropic or OpenAI compatible BYOK endpoints.",
             baseUrl = null,
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
-            autoDiscoveryText = "",
+            autoDiscoveryText = "anthropic",
             modelsUrl = null
         ),
         ProviderInfo(
@@ -266,6 +266,10 @@ object ProviderConfig {
 
     fun usesPiAcp(provider: String): Boolean {
         return provider == PROVIDER_PI_ACP
+    }
+
+    fun usesDroidCustomModel(provider: String): Boolean {
+        return provider == PROVIDER_DROID
     }
 
     fun usesClaudeAcp(provider: String): Boolean {
