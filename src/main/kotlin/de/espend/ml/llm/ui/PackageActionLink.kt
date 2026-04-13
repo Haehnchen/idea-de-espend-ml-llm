@@ -78,6 +78,17 @@ class PackageActionLink(
         }
 
         /**
+         * Creates a PackageActionLink for pi-acp installation.
+         */
+        fun forPiAcp(): PackageActionLink {
+            return PackageActionLink(
+                packageName = "pi-acp",
+                githubUrl = "https://github.com/svkozak/pi-acp",
+                installCommand = "npm install -g pi-acp"
+            )
+        }
+
+        /**
          * Creates a PackageActionLink for Kilo Code installation.
          */
         fun forKilo(): PackageActionLink {

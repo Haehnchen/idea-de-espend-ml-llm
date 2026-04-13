@@ -3,6 +3,7 @@ package de.espend.ml.llm
 object ProviderConfig {
     const val PROVIDER_ANTHROPIC_DEFAULT = "anthropic-default"
     const val PROVIDER_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
+    const val PROVIDER_PI_ACP = "pi-acp"
     const val PROVIDER_GEMINI = "gemini"
     const val PROVIDER_OPENCODE = "opencode"
     const val PROVIDER_CURSOR = "cursor"
@@ -26,6 +27,7 @@ object ProviderConfig {
     )
 
     private val REGISTRY_AGENT_IDS = mapOf(
+        PROVIDER_PI_ACP to "pi-acp",
         PROVIDER_ANTHROPIC_DEFAULT to "claude-acp",
         PROVIDER_ANTHROPIC_COMPATIBLE to "claude-acp",
         PROVIDER_ZAI to "claude-acp",
@@ -88,6 +90,17 @@ object ProviderConfig {
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
             autoDiscoveryText = "",
+            modelsUrl = null
+        ),
+        ProviderInfo(
+            provider = PROVIDER_PI_ACP,
+            label = "PI",
+            icon = PluginIcons.PI,
+            description = "Uses ACP registry pi-acp first, then local pi-acp binary fallback, with a temporary PI_CODING_AGENT_DIR generated from API, Base URL, and Model.",
+            baseUrl = null,
+            models = Triple("", "", ""),
+            modelIds = ModelIds(smart = "", quick = ""),
+            autoDiscoveryText = "anthropic-messages",
             modelsUrl = null
         ),
         ProviderInfo(
@@ -249,6 +262,10 @@ object ProviderConfig {
 
     fun findProviderInfo(provider: String): ProviderInfo? {
         return PROVIDER_INFOS.firstOrNull { it.provider == provider }
+    }
+
+    fun usesPiAcp(provider: String): Boolean {
+        return provider == PROVIDER_PI_ACP
     }
 
     fun usesClaudeAcp(provider: String): Boolean {

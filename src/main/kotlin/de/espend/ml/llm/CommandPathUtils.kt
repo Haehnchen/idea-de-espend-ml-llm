@@ -117,6 +117,28 @@ object CommandPathUtils {
     }
 
     /**
+     * Finds the pi-acp command with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findPiAcpPath(): String? {
+        findCommandPath("pi-acp")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/pi-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/pi-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/pi-acp")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
+
+    /**
      * Finds the Cursor agent command with specific fallback paths.
      * Cursor now has built-in ACP support via `agent acp`.
      * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin -> $HOME/.cursor/bin

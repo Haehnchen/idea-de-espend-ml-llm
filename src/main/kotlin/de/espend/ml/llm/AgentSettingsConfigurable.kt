@@ -221,9 +221,21 @@ class AgentSettingsConfigurable : Configurable {
         private val provider: String,
         initialConfig: AgentConfig?
     ) : JPanel(GridBagLayout()) {
+        private data class FormatOption(val label: String, val value: String) {
+            override fun toString(): String = label
+        }
+
+        private companion object {
+            private val FORMAT_OPTIONS = listOf(
+                FormatOption("Anthropic", "anthropic-messages"),
+                FormatOption("OpenAI", "openai-completions")
+            )
+            private const val DEFAULT_FORMAT = "anthropic-messages"
+        }
 
         private val enabledCheckbox: JBCheckBox
         private val apiKeyField: JBTextField?
+        private val formatField: JComboBox<FormatOption>?
         private val baseUrlField: JBTextField?
         private var modelField: JBTextField? = null
         private val descriptionArea: JTextArea?
@@ -292,6 +304,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> {
                     // Anthropic Default: Show install command with package link
                     apiKeyField = null
+                    formatField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -311,6 +324,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> {
                     // Anthropic Compatible: API key, Base URL, Model fields + install command
                     apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    formatField = null
                     baseUrlField = JBTextField(initialConfig?.baseUrl ?: "", 20)
                     val modelField = JBTextField(initialConfig?.model ?: "", 20)
                     descriptionArea = null
@@ -387,6 +401,86 @@ class AgentSettingsConfigurable : Configurable {
                     // Store modelField reference for getConfig()
                     this.modelField = modelField
                 }
+                ProviderConfig.PROVIDER_PI_ACP -> {
+                    apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    formatField = createFormatField(initialConfig?.format)
+                    baseUrlField = JBTextField(initialConfig?.baseUrl ?: "", 20)
+                    val modelField = JBTextField(initialConfig?.model ?: "", 20)
+                    descriptionArea = null
+
+                    val installPanel = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                        isOpaque = false
+                        add(JBLabel("Uses ACP registry pi-acp first, then local binary fallback, and starts ").apply {
+                            foreground = UIUtil.getContextHelpForeground()
+                            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+                        })
+                        add(PackageActionLink.forPiAcp())
+                    }
+                    inputsPanel.add(installPanel, GridBagConstraints().apply {
+                        gridx = 0; gridy = 0; gridwidth = 3; weightx = 1.0
+                        anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = JBUI.insetsBottom(5)
+                    })
+
+                    inputsPanel.add(JBLabel("Format:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(formatField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 1; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("Base URL:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 2; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(baseUrlField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 2; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    inputsPanel.add(JBLabel("API Key:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 3; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(apiKeyField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 3; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+
+                    val browseButton = JButton("...").apply {
+                        minimumSize = Dimension(30, modelField.preferredSize.height)
+                        preferredSize = Dimension(30, modelField.preferredSize.height)
+                        addActionListener {
+                            val baseUrl = baseUrlField.text.trim()
+                            val apiKey = apiKeyField.text.trim()
+                            if (baseUrl.isNotEmpty()) {
+                                val dialog = ModelSelectionDialog("${baseUrl.trimEnd('/')}/v1/models", apiKey, modelField.text.trim())
+                                if (dialog.showAndGet()) {
+                                    dialog.selectedModel?.let { modelField.text = it }
+                                }
+                            }
+                        }
+                    }
+
+                    fun updateModelEnabled() {
+                        val hasKey = apiKeyField.text.trim().isNotEmpty()
+                        modelField.isEnabled = hasKey
+                        browseButton.isEnabled = hasKey
+                    }
+                    updateModelEnabled()
+                    apiKeyField.document.addDocumentListener(object : DocumentAdapter() {
+                        override fun textChanged(e: DocumentEvent) {
+                            updateModelEnabled()
+                        }
+                    })
+
+                    inputsPanel.add(JBLabel("Model:"), GridBagConstraints().apply {
+                        gridx = 0; gridy = 4; anchor = GridBagConstraints.WEST; insets = labelInsets
+                    })
+                    inputsPanel.add(modelField, GridBagConstraints().apply {
+                        gridx = 1; gridy = 4; weightx = 1.0; anchor = GridBagConstraints.WEST; fill = GridBagConstraints.HORIZONTAL; insets = fieldInsets
+                    })
+                    inputsPanel.add(browseButton, GridBagConstraints().apply {
+                        gridx = 2; gridy = 4; anchor = GridBagConstraints.WEST; insets = JBUI.insets(2, 2, 2, 5)
+                    })
+
+                    this.modelField = modelField
+                }
                 ProviderConfig.PROVIDER_GEMINI,
                 ProviderConfig.PROVIDER_OPENCODE,
                 ProviderConfig.PROVIDER_CURSOR,
@@ -394,6 +488,7 @@ class AgentSettingsConfigurable : Configurable {
                 ProviderConfig.PROVIDER_DROID -> {
                     // Description and executable field for these providers
                     apiKeyField = null
+                    formatField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -520,6 +615,7 @@ class AgentSettingsConfigurable : Configurable {
                 else -> {
                     // Standard providers: use ProviderInfo for metadata
                     apiKeyField = JBTextField(initialConfig?.apiKey ?: "", 20)
+                    formatField = null
                     baseUrlField = null
                     descriptionArea = null
 
@@ -658,6 +754,7 @@ class AgentSettingsConfigurable : Configurable {
                 id = provider,
                 provider = provider,
                 apiKey = apiKeyField?.text?.trim() ?: "",
+                format = getSelectedFormat(formatField),
                 baseUrl = baseUrlField?.text?.trim() ?: "",
                 model = modelField?.text?.trim() ?: "",
                 isEnabled = enabledCheckbox.isSelected,
@@ -667,11 +764,32 @@ class AgentSettingsConfigurable : Configurable {
 
         fun loadConfig(config: AgentConfig?) {
             apiKeyField?.text = config?.apiKey ?: ""
+            setSelectedFormat(formatField, config?.format)
             baseUrlField?.text = config?.baseUrl ?: ""
             modelField?.text = config?.model ?: ""
             executableField?.text = config?.executable ?: ""
             enabledCheckbox.isSelected = config?.isEnabled ?: false
             updateInputsVisibility()
+        }
+
+        private fun createFormatField(initialValue: String?): JComboBox<FormatOption> {
+            return JComboBox(FORMAT_OPTIONS.toTypedArray()).apply {
+                isEditable = false
+                selectedItem = findFormatOption(initialValue)
+            }
+        }
+
+        private fun getSelectedFormat(field: JComboBox<FormatOption>?): String {
+            return (field?.selectedItem as? FormatOption)?.value ?: DEFAULT_FORMAT
+        }
+
+        private fun setSelectedFormat(field: JComboBox<FormatOption>?, value: String?) {
+            field?.selectedItem = findFormatOption(value)
+        }
+
+        private fun findFormatOption(value: String?): FormatOption {
+            val selectedValue = value?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_FORMAT
+            return FORMAT_OPTIONS.firstOrNull { it.value == selectedValue } ?: FORMAT_OPTIONS.first()
         }
     }
 }

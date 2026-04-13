@@ -57,6 +57,8 @@ data class AgentConfig(
     var id: String = "",
     var provider: String = "",
     var apiKey: String = "",
+    // pi provider format, for example "anthropic-messages" or "openai-completions"
+    var format: String = "",
     var baseUrl: String = "",
     var model: String = "",
     var isEnabled: Boolean = true,

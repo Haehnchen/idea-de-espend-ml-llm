@@ -7,6 +7,7 @@ import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentFactory
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
+import com.intellij.ml.llm.agents.acp.registry.AcpPaths
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
 import com.intellij.ml.llm.agents.acp.registry.AcpRegistryAgentId
 import com.intellij.ml.llm.agents.acp.registry.DynamicAcpChatAgent
@@ -19,6 +20,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
+import java.nio.file.Files
 
 private val LOG = Logger.getInstance(AgentRegistry::class.java)
 
@@ -118,6 +120,7 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         val baseUrl = when {
             ProviderConfig.isClaudeNativeProvider(config.provider) -> ""
             config.provider == ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
+            ProviderConfig.usesPiAcp(config.provider) -> config.baseUrl
             ProviderConfig.usesCustomClaudeAcpEnv(config.provider) -> providerInfo.baseUrl ?: ""
             config.provider == ProviderConfig.PROVIDER_GEMINI ||
                 config.provider == ProviderConfig.PROVIDER_OPENCODE ||
@@ -157,6 +160,10 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
                     put("ANTHROPIC_API_KEY", "")
                 }
             }
+        }
+
+        if (ProviderConfig.usesPiAcp(config.provider)) {
+            return createPiAcpServerConfig(config, buildBaseEnv())
         }
 
         if (ProviderConfig.usesClaudeAcp(config.provider)) {
@@ -246,6 +253,23 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         )
     }
 
+    private fun createPiAcpServerConfig(config: AgentConfig, baseEnv: Map<String, String>): AgentServerConfig {
+        val tempAgentDir = PiAcpTempConfig.createTempAgentDir(config)
+        val env = buildMap {
+            putAll(baseEnv)
+            put("PI_CODING_AGENT_DIR", tempAgentDir.toString())
+            put("API_KEY", config.apiKey)
+        }
+
+        resolveInstalledPiAcpServerConfig(config, env)?.let { return it }
+
+        return AgentServerConfig(
+            command = CommandPathUtils.findPiAcpPath() ?: "pi-acp",
+            args = emptyList(),
+            env = env
+        )
+    }
+
     private fun resolveInstalledClaudeAcpServerConfig(config: AgentConfig, env: Map<String, String>): AgentServerConfig? {
         val registryAgentId = ProviderConfig.registryAgentIdForProvider(config.provider) ?: return null
         val installedAgent = ApplicationManager.getApplication()
@@ -279,8 +303,61 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
         }
     }
 
+    private fun resolveInstalledPiAcpServerConfig(config: AgentConfig, env: Map<String, String>): AgentServerConfig? {
+        val registryAgentId = ProviderConfig.registryAgentIdForProvider(config.provider) ?: return null
+        val installedAgent = ApplicationManager.getApplication()
+            .getService(AcpAgentInstallationState::class.java)
+            ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
+            ?: return null
+
+        return when (val resolved = AcpDistributionResolver.resolve(installedAgent)) {
+            is AcpDistributionResolver.ResolvedDistribution.Package -> {
+                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
+                LOG.info("Using installed ACP registry package for provider ${config.provider}")
+                AgentServerConfig(
+                    command = startConfig.command,
+                    args = startConfig.args,
+                    env = buildMap {
+                        putAll(startConfig.env)
+                        putAll(env)
+                    }
+                )
+            }
+
+            is AcpDistributionResolver.ResolvedDistribution.Binary -> {
+                val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return null
+                val extractedPath = acpPaths.getAgentVersionDir(AcpRegistryAgentId(registryAgentId), installedAgent.version)
+                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath.toString())
+
+                if (!Files.isExecutable(java.nio.file.Path.of(startConfig.command))) {
+                    LOG.info("Installed ACP registry binary for provider ${config.provider} is not ready at ${startConfig.command}; falling back to manual command resolution")
+                    return null
+                }
+
+                LOG.info("Using installed ACP registry binary for provider ${config.provider}")
+                AgentServerConfig(
+                    command = startConfig.command,
+                    args = startConfig.args,
+                    env = buildMap {
+                        putAll(startConfig.env)
+                        putAll(env)
+                    }
+                )
+            }
+
+            is AcpDistributionResolver.ResolvedDistribution.Unavailable -> {
+                LOG.warn("Installed ACP registry agent for provider ${config.provider} is unavailable: ${resolved.reason}; falling back to manual command resolution")
+                null
+            }
+        }
+    }
+
     private fun resolveInstalledRegistryAgentConfig(config: AgentConfig): LocalAcpAgentConfig? {
         if (!ProviderConfig.supportsRegistryFallback(config.provider)) {
+            return null
+        }
+
+        if (ProviderConfig.usesPiAcp(config.provider)) {
             return null
         }
 
