@@ -559,8 +559,8 @@ class AgentSettingsConfigurable : Configurable {
                             })
                         }
 
-                        // Add space and package link for providers that use the acp package
-                        if (fullDesc.contains("claude-agent-acp")) {
+                        // Add package link for providers that use Claude ACP transport
+                        if (ProviderConfig.usesClaudeAcp(provider)) {
                             add(JBLabel("  via ").apply {
                                 foreground = UIUtil.getContextHelpForeground()
                                 font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)

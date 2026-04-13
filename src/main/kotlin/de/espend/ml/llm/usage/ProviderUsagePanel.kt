@@ -272,8 +272,9 @@ class ProviderUsagePanel(
                 isStringPainted = false
                 foreground = COLOR_OK
                 border = JBUI.Borders.empty()
+                val preferred = preferredSize
+                preferredSize = Dimension(preferred.width, JBUI.scale(4))
                 maximumSize = Dimension(Int.MAX_VALUE, JBUI.scale(4))
-                preferredSize = Dimension(Int.MAX_VALUE, JBUI.scale(4))
                 alignmentX = 0f
             }
             add(progressBar)

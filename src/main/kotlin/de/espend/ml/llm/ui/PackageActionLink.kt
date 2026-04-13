@@ -71,9 +71,9 @@ class PackageActionLink(
          */
         fun forAnthropicCompatible(): PackageActionLink {
             return PackageActionLink(
-                packageName = "@zed-industries/claude-agent-acp",
-                githubUrl = "https://github.com/zed-industries/claude-agent-acp",
-                installCommand = "npm install -g @zed-industries/claude-agent-acp"
+                packageName = "@agentclientprotocol/claude-agent-acp",
+                githubUrl = "https://github.com/agentclientprotocol/claude-agent-acp",
+                installCommand = "npm install -g @agentclientprotocol/claude-agent-acp"
             )
         }
 

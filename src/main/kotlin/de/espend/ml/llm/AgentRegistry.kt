@@ -4,7 +4,11 @@ import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
+import com.intellij.ml.llm.agents.acp.registry.AcpAgentFactory
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
+import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
+import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
+import com.intellij.ml.llm.agents.acp.registry.AcpRegistryAgentId
 import com.intellij.ml.llm.agents.acp.registry.DynamicAcpChatAgent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -111,20 +115,16 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
     private fun createAgentServerConfig(config: AgentConfig): AgentServerConfig {
         val providerInfo = ProviderConfig.findProviderInfo(config.provider)
             ?: ProviderConfig.findProviderInfo(ProviderConfig.PROVIDER_ZAI)!!
-        val baseUrl = when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> ""
-            ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
-            ProviderConfig.PROVIDER_GEMINI, ProviderConfig.PROVIDER_OPENCODE, ProviderConfig.PROVIDER_CURSOR, ProviderConfig.PROVIDER_KILO, ProviderConfig.PROVIDER_DROID -> ""
+        val baseUrl = when {
+            ProviderConfig.isClaudeNativeProvider(config.provider) -> ""
+            config.provider == ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> config.baseUrl
+            ProviderConfig.usesCustomClaudeAcpEnv(config.provider) -> providerInfo.baseUrl ?: ""
+            config.provider == ProviderConfig.PROVIDER_GEMINI ||
+                config.provider == ProviderConfig.PROVIDER_OPENCODE ||
+                config.provider == ProviderConfig.PROVIDER_CURSOR ||
+                config.provider == ProviderConfig.PROVIDER_KILO ||
+                config.provider == ProviderConfig.PROVIDER_DROID -> ""
             else -> providerInfo.baseUrl ?: ""
-        }
-        val apiKey = when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT,
-            ProviderConfig.PROVIDER_GEMINI,
-            ProviderConfig.PROVIDER_OPENCODE,
-            ProviderConfig.PROVIDER_CURSOR,
-            ProviderConfig.PROVIDER_KILO,
-            ProviderConfig.PROVIDER_DROID -> ""
-            else -> config.apiKey
         }
         val models = providerInfo.models
 
@@ -135,14 +135,32 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             } ?: emptyMap()
         }
 
-        // Anthropic Default uses built-in Claude Code integration without any custom env vars
-        if (config.provider == ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT) {
-            val acpPath = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp"
-            return AgentServerConfig(
-                command = acpPath,
-                args = emptyList(),
-                env = buildBaseEnv()
-            )
+        fun buildClaudeAcpEnv(): Map<String, String> {
+            return buildMap {
+                putAll(buildBaseEnv())
+                if (ProviderConfig.usesCustomClaudeAcpEnv(config.provider)) {
+                    put("ANTHROPIC_AUTH_TOKEN", config.apiKey)
+                    if (baseUrl.isNotEmpty()) {
+                        put("ANTHROPIC_BASE_URL", baseUrl)
+                    }
+                    put("API_TIMEOUT_MS", "3000000")
+
+                    val modelToUse = if (config.model.isNotEmpty()) {
+                        config.model
+                    } else {
+                        models.first
+                    }
+
+                    put("ANTHROPIC_DEFAULT_HAIKU_MODEL", modelToUse)
+                    put("ANTHROPIC_DEFAULT_SONNET_MODEL", modelToUse)
+                    put("ANTHROPIC_DEFAULT_OPUS_MODEL", modelToUse)
+                    put("ANTHROPIC_API_KEY", "")
+                }
+            }
+        }
+
+        if (ProviderConfig.usesClaudeAcp(config.provider)) {
+            return createClaudeAcpServerConfig(config, buildClaudeAcpEnv())
         }
 
         // OpenCode uses special command and args
@@ -215,29 +233,87 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
             )
         }
 
-        // Standard Anthropic-based providers
+        error("Unsupported provider: ${config.provider}")
+    }
+
+    private fun createClaudeAcpServerConfig(config: AgentConfig, env: Map<String, String>): AgentServerConfig {
+        resolveInstalledClaudeAcpServerConfig(config, env)?.let { return it }
+
         return AgentServerConfig(
             command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
             args = emptyList(),
-            env = buildMap {
-                putAll(buildBaseEnv())
-                put("ANTHROPIC_AUTH_TOKEN", apiKey)
-                if (baseUrl.isNotEmpty()) {
-                    put("ANTHROPIC_BASE_URL", baseUrl)
-                }
-                put("API_TIMEOUT_MS", "3000000")
-                // Use the user-defined model if set, otherwise fallback to provider default
-                val modelToUse = if (config.model.isNotEmpty()) {
-                    config.model
-                } else {
-                    models.first  // Fallback to default
-                }
-                put("ANTHROPIC_DEFAULT_HAIKU_MODEL", modelToUse)
-                put("ANTHROPIC_DEFAULT_SONNET_MODEL", modelToUse)
-                put("ANTHROPIC_DEFAULT_OPUS_MODEL", modelToUse)
-                put("ANTHROPIC_API_KEY", "")
-            }
+            env = env
         )
+    }
+
+    private fun resolveInstalledClaudeAcpServerConfig(config: AgentConfig, env: Map<String, String>): AgentServerConfig? {
+        val registryAgentId = ProviderConfig.registryAgentIdForProvider(config.provider) ?: return null
+        val installedAgent = ApplicationManager.getApplication()
+            .getService(AcpAgentInstallationState::class.java)
+            ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
+            ?: return null
+
+        return when (val resolved = AcpDistributionResolver.resolve(installedAgent)) {
+            is AcpDistributionResolver.ResolvedDistribution.Package -> {
+                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
+                LOG.info("Using installed ACP registry package for provider ${config.provider}")
+                AgentServerConfig(
+                    command = startConfig.command,
+                    args = startConfig.args,
+                    env = buildMap {
+                        putAll(startConfig.env)
+                        putAll(env)
+                    }
+                )
+            }
+
+            is AcpDistributionResolver.ResolvedDistribution.Binary -> {
+                LOG.info("Installed ACP registry agent for provider ${config.provider} uses binary distribution; falling back to manual command resolution")
+                null
+            }
+
+            is AcpDistributionResolver.ResolvedDistribution.Unavailable -> {
+                LOG.warn("Installed ACP registry agent for provider ${config.provider} is unavailable: ${resolved.reason}; falling back to manual command resolution")
+                null
+            }
+        }
+    }
+
+    private fun resolveInstalledRegistryAgentConfig(config: AgentConfig): LocalAcpAgentConfig? {
+        if (!ProviderConfig.supportsRegistryFallback(config.provider)) {
+            return null
+        }
+
+        if (ProviderConfig.usesCustomClaudeAcpEnv(config.provider)) {
+            return null
+        }
+
+        if (config.executable.isNotEmpty()) {
+            return null
+        }
+
+        val registryAgentId = ProviderConfig.registryAgentIdForProvider(config.provider) ?: return null
+        val installedAgent = ApplicationManager.getApplication()
+            .getService(AcpAgentInstallationState::class.java)
+            ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
+            ?: return null
+
+        val registryConfig = AcpAgentFactory.createAgentConfig(installedAgent)
+        if (registryConfig != null) {
+            LOG.info("Using installed ACP registry agent config for provider ${config.provider}")
+        } else {
+            LOG.warn("Installed ACP registry agent config for provider ${config.provider} could not be resolved, falling back to manual command")
+        }
+
+        return registryConfig
+    }
+
+    private fun createAcpAgentConfig(config: AgentConfig): LocalAcpAgentConfig {
+        resolveInstalledRegistryAgentConfig(config)?.let { return it }
+
+        val serverConfig = createAgentServerConfig(config)
+        val defaultMcpSettings = DefaultMcpSettings(useCustomMcp = true, useIdeaMcp = true)
+        return LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
     }
 
     /**
@@ -246,10 +322,8 @@ class AgentRegistry : PersistentStateComponent<AgentRegistry.State>, Disposable 
     private fun registerAgentInternal(config: AgentConfig) {
         LOG.info("Registering dynamic agent: ${config.provider} (id: ${config.id})")
 
-        val serverConfig = createAgentServerConfig(config)
-        val defaultMcpSettings = DefaultMcpSettings(useCustomMcp = true, useIdeaMcp = true)
         val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
-        val acpAgentConfig = LocalAcpAgentConfig.fromServerConfig(config.provider, serverConfig, defaultMcpSettings)
+        val acpAgentConfig = createAcpAgentConfig(config)
         val acpAgentId = AcpCustomAgentId(config.id)
         val delegate = DynamicAcpChatAgent(
             providerName,

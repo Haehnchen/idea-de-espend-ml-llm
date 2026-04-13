@@ -11,6 +11,39 @@ object ProviderConfig {
     const val PROVIDER_ZAI = "zai"
     const val PROVIDER_OLLAMA = "ollama"
 
+    private val CLAUDE_ACP_PROVIDERS = setOf(
+        PROVIDER_ANTHROPIC_DEFAULT,
+        PROVIDER_ANTHROPIC_COMPATIBLE,
+        PROVIDER_ZAI,
+        "minimax",
+        "openrouter",
+        "mimo",
+        "moonshot",
+        "requesty",
+        "nano-gpt",
+        "aihubmix",
+        PROVIDER_OLLAMA
+    )
+
+    private val REGISTRY_AGENT_IDS = mapOf(
+        PROVIDER_ANTHROPIC_DEFAULT to "claude-acp",
+        PROVIDER_ANTHROPIC_COMPATIBLE to "claude-acp",
+        PROVIDER_ZAI to "claude-acp",
+        "minimax" to "claude-acp",
+        "openrouter" to "claude-acp",
+        "mimo" to "claude-acp",
+        "moonshot" to "claude-acp",
+        "requesty" to "claude-acp",
+        "nano-gpt" to "claude-acp",
+        "aihubmix" to "claude-acp",
+        PROVIDER_OLLAMA to "claude-acp",
+        PROVIDER_GEMINI to "gemini",
+        PROVIDER_OPENCODE to "opencode",
+        PROVIDER_CURSOR to "cursor",
+        PROVIDER_KILO to "kilo",
+        PROVIDER_DROID to "factory-droid"
+    )
+
     /**
      * Model IDs for different AI Assistant contexts.
      * @param smart Model ID for core features (e.g., code generation, commit message)
@@ -50,7 +83,7 @@ object ProviderConfig {
             provider = PROVIDER_ANTHROPIC_COMPATIBLE,
             label = "Anthropic Like",
             icon = PluginIcons.ANTHROPIC,
-            description = "Supports any Anthropic-like API via @zed-industries/claude-agent-acp",
+            description = "Supports any Anthropic-like API via @agentclientprotocol/claude-agent-acp",
             baseUrl = null,
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
@@ -116,7 +149,7 @@ object ProviderConfig {
             provider = PROVIDER_ZAI,
             label = "Z.AI",
             icon = PluginIcons.ZAI,
-            description = "Z.AI via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Z.AI via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://api.z.ai/api/anthropic",
             models = Triple("glm-4.7", "glm-4.7", "glm-4.5-air"),
             modelIds = ModelIds(smart = "glm-4.7", quick = "glm-4.5-air"),
@@ -128,7 +161,7 @@ object ProviderConfig {
             provider = "minimax",
             label = "MiniMax",
             icon = PluginIcons.MINIMAX,
-            description = "MiniMax via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "MiniMax via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://api.minimax.io/anthropic",
             models = Triple("MiniMax-M2.1", "MiniMax-M2.1", "MiniMax-M2.1"),
             modelIds = ModelIds(smart = "MiniMax-M2.1", quick = "MiniMax-M2.1"),
@@ -139,7 +172,7 @@ object ProviderConfig {
             provider = "openrouter",
             label = "OpenRouter",
             icon = PluginIcons.OPENROUTER,
-            description = "OpenRouter via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "OpenRouter via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://openrouter.ai/api",
             models = Triple("z-ai/glm-4.5-air:free", "z-ai/glm-4.5-air:free", "z-ai/glm-4.5-air:free"),
             modelIds = ModelIds(smart = "z-ai/glm-4.5-air:free", quick = "z-ai/glm-4.5-air:free"),
@@ -150,7 +183,7 @@ object ProviderConfig {
             provider = "mimo",
             label = "Mimo",
             icon = PluginIcons.MIMO,
-            description = "Mimo via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Mimo via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://api.xiaomimimo.com/anthropic",
             models = Triple("mimo-v2-flash", "mimo-v2-flash", "mimo-v2-flash"),
             modelIds = ModelIds(smart = "mimo-v2-flash", quick = "mimo-v2-flash"),
@@ -161,7 +194,7 @@ object ProviderConfig {
             provider = "moonshot",
             label = "Moonshot",
             icon = PluginIcons.MOONSHOT,
-            description = "Moonshot via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Moonshot via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://api.moonshot.ai/anthropic",
             models = Triple("kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo", "kimi-k2-thinking-turbo"),
             modelIds = ModelIds(smart = "kimi-k2-thinking-turbo", quick = "kimi-k2-thinking-turbo"),
@@ -172,7 +205,7 @@ object ProviderConfig {
             provider = "requesty",
             label = "Requesty.ai",
             icon = PluginIcons.REQUESTY,
-            description = "Requesty.ai via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Requesty.ai via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://router.requesty.ai/",
             models = Triple("zai/GLM-4.7", "zai/GLM-4.7", "zai/GLM-4.7"),
             modelIds = ModelIds(smart = "zai/GLM-4.7", quick = "zai/GLM-4.7"),
@@ -183,7 +216,7 @@ object ProviderConfig {
             provider = "nano-gpt",
             label = "Nano-GPT",
             icon = PluginIcons.NANOGPT,
-            description = "Nano-GPT via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Nano-GPT via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://nano-gpt.com/api/v1",
             models = Triple("gemini-3-pro-preview", "gemini-3-pro-preview", "gemini-3-pro-preview"),
             modelIds = ModelIds(smart = "gemini-3-pro-preview", quick = "gemini-3-pro-preview"),
@@ -194,7 +227,7 @@ object ProviderConfig {
             provider = "aihubmix",
             label = "AIHubMix",
             icon = PluginIcons.AIHUBMIX,
-            description = "AIHubMix via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "AIHubMix via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://aihubmix.com",
             models = Triple("gemini-3-flash-preview-free", "gemini-3-flash-preview-free", "gemini-3-flash-preview-free"),
             modelIds = ModelIds(smart = "gemini-3-flash-preview-free", quick = "gemini-3-flash-preview-free"),
@@ -205,7 +238,7 @@ object ProviderConfig {
             provider = PROVIDER_OLLAMA,
             label = "Ollama",
             icon = PluginIcons.OLLAMA,
-            description = "Ollama Cloud via Anthropic Compatible API. @zed-industries/claude-agent-acp",
+            description = "Ollama Cloud via Anthropic Compatible API. @agentclientprotocol/claude-agent-acp",
             baseUrl = "https://ollama.com",
             models = Triple("", "", ""),
             modelIds = ModelIds(smart = "", quick = ""),
@@ -216,5 +249,25 @@ object ProviderConfig {
 
     fun findProviderInfo(provider: String): ProviderInfo? {
         return PROVIDER_INFOS.firstOrNull { it.provider == provider }
+    }
+
+    fun usesClaudeAcp(provider: String): Boolean {
+        return provider in CLAUDE_ACP_PROVIDERS
+    }
+
+    fun isClaudeNativeProvider(provider: String): Boolean {
+        return provider == PROVIDER_ANTHROPIC_DEFAULT
+    }
+
+    fun usesCustomClaudeAcpEnv(provider: String): Boolean {
+        return usesClaudeAcp(provider) && !isClaudeNativeProvider(provider)
+    }
+
+    fun registryAgentIdForProvider(provider: String): String? {
+        return REGISTRY_AGENT_IDS[provider]
+    }
+
+    fun supportsRegistryFallback(provider: String): Boolean {
+        return registryAgentIdForProvider(provider) != null
     }
 }
