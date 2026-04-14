@@ -126,6 +126,10 @@ The Session Browser works out of the box - no additional setup required. Simply 
 
 ![Settings](docs/settings.webp)
 
+![Profile](docs/profile_1.webp)
+
+![Profile Dialog](docs/profile_2.webp)
+
 ![Session Browser](docs/session_browser.webp)
 
 ![Session List](docs/session_list.webp)
@@ -136,10 +140,4 @@ The Session Browser works out of the box - no additional setup required. Simply 
 
 ![Toolbar Account Quotas / Usages Statusbar](docs/statusbar.webp)
 
-![Gemini](docs/gemini.webp)
-
 ![AI Assistant](docs/ai_assistant.webp)
-
-![AI Assistant Chat](docs/ai_assistant_2.webp)
-
-![AI Assistant Settings](docs/ai_assistant_settings.webp)
