@@ -10,14 +10,17 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.ListPopup
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.openapi.vcs.VcsDataKeys
+import com.intellij.openapi.vcs.VcsException
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeList
 import com.intellij.openapi.vcs.changes.CurrentContentRevision
+import com.intellij.openapi.vcs.ui.CommitMessage
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.vcs.commit.CommitMessageUi
 import com.intellij.vcs.commit.CommitWorkflowUi
@@ -26,10 +29,27 @@ import de.espend.ml.llm.profile.AiProfileConfig
 import de.espend.ml.llm.profile.AiProfilePlatformRegistry
 import de.espend.ml.llm.profile.AiProfileRegistry
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.awt.Point
+import java.awt.Component
+import java.awt.Container
+import java.util.function.Consumer
+import java.util.function.Supplier
 import javax.swing.Icon
 import javax.swing.JComponent
+import javax.swing.JLabel
+import javax.swing.SwingUtilities
 import javax.swing.text.JTextComponent
+import kotlin.coroutines.resume
+import com.intellij.vcs.log.VcsFullCommitDetails
+import com.intellij.vcs.log.VcsLogCommitSelection
+import com.intellij.vcs.log.VcsLogDataKeys
+import git4idea.changes.GitChangeUtils
+import git4idea.repo.GitRepositoryManager
+
+private val COMMIT_HASH_PATTERN = Regex("\\b[0-9a-f]{7,40}\\b")
+private const val POPUP_ICON_SIZE = 12
+private const val POPUP_LABEL_MAX_LENGTH = 24
 
 /**
  * Action to generate commit messages using configured AI providers.
@@ -49,13 +69,14 @@ class ProviderCommitMessageAction : AnAction(
     override fun update(e: AnActionEvent) {
         val project = e.project
         val context = ActionContext.fromEvent(e)
+        val target = context.getCommitMessageTarget()
 
         val validProviders = AiProfileRegistry.getInstance().currentState.profiles
             .filter { it.isEnabled }
             .filter { isProviderValid(it) }
 
         val hasChanges = context.hasChanges()
-        val hasTarget = context.getCommitMessageTarget() != null
+        val hasTarget = target != null
         val hasValidProviders = validProviders.isNotEmpty()
         val isRunning = progressIndicator?.isRunning == true
 
@@ -68,8 +89,11 @@ class ProviderCommitMessageAction : AnAction(
             buildTooltip(validProviders)
         }
 
-        e.presentation.isVisible = hasValidProviders && project != null
-        e.presentation.isEnabled = hasValidProviders && (isRunning || (hasChanges && hasTarget))
+        val isVisible = hasValidProviders && project != null
+        val isEnabled = hasValidProviders && (isRunning || (hasChanges && hasTarget))
+
+        e.presentation.isVisible = isVisible
+        e.presentation.isEnabled = isEnabled
         // Some commit UI placements render tooltip/title from action text instead of description,
         // so keep both in sync to ensure the dynamic provider tooltip is actually visible.
         e.presentation.description = tooltip
@@ -97,10 +121,6 @@ class ProviderCommitMessageAction : AnAction(
         val context = ActionContext.fromEvent(e)
 
         val changes = context.getChanges()
-        if (changes.isNullOrEmpty()) {
-            return
-        }
-
         val target = context.getCommitMessageTarget() ?: return
 
         val validProviders = AiProfileRegistry.getInstance().currentState.profiles
@@ -109,11 +129,11 @@ class ProviderCommitMessageAction : AnAction(
         if (validProviders.isEmpty()) return
 
         if (validProviders.size == 1) {
-            generateCommitMessage(project, validProviders.first(), changes, target)
+            generateCommitMessage(project, validProviders.first(), changes, context, target)
             return
         }
 
-        val popup = createProviderPopup(validProviders, project, changes, target)
+        val popup = createProviderPopup(validProviders, project, changes, context, target)
         val component = e.inputEvent?.component
         if (component != null) {
             popup.show(RelativePoint(component, Point(0, component.height)))
@@ -125,7 +145,8 @@ class ProviderCommitMessageAction : AnAction(
     private fun createProviderPopup(
         providers: List<AiProfileConfig>,
         project: Project,
-        changes: List<Change>,
+        changes: List<Change>?,
+        context: ActionContext,
         target: CommitMessageTarget
     ): ListPopup {
         val items = providers.map { config ->
@@ -134,16 +155,17 @@ class ProviderCommitMessageAction : AnAction(
             val model = config.model.takeIf { it.isNotEmpty() }
                 ?: platform?.defaultModel
                 ?: "default"
-            val icon = platform?.icon ?: PluginIcons.AI_PROVIDER
-            ProviderItem(config, "$label ($model)", icon)
+            val displayText = truncatePopupLabel("$label (${firstPopupModel(model)})")
+            val icon = PluginIcons.scaleIcon(platform?.icon ?: PluginIcons.AI_PROVIDER, POPUP_ICON_SIZE)
+            ProviderItem(config, displayText, icon)
         }
 
         val step = object : BaseListPopupStep<ProviderItem>("Select Profile", items) {
-            override fun getTextFor(value: ProviderItem): String = value.label
+            override fun getTextFor(value: ProviderItem): String = " ${value.label}"
             override fun getIconFor(value: ProviderItem): Icon = value.icon
 
             override fun onChosen(selectedValue: ProviderItem, finalChoice: Boolean): PopupStep<*>? {
-                generateCommitMessage(project, selectedValue.config, changes, target)
+                generateCommitMessage(project, selectedValue.config, changes, context, target)
                 return FINAL_CHOICE
             }
         }
@@ -154,10 +176,11 @@ class ProviderCommitMessageAction : AnAction(
     private fun generateCommitMessage(
         project: Project,
         config: AiProfileConfig,
-        changes: List<Change>,
+        changes: List<Change>?,
+        context: ActionContext,
         target: CommitMessageTarget
     ) {
-        val existingText = target.getText()
+        val existingText = if (context.shouldUseExistingTextAsDraft()) target.getText() else ""
         val providerName = getProviderDisplayName(config)
 
         object : Task.Backgroundable(project, "Generating commit message...", true) {
@@ -168,7 +191,14 @@ class ProviderCommitMessageAction : AnAction(
 
                 try {
                     val result = runBlocking {
-                        CommitMessageGenerator.generate(project, config, changes, existingText, indicator)
+                        val effectiveChanges = changes
+                            ?: context.getChangesFromGitDialog()
+                            ?: context.getChangesFromCommitSelection()
+                        if (effectiveChanges.isNullOrEmpty()) {
+                            ApiResult.Error("No changes to generate commit message from")
+                        } else {
+                            CommitMessageGenerator.generate(project, config, effectiveChanges, existingText, indicator)
+                        }
                     }
 
                     // Check if cancelled before updating UI
@@ -216,22 +246,66 @@ class ProviderCommitMessageAction : AnAction(
         return model?.let { "$providerLabel ($it)" } ?: providerLabel
     }
 
+    private fun truncatePopupLabel(label: String): String {
+        return if (label.length <= POPUP_LABEL_MAX_LENGTH) {
+            label
+        } else {
+            label.take(POPUP_LABEL_MAX_LENGTH - 3) + "..."
+        }
+    }
+
+    private fun firstPopupModel(model: String): String {
+        return model
+            .lineSequence()
+            .firstOrNull { it.isNotBlank() }
+            ?.substringBefore(',')
+            ?.trim()
+            ?.ifBlank { null }
+            ?: "default"
+    }
+
     private data class ActionContext(
         val project: Project?,
         val editor: Editor?,
         val commitWorkflowUi: CommitWorkflowUi?,
         val commitMessageControl: Any?,
-        private val selectedChanges: Array<Change>?,
-        private val selectedChangesInDetails: Array<Change>?,
-        private val changes: Array<Change>?,
-        private val changeLists: Array<ChangeList>?
+        val vcsLogCommitSelection: VcsLogCommitSelection?,
+        val selectedChanges: Array<Change>?,
+        val selectedChangesInDetails: Array<Change>?,
+        val changes: Array<Change>?,
+        val changeLists: Array<ChangeList>?
     ) {
         fun hasChanges(): Boolean {
-            return collectContextChanges().isNotEmpty()
+            return collectContextChanges().isNotEmpty() ||
+                collectSupplierChanges().isNotEmpty() ||
+                findCommitHashHint() != null ||
+                vcsLogCommitSelection?.commits?.isNotEmpty() == true
         }
 
         fun getChanges(): List<Change>? {
-            return collectContextChanges().takeIf { it.isNotEmpty() }
+            val contextChanges = collectContextChanges()
+            if (contextChanges.isNotEmpty()) {
+                return contextChanges
+            }
+
+            val supplierChanges = collectSupplierChanges()
+            if (supplierChanges.isNotEmpty()) {
+                return supplierChanges
+            }
+
+            return null
+        }
+
+        suspend fun getChangesFromCommitSelection(): List<Change>? {
+            val selection = vcsLogCommitSelection ?: return null
+            if (selection.commits.isEmpty()) {
+                return null
+            }
+
+            val details = selection.requestFullDetailsAsync()
+            return details
+                .flatMap(VcsFullCommitDetails::getChanges)
+                .takeIf { it.isNotEmpty() }
         }
 
         fun getCommitMessageTarget(): CommitMessageTarget? {
@@ -241,6 +315,7 @@ class ProviderCommitMessageAction : AnAction(
 
             // Fallback path from the same commit action context: `VcsDataKeys.COMMIT_MESSAGE_CONTROL`.
             if (commitMessageControl is CommitMessageUi) return CommitMessageUiTarget(commitMessageControl)
+            if (commitMessageControl is CommitMessage) return CommitMessageControlTarget(commitMessageControl)
 
             // Legacy/non-commit-dialog entry points can still expose plain editor/text controls.
             if (editor != null) return EditorTarget(editor)
@@ -249,6 +324,17 @@ class ProviderCommitMessageAction : AnAction(
                 findTextComponent(commitMessageControl)?.let { return TextComponentTarget(it) }
             }
             return null
+        }
+
+        fun findCommitHashHint(): String? {
+            return collectDialogTexts()
+                .asSequence()
+                .flatMap { COMMIT_HASH_PATTERN.findAll(it).map { match -> match.value } }
+                .firstOrNull()
+        }
+
+        fun shouldUseExistingTextAsDraft(): Boolean {
+            return !isDetachedCommitMessageDialog()
         }
 
         companion object {
@@ -260,6 +346,7 @@ class ProviderCommitMessageAction : AnAction(
                     commitWorkflowUi = e.getData(VcsDataKeys.COMMIT_WORKFLOW_UI),
                     // `COMMIT_MESSAGE_CONTROL` is the commit message UI control from VCS commit workflow.
                     commitMessageControl = e.getData(VcsDataKeys.COMMIT_MESSAGE_CONTROL),
+                    vcsLogCommitSelection = e.getData(VcsLogDataKeys.VCS_LOG_COMMIT_SELECTION),
                     selectedChanges = e.getData(VcsDataKeys.SELECTED_CHANGES),
                     selectedChangesInDetails = e.getData(VcsDataKeys.SELECTED_CHANGES_IN_DETAILS),
                     changes = e.getData(VcsDataKeys.CHANGES),
@@ -296,6 +383,87 @@ class ProviderCommitMessageAction : AnAction(
             val contextChangesFromLists = linkedSetOf<Change>()
             changeLists?.forEach { contextChangesFromLists.addAll(it.changes) }
             return contextChangesFromLists.toList()
+        }
+
+        private fun collectSupplierChanges(): List<Change> {
+            return resolveChangesSupplier()
+                ?.get()
+                ?.toList()
+                .orEmpty()
+        }
+
+        fun getChangesFromGitDialog(): List<Change>? {
+            val project = project ?: return null
+            if (!isDetachedCommitMessageDialog()) {
+                return null
+            }
+
+            val hash = findCommitHashHint() ?: return null
+            val repositories = runCatching { GitRepositoryManager.getInstance(project).repositories }.getOrNull().orEmpty()
+            for (repository in repositories) {
+                try {
+                    val changeList = GitChangeUtils.getRevisionChanges(project, repository.root, hash, false, false, false)
+                    val changes = changeList.changes.toList()
+                    if (changes.isNotEmpty()) {
+                        return changes
+                    }
+                } catch (_: VcsException) {
+                } catch (_: RuntimeException) {
+                }
+            }
+
+            return null
+        }
+
+        private fun resolveChangesSupplier(): Supplier<Iterable<Change>>? {
+            val document = when {
+                commitMessageControl is CommitMessage -> commitMessageControl.editorField.document
+                editor != null -> editor.document
+                else -> null
+            } ?: return null
+
+            return document.getUserData(CommitMessage.CHANGES_SUPPLIER_KEY)
+        }
+
+        private fun resolveDialogWrapper(): DialogWrapper? {
+            val component = commitMessageControl as? Component ?: return null
+            return DialogWrapper.findInstance(component)
+        }
+
+        private fun collectDialogTexts(): List<String> {
+            val dialog = resolveDialogWrapper() ?: return emptyList()
+            val texts = linkedSetOf<String>()
+            dialog.title?.takeIf { it.isNotBlank() }?.let { texts += it }
+            collectLabelTexts(dialog.contentPanel, texts)
+            return texts.toList()
+        }
+
+        private fun collectLabelTexts(component: Component?, sink: MutableSet<String>, depth: Int = 0) {
+            if (component == null || depth > 8) {
+                return
+            }
+
+            if (component is JLabel) {
+                component.text
+                    ?.replace("<html>", "", ignoreCase = true)
+                    ?.replace("</html>", "", ignoreCase = true)
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { sink += it }
+            }
+
+            if (component is Container) {
+                component.components.forEach { child ->
+                    collectLabelTexts(child, sink, depth + 1)
+                }
+            }
+        }
+
+        private fun isDetachedCommitMessageDialog(): Boolean {
+            return commitWorkflowUi == null &&
+                commitMessageControl is CommitMessage &&
+                resolveChangesSupplier() == null &&
+                SwingUtilities.getWindowAncestor(commitMessageControl) != null
         }
 
         private fun findTextComponent(component: JComponent): JTextComponent? {
@@ -372,7 +540,24 @@ class ProviderCommitMessageAction : AnAction(
         }
     }
 
+    private class CommitMessageControlTarget(private val commitMessage: CommitMessage) : CommitMessageTarget {
+        override fun getText(): String = commitMessage.text
+
+        override fun setText(text: String) {
+            commitMessage.setCommitMessage(text)
+        }
+    }
+
 }
+
+private suspend fun VcsLogCommitSelection.requestFullDetailsAsync(): List<VcsFullCommitDetails> =
+    suspendCancellableCoroutine { continuation ->
+        requestFullDetails(Consumer { details ->
+            if (continuation.isActive) {
+                continuation.resume(details)
+            }
+        })
+    }
 
 private data class ProviderItem(
     val config: AiProfileConfig,

@@ -26,8 +26,10 @@ dependencies {
     intellijPlatform {
         intellijIdeaUltimate("2026.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        bundledModule("intellij.platform.vcs.impl")
+        bundledModule("intellij.platform.vcs.log")
 
-        bundledPlugins("com.intellij.mcpServer", "org.intellij.plugins.markdown")
+        bundledPlugins("Git4Idea", "com.intellij.mcpServer", "org.intellij.plugins.markdown")
 
         // AI Assistant plugin (ml.llm) from marketplace
         compatiblePlugins("com.intellij.ml.llm")
