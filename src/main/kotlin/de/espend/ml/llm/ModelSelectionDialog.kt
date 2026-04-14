@@ -36,10 +36,14 @@ private data class ModelsResponse(
 class ModelSelectionDialog(
     private val modelsUrl: String,
     private val apiKey: String,
-    private val currentModel: String
+    private val currentModel: String,
+    private val allowMultiple: Boolean = false
 ) : DialogWrapper(true) {
 
     var selectedModel: String? = null
+        private set
+
+    var selectedModels: List<String> = emptyList()
         private set
 
     private val allModels = mutableListOf<ModelInfo>()
@@ -49,10 +53,11 @@ class ModelSelectionDialog(
     private val searchField = SearchTextField()
     private val statusLabel = JBLabel("")
     private var selectedRow: Int = -1
+    private val selectedModelIds = linkedSetOf<String>()
     private val refreshButton = JButton("Refresh")
 
     init {
-        title = "Select Model"
+        title = if (allowMultiple) "Select Models" else "Select Model"
         init()
         fetchModels()
     }
@@ -74,7 +79,9 @@ class ModelSelectionDialog(
         panel.add(topPanel, BorderLayout.NORTH)
 
         // Table setup
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+        table.setSelectionMode(
+            if (allowMultiple) ListSelectionModel.MULTIPLE_INTERVAL_SELECTION else ListSelectionModel.SINGLE_SELECTION
+        )
         table.columnModel.getColumn(0).preferredWidth = 30
         table.columnModel.getColumn(0).maxWidth = 40
         table.columnModel.getColumn(1).preferredWidth = 180
@@ -84,6 +91,9 @@ class ModelSelectionDialog(
         table.columnModel.getColumn(0).cellEditor = null
 
         table.selectionModel.addListSelectionListener {
+            if (allowMultiple) {
+                return@addListSelectionListener
+            }
             if (!it.valueIsAdjusting) {
                 val row = table.selectedRow
                 if (row >= 0) {
@@ -101,8 +111,15 @@ class ModelSelectionDialog(
                 val row = table.rowAtPoint(e.point)
                 val col = table.columnAtPoint(e.point)
                 if (row >= 0 && col == 0) {
-                    // Select the row when checkbox column is clicked
-                    table.setRowSelectionInterval(row, row)
+                    if (allowMultiple) {
+                        val modelId = filteredModels[row].id
+                        if (!selectedModelIds.add(modelId)) {
+                            selectedModelIds.remove(modelId)
+                        }
+                        tableModel.fireTableCellUpdated(row, 0)
+                    } else {
+                        table.setRowSelectionInterval(row, row)
+                    }
                 }
             }
         })
@@ -118,8 +135,12 @@ class ModelSelectionDialog(
     }
 
     override fun doOKAction() {
-        if (selectedRow >= 0 && selectedRow < filteredModels.size) {
+        if (allowMultiple) {
+            selectedModels = selectedModelIds.toList()
+            selectedModel = selectedModels.firstOrNull()
+        } else if (selectedRow >= 0 && selectedRow < filteredModels.size) {
             selectedModel = filteredModels[selectedRow].id
+            selectedModels = listOfNotNull(selectedModel)
         }
         super.doOKAction()
     }
@@ -197,6 +218,17 @@ class ModelSelectionDialog(
     }
 
     private fun preselectCurrentModel() {
+        if (allowMultiple) {
+            selectedModelIds.clear()
+            currentModel
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach(selectedModelIds::add)
+            tableModel.fireTableDataChanged()
+            return
+        }
+
         if (currentModel.isNotEmpty()) {
             val idx = filteredModels.indexOfFirst { it.id == currentModel }
             if (idx >= 0) {
@@ -223,7 +255,11 @@ class ModelSelectionDialog(
         override fun getValueAt(rowIndex: Int, columnIndex: Int): Any {
             val model = filteredModels[rowIndex]
             return when (columnIndex) {
-                0 -> rowIndex == selectedRow
+                0 -> if (allowMultiple) {
+                    model.id in selectedModelIds
+                } else {
+                    rowIndex == selectedRow
+                }
                 1 -> model.name ?: model.id.substringAfterLast('/')
                 2 -> model.id
                 else -> ""

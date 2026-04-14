@@ -102,6 +102,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- AI Provider Agent Registry - dynamic agent registration -->
         <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
+        <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
 
         <!-- Settings for AI provider agents - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
@@ -111,15 +112,23 @@
                                  groupWeight="10"/>
 
         <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
+                                 id="de.espend.ml.llm.profile.AiProfilesSettings"
+                                 instance="de.espend.ml.llm.profile.ui.AiProfilesSettingsConfigurable"
+                                 displayName="AI Profiles"
+                                 groupWeight="15"/>
+
+        <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
                                  id="de.espend.ml.llm.usage.UsageSettings"
                                  instance="de.espend.ml.llm.usage.ui.UsageSettingsConfigurable"
                                  displayName="Account Usage Toolbar"
                                  groupWeight="20"/>
 
         <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
+        <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
 
         <!-- Agent Popup Enhancement - adds Agent Providers to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.ProviderAgentPopupEnhancementProvider"/>
+        <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>
 
         <!-- Status bar widget for AI provider usage -->
         <statusBarWidgetFactory implementation="de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidgetFactory"
