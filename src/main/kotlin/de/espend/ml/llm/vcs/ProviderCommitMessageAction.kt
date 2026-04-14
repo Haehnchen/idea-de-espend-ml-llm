@@ -17,6 +17,7 @@ import com.intellij.openapi.ui.popup.util.BaseListPopupStep
 import com.intellij.openapi.vcs.VcsDataKeys
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.ChangeList
+import com.intellij.openapi.vcs.changes.CurrentContentRevision
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.vcs.commit.CommitMessageUi
 import com.intellij.vcs.commit.CommitWorkflowUi
@@ -270,8 +271,11 @@ class ProviderCommitMessageAction : AnAction(
         private fun collectContextChanges(): List<Change> {
             // Matches commit workflow behavior: use currently included changes from `CommitWorkflowUi` first.
             val includedChanges = commitWorkflowUi?.getIncludedChanges().orEmpty()
-            if (includedChanges.isNotEmpty()) {
-                return includedChanges
+            val unversionedChanges = commitWorkflowUi?.getIncludedUnversionedFiles()
+                .orEmpty()
+                .map { Change(null, CurrentContentRevision(it)) }
+            if (includedChanges.isNotEmpty() || unversionedChanges.isNotEmpty()) {
+                return includedChanges + unversionedChanges
             }
 
             val explicitSelected = selectedChanges?.toList().orEmpty()
