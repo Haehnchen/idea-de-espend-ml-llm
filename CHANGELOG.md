@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.10.0
+* Support commit generation from VCS log and Git dialog (Daniel Espendiller)
+* Include unversioned files in commit message generation (Daniel Espendiller)
+* Replace old AgentRegistry with migration to new profiles (Daniel Espendiller)
+* Add profile based provider handling with support for droid, api, claude code acp (Daniel Espendiller)
+* Add pi-acp provider with settings UI (Daniel Espendiller)
+
 # 0.9.8
 * Refactor provider config to use registry fallback and ACP helpers
 * Refactor usage popup to use CustomComponentAction (Daniel Espendiller)
