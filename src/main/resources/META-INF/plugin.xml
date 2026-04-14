@@ -16,8 +16,8 @@
     <description><![CDATA[
         <p>Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools, and a Usage Toolbar to monitor AI provider quotas.</p>
 
-        <h2>AI Providers</h2>
-        <p>Configure multiple AI providers through **Settings → AI Assistant → Agent Providers**.</p>
+        <h2>Agent Profiles</h2>
+        <p>Configure multiple AI providers through **Settings → AI Assistant → Agent Profiles**.</p>
 
         <h2>Session Browser</h2>
         <p>Browse and view chat sessions from external AI tools directly in the IDE.</p>
@@ -58,14 +58,14 @@
 
         <h2>Using AI Providers</h3>
         <ol>
-            <li>Go to <b>File → Settings → AI Assistant → Agent Providers</b></li>
+            <li>Go to <b>File → Settings → AI Assistant → Agent Profiles</b></li>
             <li>Configure API keys and base URLs as needed</li>
             <li>Click <b>Apply</b> to register the agents</li>
             <li>For CLI-based providers: install the corresponding npm package</li>
             <li><b>Important</b>: To use providers for core AI features (commit generation, AI actions):
                 <ul>
                     <li>Go to <b>Settings → Tools → AI Assistant → "Models & API keys"</b></li>
-                    <li>Select <b>"Agent Providers"</b> from the provider dropdown</li>
+                    <li>Select <b>"Agent Profiles"</b> from the provider dropdown</li>
                     <li>Select a model from the model dropdown</li>
                 </ul>
             </li>
@@ -104,30 +104,22 @@
         <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
         <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
 
-        <!-- Settings for AI provider agents - placed under AI Assistant -->
+        <!-- Settings for AI providers - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
                                  id="de.espend.ml.llm.AgentSettings"
-                                 instance="de.espend.ml.llm.AgentSettingsConfigurable"
-                                 displayName="Agent Providers"
-                                 groupWeight="10"/>
-
-        <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
-                                 id="de.espend.ml.llm.profile.AiProfilesSettings"
                                  instance="de.espend.ml.llm.profile.ui.AiProfilesSettingsConfigurable"
-                                 displayName="AI Profiles"
-                                 groupWeight="15"/>
+                                 displayName="Agent Profiles"
+                                 groupWeight="10"/>
 
         <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
                                  id="de.espend.ml.llm.usage.UsageSettings"
                                  instance="de.espend.ml.llm.usage.ui.UsageSettingsConfigurable"
                                  displayName="Account Usage Toolbar"
-                                 groupWeight="20"/>
+                                 groupWeight="15"/>
 
-        <postStartupActivity implementation="de.espend.ml.llm.AgentStartupActivity"/>
         <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
 
-        <!-- Agent Popup Enhancement - adds Agent Providers to agent dropdown -->
-        <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.ProviderAgentPopupEnhancementProvider"/>
+        <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>
 
         <!-- Status bar widget for AI provider usage -->
@@ -144,11 +136,11 @@
 
     <!-- Actions for AI Provider plugin -->
     <actions>
-        <!-- Action to open Agent Providers settings from chat toolbar -->
-        <action id="de.espend.ml.llm.OpenAgentProvidersSettings"
-                class="de.espend.ml.llm.OpenAgentProvidersSettingsAction"
-                text="Agent Providers"
-                description="Open Agent Providers settings">
+        <!-- Action to open Agent Profiles settings from chat toolbar -->
+        <action id="de.espend.ml.llm.OpenAiProfilesSettings"
+                class="de.espend.ml.llm.profile.OpenAiProfilesSettingsAction"
+                text="Agent Profiles"
+                description="Open Agent Profiles settings">
             <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
         </action>
 

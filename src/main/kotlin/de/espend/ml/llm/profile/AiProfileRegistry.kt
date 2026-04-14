@@ -22,9 +22,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
+import de.espend.ml.llm.AgentConfig
+import de.espend.ml.llm.AgentRegistry
 import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.ProviderChatAgent
+import de.espend.ml.llm.ProviderConfig
 import java.nio.file.Files
 
 private val LOG = Logger.getInstance(AiProfileRegistry::class.java)
@@ -43,6 +46,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     class State {
         var profiles: MutableList<AiProfileConfig> = mutableListOf()
+        var migrationCompleted: Boolean = false
     }
 
     private val registeredProfiles = mutableMapOf<String, Registration>()
@@ -72,6 +76,26 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     fun replaceProfiles(profiles: List<AiProfileConfig>) {
         myState.profiles = profiles.toMutableList()
         reloadProfiles()
+    }
+
+    fun migrateLegacySettingsIfNeeded() {
+        if (myState.migrationCompleted) {
+            return
+        }
+
+        if (myState.profiles.isNotEmpty()) {
+            myState.migrationCompleted = true
+            return
+        }
+
+        val migratedProfiles = migrateLegacyProfiles(AgentRegistry.getInstance().currentState)
+        if (migratedProfiles.isNotEmpty()) {
+            myState.profiles = migratedProfiles.toMutableList()
+            reloadProfiles()
+            LOG.info("Migrated ${migratedProfiles.size} legacy AI provider settings to AI profiles")
+        }
+
+        myState.migrationCompleted = true
     }
 
     fun reloadProfiles() {
@@ -136,6 +160,10 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> createClaudeAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.PI -> createPiAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.DROID -> createDroidServerConfig(profile, platform, transportOption)
+            AiProfileTransport.GEMINI -> createGeminiServerConfig(profile)
+            AiProfileTransport.OPENCODE -> createOpenCodeServerConfig(profile)
+            AiProfileTransport.CURSOR -> createCursorServerConfig(profile)
+            AiProfileTransport.KILO -> createKiloServerConfig(profile)
         }
     }
 
@@ -146,7 +174,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     ): AgentServerConfig {
         val endpoint = AiProfilePlatformRegistry.resolveEndpoint(platform, transportOption.apiType?.id.orEmpty())
         val env = buildMap<String, String> {
-            putAll(buildBaseEnv(profile))
+            putAll(buildClaudeCodeEnv(profile))
 
             if (transportOption.apiType == AiProfileApiType.ANTHROPIC && endpoint != null) {
                 val resolvedBaseUrl = resolveBaseUrl(profile, endpoint)
@@ -201,7 +229,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         resolveInstalledTransportServerConfig(AiProfileTransport.PI, env)?.let { return it }
 
         return AgentServerConfig(
-            command = CommandPathUtils.findPiAcpPath() ?: "pi-acp",
+            command = resolveExecutable(profile, AiProfileTransport.PI) ?: (CommandPathUtils.findPiAcpPath() ?: "pi-acp"),
             args = emptyList(),
             env = env
         )
@@ -213,7 +241,16 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         transportOption: AiProfileTransportOption
     ): AgentServerConfig {
         val endpoint = AiProfilePlatformRegistry.resolveEndpoint(platform, transportOption.apiType?.id.orEmpty())
-            ?: error("Droid transport requires an API endpoint for platform ${platform.id}")
+        if (endpoint == null) {
+            resolveInstalledTransportServerConfig(AiProfileTransport.DROID, emptyMap())?.let { return it }
+
+            return AgentServerConfig(
+                command = resolveExecutable(profile, AiProfileTransport.DROID) ?: (CommandPathUtils.findDroidPath() ?: "droid"),
+                args = listOf("exec", "--output-format", "acp"),
+                env = emptyMap()
+            )
+        }
+
         val baseUrl = resolveBaseUrl(profile, endpoint)
         val modelIds = resolveModels(profile, platform)
         val tempHome = AiProfileDroidTempConfig.createTempHome(
@@ -232,7 +269,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         resolveInstalledDroidServerConfig(customModelId, env)?.let { return it }
 
         return AgentServerConfig(
-            command = CommandPathUtils.findDroidPath() ?: "droid",
+            command = resolveExecutable(profile, AiProfileTransport.DROID) ?: (CommandPathUtils.findDroidPath() ?: "droid"),
             args = listOf(
                 "exec",
                 "--output-format",
@@ -241,6 +278,46 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 customModelId
             ),
             env = env
+        )
+    }
+
+    private fun createGeminiServerConfig(profile: AiProfileConfig): AgentServerConfig {
+        resolveInstalledTransportServerConfig(AiProfileTransport.GEMINI, emptyMap())?.let { return it }
+
+        return AgentServerConfig(
+            command = resolveExecutable(profile, AiProfileTransport.GEMINI) ?: (CommandPathUtils.findGeminiPath() ?: "gemini"),
+            args = listOf("--experimental-acp"),
+            env = emptyMap()
+        )
+    }
+
+    private fun createOpenCodeServerConfig(profile: AiProfileConfig): AgentServerConfig {
+        resolveInstalledTransportServerConfig(AiProfileTransport.OPENCODE, emptyMap())?.let { return it }
+
+        return AgentServerConfig(
+            command = resolveExecutable(profile, AiProfileTransport.OPENCODE) ?: (CommandPathUtils.findOpenCodePath() ?: "opencode"),
+            args = listOf("acp"),
+            env = emptyMap()
+        )
+    }
+
+    private fun createCursorServerConfig(profile: AiProfileConfig): AgentServerConfig {
+        resolveInstalledTransportServerConfig(AiProfileTransport.CURSOR, emptyMap())?.let { return it }
+
+        return AgentServerConfig(
+            command = resolveExecutable(profile, AiProfileTransport.CURSOR) ?: (CommandPathUtils.findCursorAgentPath() ?: "agent"),
+            args = listOf("acp"),
+            env = emptyMap()
+        )
+    }
+
+    private fun createKiloServerConfig(profile: AiProfileConfig): AgentServerConfig {
+        resolveInstalledTransportServerConfig(AiProfileTransport.KILO, emptyMap())?.let { return it }
+
+        return AgentServerConfig(
+            command = resolveExecutable(profile, AiProfileTransport.KILO) ?: (CommandPathUtils.findKiloPath() ?: "kilo"),
+            args = listOf("acp"),
+            env = emptyMap()
         )
     }
 
@@ -334,7 +411,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         }
     }
 
-    private fun buildBaseEnv(profile: AiProfileConfig): Map<String, String> {
+    private fun buildClaudeCodeEnv(profile: AiProfileConfig): Map<String, String> {
         val executable = profile.claudeCodeExecutable.trim()
         return if (executable.isNotEmpty()) {
             mapOf("CLAUDE_CODE_EXECUTABLE" to executable)
@@ -343,13 +420,21 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         }
     }
 
+    private fun resolveExecutable(profile: AiProfileConfig, transport: AiProfileTransport): String? {
+        if (!AiProfilePlatformRegistry.supportsExecutableOverride(transport)) {
+            return null
+        }
+
+        return profile.claudeCodeExecutable.trim().ifEmpty { null }
+    }
+
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
         val explicitName = profile.name.trim()
         if (explicitName.isNotEmpty()) {
             return explicitName
         }
 
-        val model = resolvePrimaryModel(profile, platform)
+        val model = runCatching { resolvePrimaryModel(profile, platform) }.getOrDefault("")
         return model.ifEmpty { platform.label }
     }
 
@@ -383,7 +468,168 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> "claude-acp"
             AiProfileTransport.PI -> "pi-acp"
             AiProfileTransport.DROID -> "factory-droid"
+            AiProfileTransport.GEMINI -> "gemini"
+            AiProfileTransport.OPENCODE -> "opencode"
+            AiProfileTransport.CURSOR -> "cursor"
+            AiProfileTransport.KILO -> "kilo"
         }
+    }
+
+    private fun migrateLegacyProfiles(legacyState: AgentRegistry.State): List<AiProfileConfig> {
+        val sharedClaudeExecutable = legacyState.claudeCodeExecutable?.trim().orEmpty()
+
+        return legacyState.agents.mapNotNull { config ->
+            migrateLegacyAgent(config, sharedClaudeExecutable)
+        }
+    }
+
+    private fun migrateLegacyAgent(config: AgentConfig, sharedClaudeExecutable: String): AiProfileConfig? {
+        return when (config.provider) {
+            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
+                transport = AiProfileTransport.CLAUDE_ACP,
+                name = "Claude CLI",
+                executable = sharedClaudeExecutable
+            )
+
+            ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> apiProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_ANTHROPIC_COMPATIBLE,
+                transport = AiProfileTransport.CLAUDE_ACP,
+                apiType = AiProfileApiType.ANTHROPIC,
+                executable = sharedClaudeExecutable
+            )
+
+            ProviderConfig.PROVIDER_PI_ACP -> {
+                val apiType = legacyApiType(config.format)
+                val platformId = when (apiType) {
+                    AiProfileApiType.OPENAI -> AiProfilePlatformRegistry.PLATFORM_OPENAI_COMPATIBLE
+                    AiProfileApiType.ANTHROPIC -> AiProfilePlatformRegistry.PLATFORM_ANTHROPIC_COMPATIBLE
+                }
+
+                apiProfile(
+                    config = config,
+                    platformId = platformId,
+                    transport = AiProfileTransport.PI,
+                    apiType = apiType
+                )
+            }
+
+            ProviderConfig.PROVIDER_GEMINI -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_GEMINI,
+                transport = AiProfileTransport.GEMINI
+            )
+
+            ProviderConfig.PROVIDER_OPENCODE -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_OPENCODE,
+                transport = AiProfileTransport.OPENCODE
+            )
+
+            ProviderConfig.PROVIDER_CURSOR -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_CURSOR,
+                transport = AiProfileTransport.CURSOR
+            )
+
+            ProviderConfig.PROVIDER_KILO -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_KILO,
+                transport = AiProfileTransport.KILO
+            )
+
+            ProviderConfig.PROVIDER_DROID -> directProfile(
+                config = config,
+                platformId = AiProfilePlatformRegistry.PLATFORM_FACTORY_AI,
+                transport = AiProfileTransport.DROID
+            )
+
+            ProviderConfig.PROVIDER_ZAI -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_ZAI, sharedClaudeExecutable)
+            ProviderConfig.PROVIDER_OLLAMA -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_OLLAMA, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_MINIMAX -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MINIMAX, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_OPENROUTER -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_OPENROUTER, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_MIMO -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MIMO, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_MOONSHOT -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MOONSHOT, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_REQUESTY -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_REQUESTY, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_NANOGPT -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_NANOGPT, sharedClaudeExecutable)
+            AiProfilePlatformRegistry.PLATFORM_AIHUBMIX -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_AIHUBMIX, sharedClaudeExecutable)
+            else -> null
+        }
+    }
+
+    private fun hostedApiProfile(
+        config: AgentConfig,
+        platformId: String,
+        executable: String
+    ): AiProfileConfig {
+        return apiProfile(
+            config = config,
+            platformId = platformId,
+            transport = AiProfileTransport.CLAUDE_ACP,
+            apiType = AiProfileApiType.ANTHROPIC,
+            executable = executable
+        )
+    }
+
+    private fun directProfile(
+        config: AgentConfig,
+        platformId: String,
+        transport: AiProfileTransport,
+        name: String = legacyProfileName(config.provider),
+        executable: String = config.executable.trim()
+    ): AiProfileConfig {
+        return AiProfileConfig(
+            id = legacyProfileId(config),
+            name = name,
+            platform = platformId,
+            transport = transport.id,
+            claudeCodeExecutable = executable,
+            isEnabled = config.isEnabled
+        )
+    }
+
+    private fun apiProfile(
+        config: AgentConfig,
+        platformId: String,
+        transport: AiProfileTransport,
+        apiType: AiProfileApiType,
+        executable: String = ""
+    ): AiProfileConfig {
+        return AiProfileConfig(
+            id = legacyProfileId(config),
+            name = legacyProfileName(config.provider),
+            platform = platformId,
+            apiType = apiType.id,
+            transport = transport.id,
+            claudeCodeExecutable = executable,
+            apiKey = config.apiKey.trim(),
+            baseUrl = config.baseUrl.trim(),
+            model = config.model.trim(),
+            isEnabled = config.isEnabled
+        )
+    }
+
+    private fun legacyApiType(format: String): AiProfileApiType {
+        return when (format.trim()) {
+            AiProfileApiType.OPENAI.piFormat -> AiProfileApiType.OPENAI
+            else -> AiProfileApiType.ANTHROPIC
+        }
+    }
+
+    private fun legacyProfileId(config: AgentConfig): String {
+        val source = config.id.ifBlank { config.provider }
+        val slug = source
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+
+        return "legacy-${slug.ifBlank { "profile" }}"
+    }
+
+    private fun legacyProfileName(provider: String): String {
+        return ProviderConfig.findProviderInfo(provider)?.label ?: provider
     }
 
     private fun unregisterAllProfiles() {
@@ -432,6 +678,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
 class AiProfileStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
-        AiProfileRegistry.getInstance()
+        AiProfileRegistry.getInstance().migrateLegacySettingsIfNeeded()
     }
 }

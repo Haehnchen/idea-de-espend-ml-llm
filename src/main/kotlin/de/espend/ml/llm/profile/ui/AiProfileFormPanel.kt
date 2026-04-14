@@ -9,7 +9,6 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.ModelSelectionDialog
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.profile.AiProfileApiType
@@ -47,7 +46,12 @@ class AiProfileFormPanel(
     private companion object {
         private val DIRECT_PLATFORM_IDS = setOf(
             AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
-            AiProfilePlatformRegistry.PLATFORM_PI_DIRECT
+            AiProfilePlatformRegistry.PLATFORM_PI_DIRECT,
+            AiProfilePlatformRegistry.PLATFORM_GEMINI,
+            AiProfilePlatformRegistry.PLATFORM_OPENCODE,
+            AiProfilePlatformRegistry.PLATFORM_CURSOR,
+            AiProfilePlatformRegistry.PLATFORM_KILO,
+            AiProfilePlatformRegistry.PLATFORM_FACTORY_AI
         )
         private val COMPATIBLE_PLATFORM_IDS = setOf(
             AiProfilePlatformRegistry.PLATFORM_ANTHROPIC_COMPATIBLE,
@@ -82,7 +86,7 @@ class AiProfileFormPanel(
         configureBaseLayout()
         bindInitialState()
         rebuildDynamicFields()
-        updateClaudeExecutableVisibility()
+        updateExecutableVisibility()
         updateTransportVisibility()
     }
 
@@ -190,7 +194,7 @@ class AiProfileFormPanel(
             transportRowField = it.second
         }
 
-        val executablePanel = createClaudeExecutablePanel()
+        val executablePanel = createExecutablePanel()
         claudeExecutableRowLabel = JBLabel("Executable").apply { font = smallFont }
         claudeExecutableRowField = executablePanel.first
         claudeExecutableHint = executablePanel.second
@@ -244,7 +248,7 @@ class AiProfileFormPanel(
 
         transportComboBox.addActionListener {
             rebuildDynamicFields()
-            updateClaudeExecutableVisibility()
+            updateExecutableVisibility()
             updateTransportVisibility()
         }
     }
@@ -264,7 +268,7 @@ class AiProfileFormPanel(
                 selectedPlatformInfo = selected
                 rebuildTransportChoices()
                 rebuildDynamicFields()
-                updateClaudeExecutableVisibility()
+                updateExecutableVisibility()
                 updateTransportVisibility()
             }
         }
@@ -292,6 +296,10 @@ class AiProfileFormPanel(
         AiProfileTransport.CLAUDE_ACP -> PluginIcons.scaleIcon(PluginIcons.CLAUDE, 16)
         AiProfileTransport.PI -> PluginIcons.scaleIcon(PluginIcons.PI, 16)
         AiProfileTransport.DROID -> PluginIcons.scaleIcon(PluginIcons.DROID, 16)
+        AiProfileTransport.GEMINI -> PluginIcons.scaleIcon(PluginIcons.GEMINI, 16)
+        AiProfileTransport.OPENCODE -> PluginIcons.scaleIcon(PluginIcons.OPENCODE, 16)
+        AiProfileTransport.CURSOR -> PluginIcons.scaleIcon(PluginIcons.CURSOR, 16)
+        AiProfileTransport.KILO -> PluginIcons.scaleIcon(PluginIcons.KILO, 16)
     }
 
     private fun bindInitialState() {
@@ -450,13 +458,7 @@ class AiProfileFormPanel(
         endpoint: AiProfilePlatformEndpoint?,
         transport: AiProfileTransport
     ): String {
-        if (platform.id == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE && transport == AiProfileTransport.CLAUDE_ACP) {
-            return "Uses the local Claude Code account via Claude ACP."
-        }
-
-        if (platform.id == AiProfilePlatformRegistry.PLATFORM_PI_DIRECT && transport == AiProfileTransport.PI) {
-            return "Runs pi-acp directly without generated API configuration."
-        }
+        AiProfilePlatformRegistry.transportHelpText(platform, transport).takeIf { it.isNotBlank() }?.let { return it }
 
         return when {
             endpoint == null -> ""
@@ -465,18 +467,18 @@ class AiProfileFormPanel(
         }
     }
 
-    private fun createClaudeExecutablePanel(): Pair<JPanel, JBLabel> {
+    private fun createExecutablePanel(): Pair<JPanel, JBLabel> {
         val inputPanel = JPanel(BorderLayout(JBUI.scale(4), 0)).apply {
             isOpaque = false
             add(claudeExecutableField, BorderLayout.CENTER)
             add(JButton("Auto-Detect").apply {
                 addActionListener {
-                    claudeExecutableField.text = CommandPathUtils.findClaudePath().orEmpty()
+                    claudeExecutableField.text = AiProfilePlatformRegistry.autoDetectExecutable(selectedTransport()).orEmpty()
                 }
             }, BorderLayout.EAST)
         }
 
-        val hintLabel = JBLabel("Leave empty to use the built-in Claude Code binary.").apply {
+        val hintLabel = JBLabel("").apply {
             foreground = UIUtil.getContextHelpForeground()
             font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
         }
@@ -484,11 +486,14 @@ class AiProfileFormPanel(
         return inputPanel to hintLabel
     }
 
-    private fun updateClaudeExecutableVisibility() {
-        val visible = selectedTransport() == AiProfileTransport.CLAUDE_ACP
+    private fun updateExecutableVisibility() {
+        val transport = selectedTransport()
+        val visible = AiProfilePlatformRegistry.supportsExecutableOverride(transport)
         claudeExecutableRowLabel?.isVisible = visible
         claudeExecutableRowField?.isVisible = visible
         claudeExecutableHint?.isVisible = visible
+        claudeExecutableField.emptyText.setText(executablePlaceholder(transport))
+        claudeExecutableHint?.text = executableHintText(transport)
         contentPanel.revalidate()
         contentPanel.repaint()
     }
@@ -504,7 +509,12 @@ class AiProfileFormPanel(
     private fun orderedDirectPlatforms(): List<AiProfilePlatformInfo> {
         return listOfNotNull(
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE),
-            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_PI_DIRECT)
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_PI_DIRECT),
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_GEMINI),
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_OPENCODE),
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_CURSOR),
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_KILO),
+            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_FACTORY_AI)
         )
     }
 
@@ -622,6 +632,20 @@ class AiProfileFormPanel(
 
     private fun selectedTransport(): AiProfileTransport {
         return selectedTransportOption().transport
+    }
+
+    private fun executablePlaceholder(transport: AiProfileTransport): String {
+        return when (transport) {
+            AiProfileTransport.CLAUDE_ACP -> "Built-in binary used"
+            else -> "Auto-detect ${AiProfilePlatformRegistry.defaultCommand(transport)}"
+        }
+    }
+
+    private fun executableHintText(transport: AiProfileTransport): String {
+        return when (transport) {
+            AiProfileTransport.CLAUDE_ACP -> "Leave empty to use the built-in Claude Code binary."
+            else -> "Leave empty to auto-detect `${AiProfilePlatformRegistry.defaultCommand(transport)}`."
+        }
     }
 
     private fun normalizeModelValue(value: String?): String {

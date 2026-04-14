@@ -1,5 +1,6 @@
 package de.espend.ml.llm.profile
 
+import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.PluginIcons
 import javax.swing.Icon
 
@@ -23,7 +24,11 @@ enum class AiProfileTransport(
 ) {
     CLAUDE_ACP("claude-agent-acp"),
     PI("pi-acp"),
-    DROID("droid");
+    DROID("droid"),
+    GEMINI("gemini"),
+    OPENCODE("opencode"),
+    CURSOR("cursor"),
+    KILO("kilo");
 
     override fun toString(): String {
         return id
@@ -64,6 +69,11 @@ data class AiProfilePlatformInfo(
 object AiProfilePlatformRegistry {
     const val PLATFORM_CLAUDE_CODE = "claude-code"
     const val PLATFORM_PI_DIRECT = "pi-direct"
+    const val PLATFORM_GEMINI = "gemini"
+    const val PLATFORM_OPENCODE = "opencode"
+    const val PLATFORM_CURSOR = "cursor"
+    const val PLATFORM_KILO = "kilo"
+    const val PLATFORM_FACTORY_AI = "factory-ai"
     const val PLATFORM_ANTHROPIC_COMPATIBLE = "anthropic-compatible"
     const val PLATFORM_OPENAI_COMPATIBLE = "openai-compatible"
     const val PLATFORM_ZAI = "zai"
@@ -89,6 +99,36 @@ object AiProfilePlatformRegistry {
             label = "PI",
             icon = PluginIcons.PI,
             directTransport = AiProfileTransport.PI
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_GEMINI,
+            label = "Gemini",
+            icon = PluginIcons.GEMINI,
+            directTransport = AiProfileTransport.GEMINI
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_OPENCODE,
+            label = "OpenCode",
+            icon = PluginIcons.OPENCODE,
+            directTransport = AiProfileTransport.OPENCODE
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_CURSOR,
+            label = "Cursor",
+            icon = PluginIcons.CURSOR,
+            directTransport = AiProfileTransport.CURSOR
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_KILO,
+            label = "Kilo Code",
+            icon = PluginIcons.KILO,
+            directTransport = AiProfileTransport.KILO
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_FACTORY_AI,
+            label = "Factory.ai",
+            icon = PluginIcons.DROID,
+            directTransport = AiProfileTransport.DROID
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_ANTHROPIC_COMPATIBLE,
@@ -272,6 +312,62 @@ object AiProfilePlatformRegistry {
                 { it.apiType?.id.orEmpty() }
             )
         )
+    }
+
+    fun supportsExecutableOverride(transport: AiProfileTransport): Boolean {
+        return when (transport) {
+            AiProfileTransport.CLAUDE_ACP,
+            AiProfileTransport.PI,
+            AiProfileTransport.DROID,
+            AiProfileTransport.GEMINI,
+            AiProfileTransport.OPENCODE,
+            AiProfileTransport.CURSOR,
+            AiProfileTransport.KILO -> true
+        }
+    }
+
+    fun defaultCommand(transport: AiProfileTransport): String {
+        return when (transport) {
+            AiProfileTransport.CLAUDE_ACP -> "claude"
+            AiProfileTransport.PI -> "pi-acp"
+            AiProfileTransport.DROID -> "droid"
+            AiProfileTransport.GEMINI -> "gemini"
+            AiProfileTransport.OPENCODE -> "opencode"
+            AiProfileTransport.CURSOR -> "agent"
+            AiProfileTransport.KILO -> "kilo"
+        }
+    }
+
+    fun autoDetectExecutable(transport: AiProfileTransport): String? {
+        return when (transport) {
+            AiProfileTransport.CLAUDE_ACP -> CommandPathUtils.findClaudePath()
+            AiProfileTransport.PI -> CommandPathUtils.findPiAcpPath()
+            AiProfileTransport.DROID -> CommandPathUtils.findDroidPath()
+            AiProfileTransport.GEMINI -> CommandPathUtils.findGeminiPath()
+            AiProfileTransport.OPENCODE -> CommandPathUtils.findOpenCodePath()
+            AiProfileTransport.CURSOR -> CommandPathUtils.findCursorAgentPath()
+            AiProfileTransport.KILO -> CommandPathUtils.findKiloPath()
+        }
+    }
+
+    fun transportHelpText(platform: AiProfilePlatformInfo, transport: AiProfileTransport): String {
+        return when {
+            platform.id == PLATFORM_CLAUDE_CODE && transport == AiProfileTransport.CLAUDE_ACP ->
+                "Uses the local Claude Code account via Claude ACP."
+            platform.id == PLATFORM_PI_DIRECT && transport == AiProfileTransport.PI ->
+                "Runs pi-acp directly without generated API configuration."
+            platform.id == PLATFORM_GEMINI && transport == AiProfileTransport.GEMINI ->
+                "Uses the Gemini CLI directly via ACP."
+            platform.id == PLATFORM_OPENCODE && transport == AiProfileTransport.OPENCODE ->
+                "Uses the OpenCode CLI directly via ACP."
+            platform.id == PLATFORM_CURSOR && transport == AiProfileTransport.CURSOR ->
+                "Uses Cursor's built-in `agent acp` command."
+            platform.id == PLATFORM_KILO && transport == AiProfileTransport.KILO ->
+                "Uses the Kilo Code CLI via `kilo acp`."
+            platform.id == PLATFORM_FACTORY_AI && transport == AiProfileTransport.DROID ->
+                "Uses the Factory.ai Droid CLI directly."
+            else -> ""
+        }
     }
 
     fun droidProviderType(apiType: AiProfileApiType?): String {

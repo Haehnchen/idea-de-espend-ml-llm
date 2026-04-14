@@ -9,8 +9,8 @@ import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.profile.ui.AiProfilesSettingsConfigurable
 
 class OpenAiProfilesSettingsAction : DumbAwareAction(
-    "AI Profiles",
-    "Open AI Profiles settings",
+    "Agent Profiles",
+    "Open Agent Profiles settings",
     PluginIcons.AI_PROVIDER_16
 ) {
     override fun actionPerformed(e: AnActionEvent) {

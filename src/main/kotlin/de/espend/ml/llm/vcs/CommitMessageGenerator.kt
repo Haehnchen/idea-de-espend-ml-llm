@@ -4,7 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vcs.changes.Change
-import de.espend.ml.llm.AgentConfig
+import de.espend.ml.llm.profile.AiProfileConfig
 
 private val LOG = Logger.getInstance(CommitMessageGenerator::class.java)
 
@@ -23,7 +23,7 @@ object CommitMessageGenerator {
      */
     suspend fun generate(
         project: Project,
-        config: AgentConfig,
+        config: AiProfileConfig,
         changes: List<Change>,
         existingText: String,
         indicator: ProgressIndicator? = null
@@ -51,8 +51,8 @@ object CommitMessageGenerator {
         // Create prompt for commit message generation
         val prompt = buildPrompt(diff, existingText)
 
-        // Call API
-        return AnthropicApiClient.sendRequest(config, prompt)
+        // Call API adapter based on the configured profile API type
+        return CommitMessageApiClient.sendRequest(config, prompt)
     }
 
     /**

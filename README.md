@@ -34,9 +34,9 @@ Configure accounts in **Settings → Tools → Account Usage Toolbar**.
 | **Ampcode** | Free credits balance | Auto (`~/.local/share/amp/secrets.json`), Manual (API key) |
 | **Junie** | Request quota | Auto (`~/.junie/token.json`), Manual (API key) |
 
-### AI Providers
+### Agent Profiles
 
-Configure multiple AI providers through **Settings → AI Assistant → Agent Providers**.
+Configure multiple AI providers through **Settings → AI Assistant → Agent Profiles**.
 
 | Provider | Description | Register |
 |----------|-------------|----------|
@@ -90,12 +90,12 @@ Additional tools integrated into the plugin:
 
 1. In IntelliJ IDEA, go to **File → Settings → Plugins**
 2. Click the **Marketplace** tab
-3. Search for **Agent Providers**
+3. Search for **AI Assistant Providers / Sessions**
 4. Click **Install**
 
 ### Using AI Providers
 
-1. Go to **Settings → AI Assistant → Agent Providers**
+1. Go to **Settings → AI Assistant → Agent Profiles**
 2. Configure API keys and base URLs as needed
 3. Click **Apply** to register the agents
 4. For CLI-based providers, install the corresponding npm package, e.g.:
@@ -104,7 +104,7 @@ Additional tools integrated into the plugin:
    ```
 5. **Important**: To use providers for core AI features (commit generation, AI actions):
    - Go to **Settings → Tools → AI Assistant → "Models & API keys"**
-   - Select **"Agent Providers"** from the provider dropdown
+   - Select **"Agent Profiles"** from the provider dropdown
    - Select a model from the model dropdown
 
 ### Using the Session Browser
@@ -143,4 +143,3 @@ The Session Browser works out of the box - no additional setup required. Simply 
 ![AI Assistant Chat](docs/ai_assistant_2.webp)
 
 ![AI Assistant Settings](docs/ai_assistant_settings.webp)
-

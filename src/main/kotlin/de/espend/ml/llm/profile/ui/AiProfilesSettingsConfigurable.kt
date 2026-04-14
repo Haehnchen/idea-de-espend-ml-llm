@@ -7,7 +7,7 @@ import javax.swing.JComponent
 class AiProfilesSettingsConfigurable : Configurable {
     private val settingsPanel = AiProfilesSettingsPanel()
 
-    override fun getDisplayName(): String = "AI Profiles"
+    override fun getDisplayName(): String = "Agent Profiles"
 
     override fun createComponent(): JComponent {
         settingsPanel.loadFrom(AiProfileRegistry.getInstance().currentState)

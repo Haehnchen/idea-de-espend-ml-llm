@@ -20,10 +20,10 @@ import com.intellij.openapi.vcs.changes.ChangeList
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.vcs.commit.CommitMessageUi
 import com.intellij.vcs.commit.CommitWorkflowUi
-import de.espend.ml.llm.AgentConfig
-import de.espend.ml.llm.AgentRegistry
 import de.espend.ml.llm.PluginIcons
-import de.espend.ml.llm.ProviderConfig
+import de.espend.ml.llm.profile.AiProfileConfig
+import de.espend.ml.llm.profile.AiProfilePlatformRegistry
+import de.espend.ml.llm.profile.AiProfileRegistry
 import kotlinx.coroutines.runBlocking
 import java.awt.Point
 import javax.swing.Icon
@@ -49,7 +49,7 @@ class ProviderCommitMessageAction : AnAction(
         val project = e.project
         val context = ActionContext.fromEvent(e)
 
-        val validProviders = AgentRegistry.getInstance().agentConfigs
+        val validProviders = AiProfileRegistry.getInstance().currentState.profiles
             .filter { it.isEnabled }
             .filter { isProviderValid(it) }
 
@@ -75,11 +75,12 @@ class ProviderCommitMessageAction : AnAction(
         e.presentation.text = tooltip
     }
 
-    private fun isProviderValid(config: AgentConfig): Boolean {
-        val providerInfo = ProviderConfig.findProviderInfo(config.provider)
-        val hasBaseUrl = config.baseUrl.isNotEmpty() || providerInfo?.baseUrl != null
+    private fun isProviderValid(config: AiProfileConfig): Boolean {
+        val platform = AiProfilePlatformRegistry.findPlatform(config.platform) ?: return false
+        val endpoint = AiProfilePlatformRegistry.resolveEndpoint(platform, config.effectiveApiType()) ?: return false
+        val hasBaseUrl = AiProfilePlatformRegistry.getResolvedBaseUrl(endpoint, config.baseUrl).isNotBlank()
         val hasApiKey = config.apiKey.isNotEmpty()
-        val hasModel = config.model.isNotEmpty() || providerInfo?.modelIds?.smart != null
+        val hasModel = config.model.isNotEmpty() || platform.defaultModel.isNotEmpty()
         return hasBaseUrl && hasApiKey && hasModel
     }
 
@@ -101,7 +102,7 @@ class ProviderCommitMessageAction : AnAction(
 
         val target = context.getCommitMessageTarget() ?: return
 
-        val validProviders = AgentRegistry.getInstance().agentConfigs
+        val validProviders = AiProfileRegistry.getInstance().currentState.profiles
             .filter { it.isEnabled && isProviderValid(it) }
 
         if (validProviders.isEmpty()) return
@@ -121,21 +122,22 @@ class ProviderCommitMessageAction : AnAction(
     }
 
     private fun createProviderPopup(
-        providers: List<AgentConfig>,
+        providers: List<AiProfileConfig>,
         project: Project,
         changes: List<Change>,
         target: CommitMessageTarget
     ): ListPopup {
         val items = providers.map { config ->
-            val label = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
+            val platform = AiProfilePlatformRegistry.findPlatform(config.platform)
+            val label = config.name.ifBlank { platform?.label ?: config.platform }
             val model = config.model.takeIf { it.isNotEmpty() }
-                ?: ProviderConfig.findProviderInfo(config.provider)?.modelIds?.smart
+                ?: platform?.defaultModel
                 ?: "default"
-            val icon = PluginIcons.getIconForProvider(config.provider)
+            val icon = platform?.icon ?: PluginIcons.AI_PROVIDER
             ProviderItem(config, "$label ($model)", icon)
         }
 
-        val step = object : BaseListPopupStep<ProviderItem>("Select Provider", items) {
+        val step = object : BaseListPopupStep<ProviderItem>("Select Profile", items) {
             override fun getTextFor(value: ProviderItem): String = value.label
             override fun getIconFor(value: ProviderItem): Icon = value.icon
 
@@ -150,12 +152,12 @@ class ProviderCommitMessageAction : AnAction(
 
     private fun generateCommitMessage(
         project: Project,
-        config: AgentConfig,
+        config: AiProfileConfig,
         changes: List<Change>,
         target: CommitMessageTarget
     ) {
         val existingText = target.getText()
-        val providerName = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
+        val providerName = getProviderDisplayName(config)
 
         object : Task.Backgroundable(project, "Generating commit message...", true) {
             override fun run(indicator: ProgressIndicator) {
@@ -197,18 +199,19 @@ class ProviderCommitMessageAction : AnAction(
         }.queue()
     }
 
-    private fun buildTooltip(validProviders: List<AgentConfig>): String {
+    private fun buildTooltip(validProviders: List<AiProfileConfig>): String {
         return when {
             validProviders.size == 1 -> "Generate commit message with ${getProviderDisplayName(validProviders.first())}"
-            validProviders.size > 1 -> "Generate commit message with agent provider"
-            else -> "Generate commit message with agent provider"
+            validProviders.size > 1 -> "Generate commit message with AI profile"
+            else -> "Generate commit message with AI profile"
         }
     }
 
-    private fun getProviderDisplayName(config: AgentConfig): String {
-        val providerLabel = ProviderConfig.findProviderInfo(config.provider)?.label ?: config.provider
+    private fun getProviderDisplayName(config: AiProfileConfig): String {
+        val platform = AiProfilePlatformRegistry.findPlatform(config.platform)
+        val providerLabel = config.name.ifBlank { platform?.label ?: config.platform }
         val model = config.model.takeIf { it.isNotEmpty() }
-            ?: ProviderConfig.findProviderInfo(config.provider)?.modelIds?.smart
+            ?: platform?.defaultModel
         return model?.let { "$providerLabel ($it)" } ?: providerLabel
     }
 
@@ -368,7 +371,7 @@ class ProviderCommitMessageAction : AnAction(
 }
 
 private data class ProviderItem(
-    val config: AgentConfig,
+    val config: AiProfileConfig,
     val label: String,
     val icon: Icon
 )
