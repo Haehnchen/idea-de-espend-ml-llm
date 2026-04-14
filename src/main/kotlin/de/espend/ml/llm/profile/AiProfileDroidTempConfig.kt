@@ -9,6 +9,7 @@ import kotlin.io.path.writeText
 object AiProfileDroidTempConfig {
     private const val DEFAULT_AUTH_ENV_NAME = "FACTORY_CUSTOM_API_KEY"
     private const val DEFAULT_PROVIDER_NAME = "jetbrains-droid-custom"
+    private const val SOUND_OFF = "off"
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun createTempHome(
@@ -37,6 +38,8 @@ object AiProfileDroidTempConfig {
                     "sessionDefaultSettings" to mapOf(
                         "model" to defaultCustomModelId
                     ),
+                    "completionSound" to SOUND_OFF,
+                    "awaitingInputSound" to SOUND_OFF,
                     "modelPolicy" to mapOf(
                         "allowCustomModels" to true,
                         "allowAllFactoryModels" to false
