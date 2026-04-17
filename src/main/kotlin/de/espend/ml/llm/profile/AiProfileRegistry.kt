@@ -1,15 +1,14 @@
 package de.espend.ml.llm.profile
 
-import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
+import com.intellij.ml.llm.agents.acp.registry.AcpAgentRegistry
 import com.intellij.ml.llm.agents.acp.registry.AcpPaths
 import com.intellij.ml.llm.agents.acp.registry.AcpRegistryAgentId
-import com.intellij.ml.llm.agents.acp.registry.DynamicAcpChatAgent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
@@ -17,10 +16,8 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.extensions.ExtensionPoint
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
 import java.io.IOException
@@ -33,7 +30,6 @@ private const val ACP_ICON_SIZE = 16
 private const val ACP_ICON_CANVAS_SIZE = 34
 private const val ACP_ICON_IMAGE_OFFSET = 1
 private const val ACP_ICON_IMAGE_SIZE = 32
-private const val ACP_ICON_CACHE_VERSION = "2"
 
 @Service(Service.Level.APP)
 @State(
@@ -43,8 +39,7 @@ private const val ACP_ICON_CACHE_VERSION = "2"
 class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Disposable {
 
     data class Registration(
-        val agent: ChatAgent,
-        val disposable: Disposable
+        val agentId: AcpCustomAgentId
     )
 
     class State {
@@ -100,24 +95,14 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         val platform = AiProfilePlatformRegistry.findPlatform(profile.platform)
             ?: error("Unknown AI profile platform: ${profile.platform}")
 
-        val runtimeAgentId = runtimeAgentId(profile)
-        val acpAgentId = AcpCustomAgentId(runtimeAgentId)
+        val acpAgentId = AcpCustomAgentId(runtimeAgentId(profile))
         cacheLocalAgentIcon(acpAgentId, platform.iconResourcePath)
-        val acpConfig = createAcpAgentConfig(profile, platform)
         val displayName = resolveDisplayName(profile, platform)
-        val agent = DynamicAcpChatAgent(
-            displayName,
-            acpConfig,
-            acpAgentId
-        )
-
-        val ep: ExtensionPoint<ChatAgent> = ApplicationManager.getApplication()
-            .extensionArea
-            .getExtensionPoint(ChatAgent.EP_NAME)
-
-        val disposable = Disposer.newDisposable("ai-profile:$runtimeAgentId")
-        ep.registerExtension(agent, disposable)
-        registeredProfiles[profile.id] = Registration(agent, disposable)
+        val acpConfig = createAcpAgentConfig(displayName, profile, platform)
+        val acpRegistry = ApplicationManager.getApplication().getService(AcpAgentRegistry::class.java)
+            ?: error("ACP agent registry service is unavailable")
+        acpRegistry.registerLocalAgent(acpAgentId, acpConfig)
+        registeredProfiles[profile.id] = Registration(acpAgentId)
     }
 
     private fun cacheLocalAgentIcon(agentId: AcpCustomAgentId, iconResourcePath: String) {
@@ -148,12 +133,13 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     }
 
     private fun createAcpAgentConfig(
+        displayName: String,
         profile: AiProfileConfig,
         platform: AiProfilePlatformInfo
     ): LocalAcpAgentConfig {
         val serverConfig = createServerConfig(profile, platform)
         val defaultMcpSettings = DefaultMcpSettings(useCustomMcp = true, useIdeaMcp = true)
-        return LocalAcpAgentConfig.fromServerConfig(profile.id, serverConfig, defaultMcpSettings)
+        return LocalAcpAgentConfig.fromServerConfig(displayName, serverConfig, defaultMcpSettings)
     }
 
     private fun createServerConfig(
@@ -500,39 +486,19 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     }
 
     private fun unregisterAllProfiles() {
+        val acpRegistry = ApplicationManager.getApplication().getService(AcpAgentRegistry::class.java)
         registeredProfiles.values.forEach { registration ->
             try {
-                Disposer.dispose(registration.disposable)
+                acpRegistry?.unregisterLocalAgent(registration.agentId)
             } catch (e: Exception) {
-                LOG.error("Failed to dispose AI profile ${registration.agent.id}", e)
+                LOG.error("Failed to unregister AI profile ${registration.agentId.fullId}", e)
             }
         }
         registeredProfiles.clear()
     }
 
     private fun runtimeAgentId(profile: AiProfileConfig): String {
-        return "${profile.id}--${profileFingerprint(profile)}"
-    }
-
-    private fun profileFingerprint(profile: AiProfileConfig): String {
-        val fingerprintSource = listOf(
-            ACP_ICON_CACHE_VERSION,
-            profile.platform,
-            profile.effectiveApiType(),
-            profile.effectiveTransport(),
-            profile.claudeCodeExecutable.trim(),
-            profile.apiKey.trim(),
-            profile.baseUrl.trim(),
-            profile.model.trim(),
-            profile.isEnabled.toString()
-        ).joinToString("\u0000")
-
-        return fingerprintSource
-            .hashCode()
-            .toUInt()
-            .toString(36)
-            .padStart(6, '0')
-            .takeLast(6)
+        return profile.id
     }
 
     private fun normalizeAgentId(agentId: String): String {
