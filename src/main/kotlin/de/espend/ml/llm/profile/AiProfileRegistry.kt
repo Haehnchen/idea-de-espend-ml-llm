@@ -4,10 +4,7 @@ import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
-import com.intellij.ml.llm.agents.acp.client.auth.AcpAgentAuthentication
-import com.intellij.ml.llm.agents.acp.client.auth.AcpAuthenticationService
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
-import com.intellij.ml.llm.agents.acp.registry.AcpAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
 import com.intellij.ml.llm.agents.acp.registry.AcpPaths
@@ -50,21 +47,8 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private var myState = State()
 
     companion object {
-        private const val AUTH_MANAGED_EXTERNALLY = "MANAGED_EXTERNALLY"
-
         fun getInstance(): AiProfileRegistry {
             return ApplicationManager.getApplication().getService(AiProfileRegistry::class.java)
-        }
-
-        internal fun preferredAuthentication(): AcpAgentAuthentication {
-            return AcpAgentAuthentication.fromId(AUTH_MANAGED_EXTERNALLY)
-        }
-
-        internal fun authenticationTargetIds(profile: AiProfileConfig, runtimeAgentId: String): Set<String> {
-            return buildSet {
-                add(AcpCustomAgentId(runtimeAgentId).fullId)
-                add(AcpCustomAgentId(profile.id).fullId)
-            }
         }
     }
 
@@ -124,9 +108,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
         val disposable = Disposer.newDisposable("ai-profile:$runtimeAgentId")
         ep.registerExtension(agent, disposable)
-        // Re-apply auth on every registration so stale ACP state from previous plugin versions
-        // or the built-in Claude agent does not keep forcing JetBrains AI credits.
-        configureAgentAuthentication(runtimeAgentId, profile)
         registeredProfiles[profile.id] = Registration(agent, disposable)
     }
 
@@ -189,7 +170,9 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             }
         }
 
-        resolveInstalledTransportServerConfig(AiProfileTransport.CLAUDE_ACP, env)?.let { return it }
+        if (shouldReuseInstalledTransportConfig(profile, AiProfileTransport.CLAUDE_ACP)) {
+            resolveInstalledTransportServerConfig(AiProfileTransport.CLAUDE_ACP, env)?.let { return it }
+        }
 
         return AgentServerConfig(
             command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
@@ -421,20 +404,16 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         return profile.claudeCodeExecutable.trim().ifEmpty { null }
     }
 
-    private fun configureAgentAuthentication(runtimeAgentId: String, profile: AiProfileConfig) {
-        runCatching {
-            val authService = ApplicationManager.getApplication()
-                .getService(AcpAuthenticationService::class.java)
-                ?: return
-
-            authenticationTargetIds(profile, runtimeAgentId)
-                .map(AcpAgentId::parse)
-                .forEach { agentId ->
-                    authService.setSelectedAgentAuth(agentId, preferredAuthentication())
-                }
-        }.onFailure { e ->
-            LOG.warn("Failed to configure ACP authentication for AI profile ${profile.id}", e)
+    internal fun shouldReuseInstalledTransportConfig(profile: AiProfileConfig, transport: AiProfileTransport): Boolean {
+        // Claude CLI profiles must launch the user-configured local binary instead of the
+        // JetBrains-managed installed claude-acp package.
+        if (transport == AiProfileTransport.CLAUDE_ACP &&
+            profile.platform == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE
+        ) {
+            return false
         }
+
+        return true
     }
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
