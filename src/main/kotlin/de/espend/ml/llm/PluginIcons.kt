@@ -44,8 +44,4 @@ object PluginIcons {
         return ImageIcon(scaledImage)
     }
 
-    fun getIconForProvider(provider: String): Icon {
-        val icon = ProviderConfig.findProviderInfo(provider)?.icon ?: AI_PROVIDER
-        return scaleIcon(icon, 16)
-    }
 }

@@ -38,17 +38,17 @@ class AiProfileRegistryTest {
     }
 
     @Test
-    fun `authenticationTargetIds should update legacy and registry Claude auth entries`() {
+    fun `authenticationTargetIds should update built in and registry Claude auth entries`() {
         val profile = AiProfileConfig(
-            id = "legacy-anthropic-default",
+            id = "profile-aa",
             platform = AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
             transport = AiProfileTransport.CLAUDE_ACP.id
         )
 
-        val targetIds = AiProfileRegistry.authenticationTargetIds(profile, "legacy-anthropic-default--abc123")
+        val targetIds = AiProfileRegistry.authenticationTargetIds(profile, "profile-aa--abc123")
 
-        assertTrue("acp.legacy-anthropic-default--abc123" in targetIds)
-        assertTrue("acp.legacy-anthropic-default" in targetIds)
+        assertTrue("acp.profile-aa--abc123" in targetIds)
+        assertTrue("acp.profile-aa" in targetIds)
         assertTrue("acp.anthropic-default" in targetIds)
         assertTrue("acp.registry.claude-acp" in targetIds)
     }
@@ -56,15 +56,15 @@ class AiProfileRegistryTest {
     @Test
     fun `authenticationTargetIds should not rewrite built in Claude registry auth for api backed profiles`() {
         val profile = AiProfileConfig(
-            id = "legacy-zai",
+            id = "profile-za",
             platform = AiProfilePlatformRegistry.PLATFORM_ZAI,
             transport = AiProfileTransport.CLAUDE_ACP.id
         )
 
-        val targetIds = AiProfileRegistry.authenticationTargetIds(profile, "legacy-zai--abc123")
+        val targetIds = AiProfileRegistry.authenticationTargetIds(profile, "profile-za--abc123")
 
-        assertTrue("acp.legacy-zai--abc123" in targetIds)
-        assertTrue("acp.legacy-zai" in targetIds)
+        assertTrue("acp.profile-za--abc123" in targetIds)
+        assertTrue("acp.profile-za" in targetIds)
         assertFalse("acp.anthropic-default" in targetIds)
         assertFalse("acp.registry.claude-acp" in targetIds)
     }

@@ -48,19 +48,3 @@ class ProviderChatAgent(
     override suspend fun serveAnswerMessage(project: Project, chat: ChatSession, answerMessage: ChatMessage) =
         delegate.serveAnswerMessage(project, chat, answerMessage)
 }
-
-/**
- * Configuration for an AI provider agent.
- * Persisted as XML.
- */
-data class AgentConfig(
-    var id: String = "",
-    var provider: String = "",
-    var apiKey: String = "",
-    // pi provider format, for example "anthropic-messages" or "openai-completions"
-    var format: String = "",
-    var baseUrl: String = "",
-    var model: String = "",
-    var isEnabled: Boolean = true,
-    var executable: String = ""
-)

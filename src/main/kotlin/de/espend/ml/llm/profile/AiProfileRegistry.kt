@@ -21,19 +21,15 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPoint
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
-import de.espend.ml.llm.AgentConfig
-import de.espend.ml.llm.AgentRegistry
 import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.ProviderChatAgent
-import de.espend.ml.llm.ProviderConfig
 import java.nio.file.Files
 
 private val LOG = Logger.getInstance(AiProfileRegistry::class.java)
+private const val BUILTIN_CLAUDE_AGENT_ID = "anthropic-default"
 
 @Service(Service.Level.APP)
 @State(
@@ -49,7 +45,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     class State {
         var profiles: MutableList<AiProfileConfig> = mutableListOf()
-        var migrationCompleted: Boolean = false
     }
 
     private val registeredProfiles = mutableMapOf<String, Registration>()
@@ -72,9 +67,8 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 add(AcpCustomAgentId(profile.id).fullId)
 
                 if (profile.platform == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE) {
-                    // Claude auth is also persisted by JetBrains ACP under legacy/built-in IDs
-                    // in acpAgents.xml, so profile migration alone is not enough to switch it off.
-                    add(AcpCustomAgentId(ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT).fullId)
+                    // JetBrains also persists Claude auth under its built-in ACP IDs.
+                    add(AcpCustomAgentId(BUILTIN_CLAUDE_AGENT_ID).fullId)
                     add(AcpRegistryAgentId("claude-acp").fullId)
                 }
             }
@@ -99,26 +93,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     fun replaceProfiles(profiles: List<AiProfileConfig>) {
         myState.profiles = profiles.toMutableList()
         reloadProfiles()
-    }
-
-    fun migrateLegacySettingsIfNeeded() {
-        if (myState.migrationCompleted) {
-            return
-        }
-
-        if (myState.profiles.isNotEmpty()) {
-            myState.migrationCompleted = true
-            return
-        }
-
-        val migratedProfiles = migrateLegacyProfiles(AgentRegistry.getInstance().currentState)
-        if (migratedProfiles.isNotEmpty()) {
-            myState.profiles = migratedProfiles.toMutableList()
-            reloadProfiles()
-            LOG.info("Migrated ${migratedProfiles.size} legacy AI provider settings to AI profiles")
-        }
-
-        myState.migrationCompleted = true
     }
 
     fun reloadProfiles() {
@@ -517,163 +491,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         }
     }
 
-    private fun migrateLegacyProfiles(legacyState: AgentRegistry.State): List<AiProfileConfig> {
-        val sharedClaudeExecutable = legacyState.claudeCodeExecutable?.trim().orEmpty()
-
-        return legacyState.agents.mapNotNull { config ->
-            migrateLegacyAgent(config, sharedClaudeExecutable)
-        }
-    }
-
-    private fun migrateLegacyAgent(config: AgentConfig, sharedClaudeExecutable: String): AiProfileConfig? {
-        return when (config.provider) {
-            ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
-                transport = AiProfileTransport.CLAUDE_ACP,
-                name = "Claude CLI",
-                executable = sharedClaudeExecutable
-            )
-
-            ProviderConfig.PROVIDER_ANTHROPIC_COMPATIBLE -> apiProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_ANTHROPIC_COMPATIBLE,
-                transport = AiProfileTransport.CLAUDE_ACP,
-                apiType = AiProfileApiType.ANTHROPIC,
-                executable = sharedClaudeExecutable
-            )
-
-            ProviderConfig.PROVIDER_PI_ACP -> {
-                val apiType = legacyApiType(config.format)
-                val platformId = when (apiType) {
-                    AiProfileApiType.OPENAI -> AiProfilePlatformRegistry.PLATFORM_OPENAI_COMPATIBLE
-                    AiProfileApiType.ANTHROPIC -> AiProfilePlatformRegistry.PLATFORM_ANTHROPIC_COMPATIBLE
-                }
-
-                apiProfile(
-                    config = config,
-                    platformId = platformId,
-                    transport = AiProfileTransport.PI,
-                    apiType = apiType
-                )
-            }
-
-            ProviderConfig.PROVIDER_GEMINI -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_GEMINI,
-                transport = AiProfileTransport.GEMINI
-            )
-
-            ProviderConfig.PROVIDER_OPENCODE -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_OPENCODE,
-                transport = AiProfileTransport.OPENCODE
-            )
-
-            ProviderConfig.PROVIDER_CURSOR -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_CURSOR,
-                transport = AiProfileTransport.CURSOR
-            )
-
-            ProviderConfig.PROVIDER_KILO -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_KILO,
-                transport = AiProfileTransport.KILO
-            )
-
-            ProviderConfig.PROVIDER_DROID -> directProfile(
-                config = config,
-                platformId = AiProfilePlatformRegistry.PLATFORM_FACTORY_AI,
-                transport = AiProfileTransport.DROID
-            )
-
-            ProviderConfig.PROVIDER_ZAI -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_ZAI, sharedClaudeExecutable)
-            ProviderConfig.PROVIDER_OLLAMA -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_OLLAMA, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_MINIMAX -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MINIMAX, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_OPENROUTER -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_OPENROUTER, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_MIMO -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MIMO, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_MOONSHOT -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_MOONSHOT, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_REQUESTY -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_REQUESTY, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_NANOGPT -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_NANOGPT, sharedClaudeExecutable)
-            AiProfilePlatformRegistry.PLATFORM_AIHUBMIX -> hostedApiProfile(config, AiProfilePlatformRegistry.PLATFORM_AIHUBMIX, sharedClaudeExecutable)
-            else -> null
-        }
-    }
-
-    private fun hostedApiProfile(
-        config: AgentConfig,
-        platformId: String,
-        executable: String
-    ): AiProfileConfig {
-        return apiProfile(
-            config = config,
-            platformId = platformId,
-            transport = AiProfileTransport.CLAUDE_ACP,
-            apiType = AiProfileApiType.ANTHROPIC,
-            executable = executable
-        )
-    }
-
-    private fun directProfile(
-        config: AgentConfig,
-        platformId: String,
-        transport: AiProfileTransport,
-        name: String = legacyProfileName(config.provider),
-        executable: String = config.executable.trim()
-    ): AiProfileConfig {
-        return AiProfileConfig(
-            id = legacyProfileId(config),
-            name = name,
-            platform = platformId,
-            transport = transport.id,
-            claudeCodeExecutable = executable,
-            isEnabled = config.isEnabled
-        )
-    }
-
-    private fun apiProfile(
-        config: AgentConfig,
-        platformId: String,
-        transport: AiProfileTransport,
-        apiType: AiProfileApiType,
-        executable: String = ""
-    ): AiProfileConfig {
-        return AiProfileConfig(
-            id = legacyProfileId(config),
-            name = legacyProfileName(config.provider),
-            platform = platformId,
-            apiType = apiType.id,
-            transport = transport.id,
-            claudeCodeExecutable = executable,
-            apiKey = config.apiKey.trim(),
-            baseUrl = config.baseUrl.trim(),
-            model = config.model.trim(),
-            isEnabled = config.isEnabled
-        )
-    }
-
-    private fun legacyApiType(format: String): AiProfileApiType {
-        return when (format.trim()) {
-            AiProfileApiType.OPENAI.piFormat -> AiProfileApiType.OPENAI
-            else -> AiProfileApiType.ANTHROPIC
-        }
-    }
-
-    private fun legacyProfileId(config: AgentConfig): String {
-        val source = config.id.ifBlank { config.provider }
-        val slug = source
-            .lowercase()
-            .replace(Regex("[^a-z0-9]+"), "-")
-            .trim('-')
-
-        return "legacy-${slug.ifBlank { "profile" }}"
-    }
-
-    private fun legacyProfileName(provider: String): String {
-        return ProviderConfig.findProviderInfo(provider)?.label ?: provider
-    }
-
     private fun unregisterAllProfiles() {
         registeredProfiles.values.forEach { registration ->
             try {
@@ -715,11 +532,5 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     override fun dispose() {
         unregisterAllProfiles()
-    }
-}
-
-class AiProfileStartupActivity : ProjectActivity {
-    override suspend fun execute(project: Project) {
-        AiProfileRegistry.getInstance().migrateLegacySettingsIfNeeded()
     }
 }

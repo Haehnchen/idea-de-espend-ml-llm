@@ -103,7 +103,6 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- AI Provider Agent Registry - dynamic agent registration -->
-        <applicationService serviceImplementation="de.espend.ml.llm.AgentRegistry"/>
         <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
 
         <!-- Settings for AI providers - placed under AI Assistant -->
@@ -118,8 +117,6 @@
                                  instance="de.espend.ml.llm.usage.ui.UsageSettingsConfigurable"
                                  displayName="Account Usage Toolbar"
                                  groupWeight="15"/>
-
-        <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
 
         <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>
