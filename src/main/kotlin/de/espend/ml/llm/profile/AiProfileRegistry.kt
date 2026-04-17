@@ -18,6 +18,8 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPoint
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
@@ -504,5 +506,13 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     override fun dispose() {
         unregisterAllProfiles()
+    }
+}
+
+class AiProfileStartupActivity : ProjectActivity {
+    override suspend fun execute(project: Project) {
+        // Touch the registry during project startup so persisted profiles are
+        // registered before the first AI chat agent popup is rendered.
+        AiProfileRegistry.getInstance()
     }
 }
