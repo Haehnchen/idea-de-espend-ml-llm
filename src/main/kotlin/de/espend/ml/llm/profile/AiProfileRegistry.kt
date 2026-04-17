@@ -23,11 +23,17 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
-import de.espend.ml.llm.PluginIcons
-import de.espend.ml.llm.ProviderChatAgent
+import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.Base64
 
 private val LOG = Logger.getInstance(AiProfileRegistry::class.java)
+private const val ACP_ICON_SIZE = 16
+private const val ACP_ICON_CANVAS_SIZE = 34
+private const val ACP_ICON_IMAGE_OFFSET = 1
+private const val ACP_ICON_IMAGE_SIZE = 32
+private const val ACP_ICON_CACHE_VERSION = "2"
 
 @Service(Service.Level.APP)
 @State(
@@ -95,14 +101,15 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?: error("Unknown AI profile platform: ${profile.platform}")
 
         val runtimeAgentId = runtimeAgentId(profile)
+        val acpAgentId = AcpCustomAgentId(runtimeAgentId)
+        cacheLocalAgentIcon(acpAgentId, platform.iconResourcePath)
         val acpConfig = createAcpAgentConfig(profile, platform)
         val displayName = resolveDisplayName(profile, platform)
-        val delegate = DynamicAcpChatAgent(
+        val agent = DynamicAcpChatAgent(
             displayName,
             acpConfig,
-            AcpCustomAgentId(runtimeAgentId)
+            acpAgentId
         )
-        val agent = ProviderChatAgent(delegate, PluginIcons.scaleIcon(platform.icon, 16))
 
         val ep: ExtensionPoint<ChatAgent> = ApplicationManager.getApplication()
             .extensionArea
@@ -111,6 +118,33 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         val disposable = Disposer.newDisposable("ai-profile:$runtimeAgentId")
         ep.registerExtension(agent, disposable)
         registeredProfiles[profile.id] = Registration(agent, disposable)
+    }
+
+    private fun cacheLocalAgentIcon(agentId: AcpCustomAgentId, iconResourcePath: String) {
+        val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return
+        val iconPath = acpPaths.getIconPath(agentId, false)
+        val resourceStream = javaClass.getResourceAsStream(iconResourcePath) ?: return
+
+        try {
+            Files.createDirectories(iconPath.parent)
+            resourceStream.use { input ->
+                if (iconResourcePath.endsWith(".svg", ignoreCase = true)) {
+                    Files.copy(input, iconPath, StandardCopyOption.REPLACE_EXISTING)
+                } else {
+                    val base64Png = Base64.getEncoder().encodeToString(input.readBytes())
+                    Files.writeString(
+                        iconPath,
+                        """
+                            <svg xmlns="http://www.w3.org/2000/svg" width="$ACP_ICON_SIZE" height="$ACP_ICON_SIZE" viewBox="0 0 $ACP_ICON_CANVAS_SIZE $ACP_ICON_CANVAS_SIZE">
+                              <image x="$ACP_ICON_IMAGE_OFFSET" y="$ACP_ICON_IMAGE_OFFSET" width="$ACP_ICON_IMAGE_SIZE" height="$ACP_ICON_IMAGE_SIZE" preserveAspectRatio="none" href="data:image/png;base64,$base64Png"/>
+                            </svg>
+                        """.trimIndent()
+                    )
+                }
+            }
+        } catch (e: IOException) {
+            LOG.warn("Failed to cache ACP icon for ${agentId.fullId}", e)
+        }
     }
 
     private fun createAcpAgentConfig(
@@ -482,6 +516,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     private fun profileFingerprint(profile: AiProfileConfig): String {
         val fingerprintSource = listOf(
+            ACP_ICON_CACHE_VERSION,
             profile.platform,
             profile.effectiveApiType(),
             profile.effectiveTransport(),

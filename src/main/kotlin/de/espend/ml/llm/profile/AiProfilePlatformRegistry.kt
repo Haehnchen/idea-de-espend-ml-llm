@@ -56,6 +56,7 @@ data class AiProfilePlatformInfo(
     val id: String,
     val label: String,
     val icon: Icon,
+    val iconResourcePath: String,
     val directTransport: AiProfileTransport? = null,
     val defaultModel: String = "",
     val modelsUrl: String? = null,
@@ -92,48 +93,56 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_CLAUDE_CODE,
             label = "Claude Code",
             icon = PluginIcons.CLAUDE,
+            iconResourcePath = "/icons/claude.png",
             directTransport = AiProfileTransport.CLAUDE_ACP
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_PI_DIRECT,
             label = "PI",
             icon = PluginIcons.PI,
+            iconResourcePath = "/icons/pi.png",
             directTransport = AiProfileTransport.PI
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_GEMINI,
             label = "Gemini",
             icon = PluginIcons.GEMINI,
+            iconResourcePath = "/icons/gemini.png",
             directTransport = AiProfileTransport.GEMINI
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_OPENCODE,
             label = "OpenCode",
             icon = PluginIcons.OPENCODE,
+            iconResourcePath = "/icons/opencode.png",
             directTransport = AiProfileTransport.OPENCODE
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_CURSOR,
             label = "Cursor",
             icon = PluginIcons.CURSOR,
+            iconResourcePath = "/icons/cursor.png",
             directTransport = AiProfileTransport.CURSOR
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_KILO,
             label = "Kilo Code",
             icon = PluginIcons.KILO,
+            iconResourcePath = "/icons/kilo.png",
             directTransport = AiProfileTransport.KILO
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_FACTORY_AI,
             label = "Factory.ai",
             icon = PluginIcons.DROID,
+            iconResourcePath = "/icons/droid.png",
             directTransport = AiProfileTransport.DROID
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_ANTHROPIC_COMPATIBLE,
             label = "Anthropic Compatible",
             icon = PluginIcons.ANTHROPIC,
+            iconResourcePath = "/icons/anthropic.png",
             anthropic = AiProfilePlatformEndpoint(
                 supportsCustomBaseUrl = true
             )
@@ -142,6 +151,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_OPENAI_COMPATIBLE,
             label = "OpenAI Compatible",
             icon = PluginIcons.AI_PROVIDER,
+            iconResourcePath = "/icons/ai-provider.svg",
             openai = AiProfilePlatformEndpoint(
                 supportsCustomBaseUrl = true
             )
@@ -150,6 +160,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_ZAI,
             label = "Z.AI",
             icon = PluginIcons.ZAI,
+            iconResourcePath = "/icons/zai.png",
             defaultModel = "glm-4.7",
             modelsUrl = "https://api.z.ai/api/anthropic/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -163,6 +174,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_MINIMAX,
             label = "MiniMax",
             icon = PluginIcons.MINIMAX,
+            iconResourcePath = "/icons/minimax.png",
             defaultModel = "MiniMax-M2.1",
             anthropic = AiProfilePlatformEndpoint(
                 baseUrl = "https://api.minimax.io/anthropic"
@@ -172,6 +184,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_OPENROUTER,
             label = "OpenRouter",
             icon = PluginIcons.OPENROUTER,
+            iconResourcePath = "/icons/openrouter.png",
             defaultModel = "z-ai/glm-4.5-air:free",
             modelsUrl = "https://openrouter.ai/api/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -185,6 +198,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_MIMO,
             label = "Mimo",
             icon = PluginIcons.MIMO,
+            iconResourcePath = "/icons/mimo.png",
             defaultModel = "mimo-v2-flash",
             modelsUrl = "https://api.xiaomimimo.com/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -198,6 +212,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_MOONSHOT,
             label = "Moonshot",
             icon = PluginIcons.MOONSHOT,
+            iconResourcePath = "/icons/moonshot.png",
             defaultModel = "kimi-k2-thinking-turbo",
             modelsUrl = "https://api.moonshot.ai/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -211,6 +226,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_REQUESTY,
             label = "Requesty.ai",
             icon = PluginIcons.REQUESTY,
+            iconResourcePath = "/icons/requesty.png",
             defaultModel = "zai/GLM-4.7",
             modelsUrl = "https://router.requesty.ai/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -224,6 +240,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_NANOGPT,
             label = "Nano-GPT",
             icon = PluginIcons.NANOGPT,
+            iconResourcePath = "/icons/nanogpt.png",
             defaultModel = "gemini-3-pro-preview",
             modelsUrl = "https://nano-gpt.com/api/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -237,6 +254,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_AIHUBMIX,
             label = "AIHubMix",
             icon = PluginIcons.AIHUBMIX,
+            iconResourcePath = "/icons/aihubmix.png",
             defaultModel = "gemini-3-flash-preview-free",
             modelsUrl = "https://aihubmix.com/v1/models",
             anthropic = AiProfilePlatformEndpoint(
@@ -250,6 +268,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_NVIDIA,
             label = "NVIDIA",
             icon = PluginIcons.NVIDIA,
+            iconResourcePath = "/icons/nvidia.png",
             modelsUrl = "https://integrate.api.nvidia.com/v1/models",
             openai = AiProfilePlatformEndpoint(
                 baseUrl = "https://integrate.api.nvidia.com/v1"
@@ -259,6 +278,7 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_OLLAMA,
             label = "Ollama",
             icon = PluginIcons.OLLAMA,
+            iconResourcePath = "/icons/ollama.svg",
             modelsUrl = "https://ollama.com/v1/models",
             anthropic = AiProfilePlatformEndpoint(
                 baseUrl = "https://ollama.com"
