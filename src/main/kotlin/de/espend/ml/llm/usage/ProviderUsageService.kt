@@ -13,6 +13,9 @@ import de.espend.ml.llm.usage.provider.ZaiUsageProvider
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
 
 /**
  * Application-wide service for fetching and caching provider usage data.
@@ -130,16 +133,20 @@ class ProviderUsageService {
      */
     suspend fun fetchAndUpdateAccounts(accounts: List<UsageAccountConfig>) {
         if (accounts.isEmpty()) return
-        val results = mutableMapOf<String, ProviderUsageResponse>()
-        for (account in accounts) {
-            try {
-                results[account.id] = fetchUsage(account)
-            } catch (e: Exception) {
-                LOG.debug("Fetch failed: provider=${account.providerId}, account=${account.id}: ${e.message}")
-                results[account.id] = ProviderUsageResponse.error(e.message ?: "Unknown error")
-            }
+        supervisorScope {
+            accounts.map { account ->
+                async {
+                    val response = try {
+                        fetchUsage(account)
+                    } catch (e: Exception) {
+                        LOG.debug("Fetch failed: provider=${account.providerId}, account=${account.id}: ${e.message}")
+                        ProviderUsageResponse.error(e.message ?: "Unknown error")
+                    }
+
+                    updateCache(mapOf(account.id to response))
+                }
+            }.awaitAll()
         }
-        updateCache(results)
     }
 
     /**

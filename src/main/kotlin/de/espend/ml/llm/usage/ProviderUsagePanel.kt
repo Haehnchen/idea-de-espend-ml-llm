@@ -196,7 +196,7 @@ class ProviderUsagePanel(
             val week = RtkStatsReader.getLast7Days()
             withContext(Dispatchers.Main) {
                 rtkPanel.load(days, week)
-                currentPopup?.takeIf { !it.isDisposed }?.pack(true, true)
+                refreshPopupContent()
             }
         }
     }
@@ -211,7 +211,7 @@ class ProviderUsagePanel(
                 }
             }
         }
-        currentPopup?.pack(true, true)
+        refreshPopupContent()
     }
 
     private fun doRefresh() {
@@ -224,9 +224,18 @@ class ProviderUsagePanel(
                 showCachedResults()
                 isLoading = false
                 refreshIconLabel.icon = AllIcons.Actions.Refresh
-                currentPopup?.takeIf { !it.isDisposed }?.pack(true, true)
+                refreshPopupContent()
             }
         }
+    }
+
+    private fun refreshPopupContent() {
+        if (currentPopup?.isDisposed == true) {
+            return
+        }
+
+        revalidate()
+        repaint()
     }
 
     private fun createProviderCard(config: UsageAccountConfig): ProviderWidgets {

@@ -9,11 +9,13 @@ import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.util.ui.JBUI
 import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.usage.ProviderUsagePanel
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
+import java.awt.Dimension
 import javax.swing.JComponent
 
 /**
@@ -32,6 +34,7 @@ class ProviderUsageAction : AnAction(), DumbAware, CustomComponentAction {
     }
 
     override fun actionPerformed(e: AnActionEvent) {
+        val popupWidth = JBUI.scale(POPUP_WIDTH)
         val anchor = e.presentation.getClientProperty(CustomComponentAction.COMPONENT_KEY) ?: return
         val actualPanel = ProviderUsagePanel(ProjectResolutionUtils.resolveProject(e))
 
@@ -40,6 +43,7 @@ class ProviderUsageAction : AnAction(), DumbAware, CustomComponentAction {
             .setResizable(false)
             .setMovable(false)
             .setRequestFocus(true)
+            .setMinSize(Dimension(popupWidth, 0))
             .createPopup()
 
         actualPanel.start(popup)
@@ -54,4 +58,8 @@ class ProviderUsageAction : AnAction(), DumbAware, CustomComponentAction {
     }
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+    private companion object {
+        const val POPUP_WIDTH = 240
+    }
 }
