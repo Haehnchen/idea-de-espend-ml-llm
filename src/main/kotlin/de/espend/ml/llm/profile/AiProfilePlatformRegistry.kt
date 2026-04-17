@@ -353,7 +353,7 @@ object AiProfilePlatformRegistry {
     fun transportHelpText(platform: AiProfilePlatformInfo, transport: AiProfileTransport): String {
         return when {
             platform.id == PLATFORM_CLAUDE_CODE && transport == AiProfileTransport.CLAUDE_ACP ->
-                "Uses the local Claude Code account via Claude ACP."
+                "Uses the local Claude Code account via Claude ACP and keeps authentication managed by the Claude CLI."
             platform.id == PLATFORM_PI_DIRECT && transport == AiProfileTransport.PI ->
                 "Runs pi-acp directly without generated API configuration."
             platform.id == PLATFORM_GEMINI && transport == AiProfileTransport.GEMINI ->

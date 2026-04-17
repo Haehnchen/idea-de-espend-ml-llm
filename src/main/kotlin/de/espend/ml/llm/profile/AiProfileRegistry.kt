@@ -4,7 +4,10 @@ import com.intellij.ml.llm.agents.ChatAgent
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
+import com.intellij.ml.llm.agents.acp.client.auth.AcpAgentAuthentication
+import com.intellij.ml.llm.agents.acp.client.auth.AcpAuthenticationService
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
+import com.intellij.ml.llm.agents.acp.registry.AcpAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
 import com.intellij.ml.llm.agents.acp.registry.AcpPaths
@@ -53,8 +56,28 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private var myState = State()
 
     companion object {
+        private const val AUTH_MANAGED_EXTERNALLY = "MANAGED_EXTERNALLY"
+
         fun getInstance(): AiProfileRegistry {
             return ApplicationManager.getApplication().getService(AiProfileRegistry::class.java)
+        }
+
+        internal fun preferredAuthentication(): AcpAgentAuthentication {
+            return AcpAgentAuthentication.fromId(AUTH_MANAGED_EXTERNALLY)
+        }
+
+        internal fun authenticationTargetIds(profile: AiProfileConfig, runtimeAgentId: String): Set<String> {
+            return buildSet {
+                add(AcpCustomAgentId(runtimeAgentId).fullId)
+                add(AcpCustomAgentId(profile.id).fullId)
+
+                if (profile.platform == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE) {
+                    // Claude auth is also persisted by JetBrains ACP under legacy/built-in IDs
+                    // in acpAgents.xml, so profile migration alone is not enough to switch it off.
+                    add(AcpCustomAgentId(ProviderConfig.PROVIDER_ANTHROPIC_DEFAULT).fullId)
+                    add(AcpRegistryAgentId("claude-acp").fullId)
+                }
+            }
         }
     }
 
@@ -134,6 +157,9 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
         val disposable = Disposer.newDisposable("ai-profile:$runtimeAgentId")
         ep.registerExtension(agent, disposable)
+        // Re-apply auth on every registration so stale ACP state from previous plugin versions
+        // or the built-in Claude agent does not keep forcing JetBrains AI credits.
+        configureAgentAuthentication(runtimeAgentId, profile)
         registeredProfiles[profile.id] = Registration(agent, disposable)
     }
 
@@ -426,6 +452,22 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         }
 
         return profile.claudeCodeExecutable.trim().ifEmpty { null }
+    }
+
+    private fun configureAgentAuthentication(runtimeAgentId: String, profile: AiProfileConfig) {
+        runCatching {
+            val authService = ApplicationManager.getApplication()
+                .getService(AcpAuthenticationService::class.java)
+                ?: return
+
+            authenticationTargetIds(profile, runtimeAgentId)
+                .map(AcpAgentId::parse)
+                .forEach { agentId ->
+                    authService.setSelectedAgentAuth(agentId, preferredAuthentication())
+                }
+        }.onFailure { e ->
+            LOG.warn("Failed to configure ACP authentication for AI profile ${profile.id}", e)
+        }
     }
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
