@@ -29,7 +29,6 @@ import de.espend.ml.llm.ProviderChatAgent
 import java.nio.file.Files
 
 private val LOG = Logger.getInstance(AiProfileRegistry::class.java)
-private const val BUILTIN_CLAUDE_AGENT_ID = "anthropic-default"
 
 @Service(Service.Level.APP)
 @State(
@@ -65,12 +64,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             return buildSet {
                 add(AcpCustomAgentId(runtimeAgentId).fullId)
                 add(AcpCustomAgentId(profile.id).fullId)
-
-                if (profile.platform == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE) {
-                    // JetBrains also persists Claude auth under its built-in ACP IDs.
-                    add(AcpCustomAgentId(BUILTIN_CLAUDE_AGENT_ID).fullId)
-                    add(AcpRegistryAgentId("claude-acp").fullId)
-                }
             }
         }
     }
