@@ -3,6 +3,8 @@ package de.espend.ml.llm.profile
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
+import com.intellij.ml.llm.agents.acp.client.auth.AcpAgentAuthentication
+import com.intellij.ml.llm.agents.acp.client.auth.AcpAuthenticationService
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
@@ -102,6 +104,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         val acpRegistry = ApplicationManager.getApplication().getService(AcpAgentRegistry::class.java)
             ?: error("ACP agent registry service is unavailable")
         acpRegistry.registerLocalAgent(acpAgentId, acpConfig)
+        enforceAgentManagedAuthentication(acpAgentId)
         registeredProfiles[profile.id] = Registration(acpAgentId)
     }
 
@@ -192,9 +195,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             }
         }
 
-        if (shouldReuseInstalledTransportConfig(profile, AiProfileTransport.CLAUDE_ACP)) {
-            resolveInstalledTransportServerConfig(AiProfileTransport.CLAUDE_ACP, env)?.let { return it }
-        }
+        resolveInstalledTransportServerConfig(AiProfileTransport.CLAUDE_ACP, env)?.let { return it }
 
         return AgentServerConfig(
             command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
@@ -426,16 +427,44 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         return profile.claudeCodeExecutable.trim().ifEmpty { null }
     }
 
-    internal fun shouldReuseInstalledTransportConfig(profile: AiProfileConfig, transport: AiProfileTransport): Boolean {
-        // Claude CLI profiles must launch the user-configured local binary instead of the
-        // JetBrains-managed installed claude-acp package.
-        if (transport == AiProfileTransport.CLAUDE_ACP &&
-            profile.platform == AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE
-        ) {
-            return false
+    private fun enforceAgentManagedAuthentication(agentId: AcpCustomAgentId) {
+        val authService = ApplicationManager.getApplication().getService(AcpAuthenticationService::class.java) ?: return
+
+        val desiredAuth = resolveManagedExternallyAuth()
+        val selectedAuth = runCatching { authService.getSelectedAgentAuth(agentId) }
+            .onFailure { LOG.warn("Failed to read ACP auth preference for ${agentId.fullId}", it) }
+            .getOrNull()
+
+        if (desiredAuth == null) {
+            return
         }
 
-        return true
+        if (selectedAuth?.getId() == desiredAuth.getId()) {
+            return
+        }
+
+        runCatching {
+            authService.setSelectedAgentAuth(agentId, desiredAuth)
+        }.onFailure {
+            LOG.warn("Failed to enforce ACP auth preference for ${agentId.fullId}", it)
+        }
+    }
+
+    /**
+     * MANAGED_EXTERNALLY only exists on newer ml-llm builds, so resolve it reflectively to
+     * keep this plugin binary-compatible with older runtimes where the symbol is absent.
+     */
+    private fun resolveManagedExternallyAuth(): AcpAgentAuthentication? {
+        return AcpAgentAuthentication::class.java.declaredClasses
+            .asSequence()
+            .mapNotNull { nested ->
+                nested.enumConstants
+                    ?.firstOrNull { constant ->
+                        (constant as? Enum<*>)?.name == "MANAGED_EXTERNALLY" &&
+                            constant is AcpAgentAuthentication
+                    } as? AcpAgentAuthentication
+            }
+            .firstOrNull()
     }
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
