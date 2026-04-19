@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.11.0
+* Refactor: simplify AI profile agent handling by replacing `DynamicAcpChatAgent` with direct `AcpAgentRegistry` integration (Daniel Espendiller)
+* Remove `ProviderChatAgent` and refactor AI profile agent to be a real acp (Daniel Espendiller)
+* [#34](https://github.com/Haehnchen/idea-php-symfony2-plugin/issues/34) fix Claude CLI agent profile uses JB AI credits, not Anthropic (Daniel Espendiller)
+* Trigger per provider notifications to usage cache updates. Fix usage popup sizing and layout refresh issues (Daniel Espendiller)
+* Disable AI sounds in temporary Droid profile config (Daniel Espendiller)
+
 # 0.10.0
 * Support commit generation from VCS log and Git dialog (Daniel Espendiller)
 * Include unversioned files in commit message generation (Daniel Espendiller)
