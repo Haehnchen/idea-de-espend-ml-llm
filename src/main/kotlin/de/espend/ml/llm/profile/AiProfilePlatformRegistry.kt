@@ -25,6 +25,7 @@ enum class AiProfileTransport(
     CLAUDE_ACP("claude-agent-acp"),
     PI("pi-acp"),
     DROID("droid"),
+    FAST_AGENT("fast-agent"),
     GEMINI("gemini"),
     OPENCODE("opencode"),
     CURSOR("cursor"),
@@ -300,10 +301,12 @@ object AiProfilePlatformRegistry {
             if (platform.anthropic != null) {
                 add(AiProfileTransportOption(AiProfileTransport.CLAUDE_ACP, AiProfileApiType.ANTHROPIC))
                 add(AiProfileTransportOption(AiProfileTransport.DROID, AiProfileApiType.ANTHROPIC))
+                add(AiProfileTransportOption(AiProfileTransport.FAST_AGENT, AiProfileApiType.ANTHROPIC))
                 add(AiProfileTransportOption(AiProfileTransport.PI, AiProfileApiType.ANTHROPIC))
             }
             if (platform.openai != null) {
                 add(AiProfileTransportOption(AiProfileTransport.DROID, AiProfileApiType.OPENAI))
+                add(AiProfileTransportOption(AiProfileTransport.FAST_AGENT, AiProfileApiType.OPENAI))
                 add(AiProfileTransportOption(AiProfileTransport.PI, AiProfileApiType.OPENAI))
             }
         }.sortedWith(
@@ -319,6 +322,7 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP,
             AiProfileTransport.PI,
             AiProfileTransport.DROID,
+            AiProfileTransport.FAST_AGENT,
             AiProfileTransport.GEMINI,
             AiProfileTransport.OPENCODE,
             AiProfileTransport.CURSOR,
@@ -331,6 +335,7 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP -> "claude"
             AiProfileTransport.PI -> "pi-acp"
             AiProfileTransport.DROID -> "droid"
+            AiProfileTransport.FAST_AGENT -> "fast-agent-acp"
             AiProfileTransport.GEMINI -> "gemini"
             AiProfileTransport.OPENCODE -> "opencode"
             AiProfileTransport.CURSOR -> "agent"
@@ -343,6 +348,7 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP -> CommandPathUtils.findClaudePath()
             AiProfileTransport.PI -> CommandPathUtils.findPiAcpPath()
             AiProfileTransport.DROID -> CommandPathUtils.findDroidPath()
+            AiProfileTransport.FAST_AGENT -> CommandPathUtils.findFastAgentPath()
             AiProfileTransport.GEMINI -> CommandPathUtils.findGeminiPath()
             AiProfileTransport.OPENCODE -> CommandPathUtils.findOpenCodePath()
             AiProfileTransport.CURSOR -> CommandPathUtils.findCursorAgentPath()
@@ -366,6 +372,8 @@ object AiProfilePlatformRegistry {
                 "Uses the Kilo Code CLI via `kilo acp`."
             platform.id == PLATFORM_FACTORY_AI && transport == AiProfileTransport.DROID ->
                 "Uses the Factory.ai Droid CLI directly."
+            transport == AiProfileTransport.FAST_AGENT ->
+                "Uses fast-agent ACP directly with profile-scoped API settings and `--noenv`."
             else -> ""
         }
     }

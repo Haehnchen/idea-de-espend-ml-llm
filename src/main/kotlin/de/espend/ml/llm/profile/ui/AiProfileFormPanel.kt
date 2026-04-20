@@ -296,6 +296,7 @@ class AiProfileFormPanel(
         AiProfileTransport.CLAUDE_ACP -> PluginIcons.scaleIcon(PluginIcons.CLAUDE, 16)
         AiProfileTransport.PI -> PluginIcons.scaleIcon(PluginIcons.PI, 16)
         AiProfileTransport.DROID -> PluginIcons.scaleIcon(PluginIcons.DROID, 16)
+        AiProfileTransport.FAST_AGENT -> PluginIcons.scaleIcon(PluginIcons.FAST_AGENT, 16)
         AiProfileTransport.GEMINI -> PluginIcons.scaleIcon(PluginIcons.GEMINI, 16)
         AiProfileTransport.OPENCODE -> PluginIcons.scaleIcon(PluginIcons.OPENCODE, 16)
         AiProfileTransport.CURSOR -> PluginIcons.scaleIcon(PluginIcons.CURSOR, 16)
@@ -379,7 +380,8 @@ class AiProfileFormPanel(
             apiKeyField = JBTextField(currentApiKey, 24)
             addProviderRow("API Key", apiKeyField!!, row++)
 
-            val allowMultipleModels = platform.id != AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE
+            val allowMultipleModels = transport != AiProfileTransport.FAST_AGENT &&
+                platform.id != AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE
             val modelInput = JBTextField(currentModel, 24).apply {
                 emptyText.setText(platform.defaultModel.ifBlank { "Auto-discovery" })
             }

@@ -187,6 +187,28 @@ object CommandPathUtils {
     }
 
     /**
+     * Finds the fast-agent-acp command with specific fallback paths.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
+     * Returns null if not found.
+     */
+    fun findFastAgentPath(): String? {
+        findCommandPath("fast-agent-acp")?.let { return it }
+
+        // Check /usr/bin
+        File("/usr/bin/fast-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        // Check $HOME/bin
+        File(userHome, "bin/fast-agent-acp").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        // Check $HOME/.local/bin
+        return File(userHome, ".local/bin/fast-agent-acp")
+            .takeIf { it.exists() && it.canExecute() }
+            ?.absolutePath
+    }
+
+    /**
      * Finds the claude command with specific fallback paths.
      * Order: PATH -> $HOME/bin -> $HOME/.local/bin
      * Returns null if not found (user can manually specify).

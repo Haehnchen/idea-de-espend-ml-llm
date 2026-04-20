@@ -129,6 +129,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> createClaudeAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.PI -> createPiAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.DROID -> createDroidServerConfig(profile, platform, transportOption)
+            AiProfileTransport.FAST_AGENT -> createFastAgentServerConfig(profile, platform, transportOption)
             AiProfileTransport.GEMINI -> createGeminiServerConfig(profile)
             AiProfileTransport.OPENCODE -> createOpenCodeServerConfig(profile)
             AiProfileTransport.CURSOR -> createCursorServerConfig(profile)
@@ -262,6 +263,48 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         )
     }
 
+    private fun createFastAgentServerConfig(
+        profile: AiProfileConfig,
+        platform: AiProfilePlatformInfo,
+        transportOption: AiProfileTransportOption
+    ): AgentServerConfig {
+        val apiType = transportOption.apiType
+            ?: error("fast-agent requires an explicit API type")
+        val endpoint = AiProfilePlatformRegistry.resolveEndpoint(platform, apiType.id)
+            ?: error("fast-agent requires a configured endpoint")
+        val baseUrl = resolveBaseUrl(profile, endpoint)
+        val model = resolveFastAgentModel(resolvePrimaryModel(profile, platform), apiType)
+        val args = listOf("--noenv", "--model", model)
+        val env = buildMap<String, String> {
+            when (apiType) {
+                AiProfileApiType.ANTHROPIC -> {
+                    if (profile.apiKey.isNotBlank()) {
+                        put("ANTHROPIC_API_KEY", profile.apiKey.trim())
+                    }
+                    put("ANTHROPIC_BASE_URL", baseUrl)
+                }
+
+                AiProfileApiType.OPENAI -> {
+                    if (profile.apiKey.isNotBlank()) {
+                        put("GENERIC_API_KEY", profile.apiKey.trim())
+                        put("OPENAI_API_KEY", profile.apiKey.trim())
+                    }
+                    put("GENERIC_BASE_URL", baseUrl)
+                    put("OPENAI_BASE_URL", baseUrl)
+                }
+            }
+        }
+
+        resolveInstalledTransportServerConfig(AiProfileTransport.FAST_AGENT, env, args)?.let { return it }
+
+        return AgentServerConfig(
+            command = resolveExecutable(profile, AiProfileTransport.FAST_AGENT)
+                ?: (CommandPathUtils.findFastAgentPath() ?: "fast-agent-acp"),
+            args = args,
+            env = env
+        )
+    }
+
     private fun createOpenCodeServerConfig(profile: AiProfileConfig): AgentServerConfig {
         resolveInstalledTransportServerConfig(AiProfileTransport.OPENCODE, emptyMap())?.let { return it }
 
@@ -339,7 +382,8 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
     private fun resolveInstalledTransportServerConfig(
         transport: AiProfileTransport,
-        env: Map<String, String>
+        env: Map<String, String>,
+        extraArgs: List<String> = emptyList()
     ): AgentServerConfig? {
         val registryAgentId = registryAgentIdForTransport(transport) ?: return null
         val installedAgent = ApplicationManager.getApplication()
@@ -352,7 +396,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
                 AgentServerConfig(
                     command = startConfig.command,
-                    args = startConfig.args,
+                    args = startConfig.args + extraArgs,
                     env = buildMap {
                         putAll(startConfig.env)
                         putAll(env)
@@ -370,7 +414,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
                 AgentServerConfig(
                     command = startConfig.command,
-                    args = startConfig.args,
+                    args = startConfig.args + extraArgs,
                     env = buildMap {
                         putAll(startConfig.env)
                         putAll(env)
@@ -431,6 +475,18 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         return resolveModels(profile, platform).firstOrNull().orEmpty()
     }
 
+    private fun resolveFastAgentModel(model: String, apiType: AiProfileApiType): String {
+        val normalizedModel = model.trim()
+        if (normalizedModel.contains('.')) {
+            return normalizedModel
+        }
+
+        return when (apiType) {
+            AiProfileApiType.ANTHROPIC -> "anthropic.$normalizedModel"
+            AiProfileApiType.OPENAI -> "generic.$normalizedModel"
+        }
+    }
+
     private fun resolveModels(profile: AiProfileConfig, platform: AiProfilePlatformInfo): List<String> {
         val models = profile.model
             .split(',')
@@ -451,6 +507,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> "claude-acp"
             AiProfileTransport.PI -> "pi-acp"
             AiProfileTransport.DROID -> "factory-droid"
+            AiProfileTransport.FAST_AGENT -> "fast-agent"
             AiProfileTransport.GEMINI -> "gemini"
             AiProfileTransport.OPENCODE -> "opencode"
             AiProfileTransport.CURSOR -> "cursor"

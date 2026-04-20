@@ -21,6 +21,7 @@ object PluginIcons {
     val OPENCODE: Icon = IconLoader.getIcon("/icons/opencode.png", PluginIcons::class.java)
     val CURSOR: Icon = IconLoader.getIcon("/icons/cursor.png", PluginIcons::class.java)
     val KILO: Icon = IconLoader.getIcon("/icons/kilo.png", PluginIcons::class.java)
+    val FAST_AGENT: Icon = IconLoader.getIcon("/icons/fast-agent.png", PluginIcons::class.java)
     val DROID: Icon = IconLoader.getIcon("/icons/droid.png", PluginIcons::class.java)
     val REQUESTY: Icon = IconLoader.getIcon("/icons/requesty.png", PluginIcons::class.java)
     val NANOGPT: Icon = IconLoader.getIcon("/icons/nanogpt.png", PluginIcons::class.java)
