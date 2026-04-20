@@ -26,7 +26,7 @@ object PluginIcons {
     val AIHUBMIX: Icon = IconLoader.getIcon("/icons/aihubmix.png", PluginIcons::class.java)
     val MOONSHOT: Icon = IconLoader.getIcon("/icons/moonshot.png", PluginIcons::class.java)
     val JUNIE: Icon = IconLoader.getIcon("/icons/junie.png", PluginIcons::class.java)
-    val OLLAMA: Icon = IconLoader.getIcon("/icons/ollama.svg", PluginIcons::class.java)
+    val OLLAMA: Icon = IconLoader.getIcon("/icons/ollama.png", PluginIcons::class.java)
     val NVIDIA: Icon = IconLoader.getIcon("/icons/nvidia.png", PluginIcons::class.java)
 
     // Plugin icon

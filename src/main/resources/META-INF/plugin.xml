@@ -133,6 +133,12 @@
                     factoryClass="de.espend.ml.llm.session.SessionBrowserToolWindowFactory"
                     anchor="right"
                     icon="/icons/ai-provider.svg"/>
+
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij.ml.llm">
+        <agents.acp.chatAgentExtension
+            implementation="de.espend.ml.llm.profile.AiProfileAcpChatAgentExtension"/>
     </extensions>
 
     <!-- Actions for AI Provider plugin -->

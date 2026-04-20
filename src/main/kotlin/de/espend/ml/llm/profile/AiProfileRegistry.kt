@@ -3,6 +3,7 @@ package de.espend.ml.llm.profile
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
+import com.intellij.ml.llm.agents.acp.registry.AcpAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
 import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
@@ -20,16 +21,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
-import java.io.IOException
+import de.espend.ml.llm.PluginIcons
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.util.Base64
+import java.nio.file.Path
+import javax.swing.Icon
 
 private val LOG = Logger.getInstance(AiProfileRegistry::class.java)
-private const val ACP_ICON_SIZE = 16
-private const val ACP_ICON_CANVAS_SIZE = 34
-private const val ACP_ICON_IMAGE_OFFSET = 1
-private const val ACP_ICON_IMAGE_SIZE = 32
 
 @Service(Service.Level.APP)
 @State(
@@ -39,7 +36,8 @@ private const val ACP_ICON_IMAGE_SIZE = 32
 class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Disposable {
 
     data class Registration(
-        val agentId: AcpCustomAgentId
+        val agentId: AcpCustomAgentId,
+        val icon: Icon
     )
 
     class State {
@@ -54,6 +52,9 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             return ApplicationManager.getApplication().getService(AiProfileRegistry::class.java)
         }
     }
+
+    fun getIconForAgent(agentId: AcpAgentId): Icon? =
+        registeredProfiles[agentId.rawId]?.icon
 
     override fun getState(): State = myState
 
@@ -96,40 +97,12 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?: error("Unknown AI profile platform: ${profile.platform}")
 
         val acpAgentId = AcpCustomAgentId(runtimeAgentId(profile))
-        cacheLocalAgentIcon(acpAgentId, platform.iconResourcePath)
         val displayName = resolveDisplayName(profile, platform)
         val acpConfig = createAcpAgentConfig(displayName, profile, platform)
         val acpRegistry = ApplicationManager.getApplication().getService(AcpAgentRegistry::class.java)
             ?: error("ACP agent registry service is unavailable")
         acpRegistry.registerLocalAgent(acpAgentId, acpConfig)
-        registeredProfiles[profile.id] = Registration(acpAgentId)
-    }
-
-    private fun cacheLocalAgentIcon(agentId: AcpCustomAgentId, iconResourcePath: String) {
-        val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return
-        val iconPath = acpPaths.getIconPath(agentId, false)
-        val resourceStream = javaClass.getResourceAsStream(iconResourcePath) ?: return
-
-        try {
-            Files.createDirectories(iconPath.parent)
-            resourceStream.use { input ->
-                if (iconResourcePath.endsWith(".svg", ignoreCase = true)) {
-                    Files.copy(input, iconPath, StandardCopyOption.REPLACE_EXISTING)
-                } else {
-                    val base64Png = Base64.getEncoder().encodeToString(input.readBytes())
-                    Files.writeString(
-                        iconPath,
-                        """
-                            <svg xmlns="http://www.w3.org/2000/svg" width="$ACP_ICON_SIZE" height="$ACP_ICON_SIZE" viewBox="0 0 $ACP_ICON_CANVAS_SIZE $ACP_ICON_CANVAS_SIZE">
-                              <image x="$ACP_ICON_IMAGE_OFFSET" y="$ACP_ICON_IMAGE_OFFSET" width="$ACP_ICON_IMAGE_SIZE" height="$ACP_ICON_IMAGE_SIZE" preserveAspectRatio="none" href="data:image/png;base64,$base64Png"/>
-                            </svg>
-                        """.trimIndent()
-                    )
-                }
-            }
-        } catch (e: IOException) {
-            LOG.warn("Failed to cache ACP icon for ${agentId.fullId}", e)
-        }
+        registeredProfiles[profile.id] = Registration(acpAgentId, PluginIcons.scaleIcon(platform.icon, 16))
     }
 
     private fun createAcpAgentConfig(
@@ -346,7 +319,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return null
                 val extractedPath = acpPaths.getAgentVersionDir(AcpRegistryAgentId(registryAgentId), installedAgent.version)
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath.toString())
-                if (!Files.isExecutable(java.nio.file.Path.of(startConfig.command))) {
+                if (!Files.isExecutable(Path.of(startConfig.command))) {
                     return null
                 }
 
@@ -391,7 +364,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return null
                 val extractedPath = acpPaths.getAgentVersionDir(AcpRegistryAgentId(registryAgentId), installedAgent.version)
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath.toString())
-                if (!Files.isExecutable(java.nio.file.Path.of(startConfig.command))) {
+                if (!Files.isExecutable(Path.of(startConfig.command))) {
                     return null
                 }
 
