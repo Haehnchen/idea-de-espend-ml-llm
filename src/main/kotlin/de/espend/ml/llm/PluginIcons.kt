@@ -7,6 +7,7 @@ import javax.swing.ImageIcon
 
 object PluginIcons {
     // Provider icons
+    val OPENAI: Icon = IconLoader.getIcon("/icons/openai.png", PluginIcons::class.java)
     val ZAI: Icon = IconLoader.getIcon("/icons/zai.png", PluginIcons::class.java)
     val AMPCODE: Icon = IconLoader.getIcon("/icons/ampcode.png", PluginIcons::class.java)
     val CODEX: Icon = IconLoader.getIcon("/icons/codex.png", PluginIcons::class.java)
