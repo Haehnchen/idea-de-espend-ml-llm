@@ -2,6 +2,7 @@ package de.espend.ml.llm.profile
 
 import com.intellij.ml.llm.core.chat.ui.AgentPopupEnhancementProvider
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.project.Project
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import javax.swing.Icon
@@ -27,13 +28,13 @@ class AiProfilePopupEnhancementProvider : AgentPopupEnhancementProvider {
 
     override fun canDelete(agentId: String): Boolean = false
 
-    override suspend fun deleteAgent(agentId: String) {}
+    override suspend fun deleteAgent(agentId: String, project: Project) {}
 
-    override fun updateAgent(agentId: String, project: com.intellij.openapi.project.Project?) {}
+    override fun updateAgent(agentId: String, project: Project?) {}
 
-    override fun isAgentReady(agentId: String): Boolean = true
+    override fun isAgentReady(agentId: String, project: Project): Boolean = true
 
-    override fun getNotReadyReason(agentId: String): String? = null
+    override fun getNotReadyReason(agentId: String, project: Project): String? = null
 
     override fun getAgentReadinessFlow(agentId: String): Flow<Boolean> = flowOf(true)
 }

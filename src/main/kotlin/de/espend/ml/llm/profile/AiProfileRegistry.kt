@@ -19,6 +19,8 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.platform.eel.EelPlatform
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.PluginIcons
@@ -302,7 +304,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
             ?: return null
 
-        return when (val resolved = AcpDistributionResolver.resolve(installedAgent)) {
+        return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
                 AgentServerConfig(
@@ -317,8 +319,10 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
             is AcpDistributionResolver.ResolvedDistribution.Binary -> {
                 val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return null
-                val extractedPath = acpPaths.getAgentVersionDir(AcpRegistryAgentId(registryAgentId), installedAgent.version)
-                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath.toString())
+                val extractedPath = acpPaths.getBaseDirOnHost()
+                    .resolve(registryAgentId)
+                    .resolve(installedAgent.version)
+                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath)
                 if (!Files.isExecutable(Path.of(startConfig.command))) {
                     return null
                 }
@@ -347,7 +351,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
             ?: return null
 
-        return when (val resolved = AcpDistributionResolver.resolve(installedAgent)) {
+        return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
                 AgentServerConfig(
@@ -362,8 +366,10 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
             is AcpDistributionResolver.ResolvedDistribution.Binary -> {
                 val acpPaths = ApplicationManager.getApplication().getService(AcpPaths::class.java) ?: return null
-                val extractedPath = acpPaths.getAgentVersionDir(AcpRegistryAgentId(registryAgentId), installedAgent.version)
-                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath.toString())
+                val extractedPath = acpPaths.getBaseDirOnHost()
+                    .resolve(registryAgentId)
+                    .resolve(installedAgent.version)
+                val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved, extractedPath)
                 if (!Files.isExecutable(Path.of(startConfig.command))) {
                     return null
                 }
@@ -409,6 +415,17 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         }
 
         return true
+    }
+
+    private fun hostEelPlatform(): EelPlatform {
+        val os = when {
+            SystemInfoRt.isMac -> "darwin"
+            SystemInfoRt.isWindows -> "windows"
+            else -> "linux"
+        }
+        val arch = System.getProperty("os.arch")
+        return EelPlatform.getFor(os, arch)
+            ?: error("Unsupported host platform for ACP distribution: $os/$arch")
     }
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
