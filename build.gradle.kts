@@ -9,7 +9,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.3.20"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.20"
-    id("org.jetbrains.intellij.platform") version "2.13.1"
+    id("org.jetbrains.intellij.platform") version "2.14.0"
 }
 
 group = "de.espend.ml.llm"
@@ -24,7 +24,7 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        intellijIdeaUltimate("2026.1")
+        intellijIdeaUltimate("2026.1.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
         bundledModule("intellij.platform.vcs.impl")
         bundledModule("intellij.platform.vcs.log")
@@ -175,5 +175,3 @@ tasks.register<JavaExec>("dumpSession") {
     // Pass all args after -- to the application
     // Usage: ./gradlew dumpSession --args="--provider=claude --id=SESSION_ID"
 }
-
-
