@@ -59,6 +59,7 @@ class RtkStatsPanel : JPanel() {
             add(createDayCard("Yesterday", yesterdayStat))
             add(createDayCard("Today", todayStat))
             add(createWeekCard(week))
+            maximumSize = preferredSize
         }
     }
 
@@ -74,6 +75,7 @@ class RtkStatsPanel : JPanel() {
             panel.add(normalLabel("-${"%.1f".format(stat.savingsPct)}%"))
         } else {
             panel.add(normalLabel("--"))
+            panel.add(normalLabel(" "))
         }
         return panel
     }
@@ -90,6 +92,7 @@ class RtkStatsPanel : JPanel() {
             panel.add(normalLabel("-${"%.1f".format(stat.savingsPct)}%"))
         } else {
             panel.add(normalLabel("--"))
+            panel.add(normalLabel(" "))
         }
         return panel
     }

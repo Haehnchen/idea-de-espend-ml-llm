@@ -3,7 +3,6 @@ package de.espend.ml.llm.tokscale
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
-import java.awt.Dimension
 import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -54,9 +53,6 @@ class TokscaleStatsPanel : JPanel() {
         return JPanel(GridBagLayout()).apply {
             isOpaque = false
             alignmentX = 0f
-            preferredSize = Dimension(JBUI.scale(TABLE_WIDTH), JBUI.scale(TABLE_HEIGHT))
-            minimumSize = preferredSize
-            maximumSize = preferredSize
 
             addHeaderCell("", 0)
             addHeaderCell("In", 1)
@@ -77,30 +73,22 @@ class TokscaleStatsPanel : JPanel() {
     }
 
     private fun JPanel.addHeaderCell(text: String, column: Int) {
-        add(fixedLabel(JBLabel(text, SwingConstants.RIGHT).apply {
+        add(JBLabel(text, SwingConstants.RIGHT).apply {
             font = font.deriveFont(Font.BOLD, font.size2D - 2f)
             foreground = SECONDARY_COLOR
-        }, column), constraints(column, 0))
+        }, constraints(column, 0))
     }
 
     private fun JPanel.addDataCell(label: JBLabel, column: Int, row: Int) {
-        add(fixedLabel(label, column), constraints(column, row))
-    }
-
-    private fun fixedLabel(label: JBLabel, column: Int): JBLabel {
-        val width = if (column == 0) PERIOD_COLUMN_WIDTH else VALUE_COLUMN_WIDTH
-        val size = Dimension(JBUI.scale(width), JBUI.scale(CELL_HEIGHT))
-        label.preferredSize = size
-        label.minimumSize = size
-        label.maximumSize = size
-        return label
+        add(label, constraints(column, row))
     }
 
     private fun constraints(column: Int, row: Int): GridBagConstraints =
         GridBagConstraints().apply {
             gridx = column
             gridy = row
-            fill = GridBagConstraints.NONE
+            weightx = if (column == 0) 0.18 else 1.0
+            fill = GridBagConstraints.HORIZONTAL
             anchor = GridBagConstraints.WEST
             insets = if (column == 0) JBUI.emptyInsets() else JBUI.insetsLeft(4)
         }
@@ -170,10 +158,5 @@ class TokscaleStatsPanel : JPanel() {
     private companion object {
         private val SECONDARY_COLOR = JBColor(0x787878, 0x999999)
         private val ERROR_COLOR = JBColor(0xD84A4A, 0xE06C75)
-        private const val TABLE_WIDTH = 208
-        private const val TABLE_HEIGHT = 48
-        private const val PERIOD_COLUMN_WIDTH = 16
-        private const val VALUE_COLUMN_WIDTH = 44
-        private const val CELL_HEIGHT = 15
     }
 }
