@@ -52,9 +52,10 @@ class ProviderUsageAction : AnAction(), DumbAware, CustomComponentAction {
 
     override fun update(e: AnActionEvent) {
         val providers = ProviderUsageService.getInstance().getSupportedAccounts()
-        val rtkEnabled = UsagePlatformRegistry.getInstance().state.showRtkStats
+        val state = UsagePlatformRegistry.getInstance().state
+        val toolPanelEnabled = state.showRtkStats || state.showTokscaleStats
         e.presentation.icon = PluginIcons.USAGE
-        e.presentation.isEnabledAndVisible = providers.isNotEmpty() || rtkEnabled
+        e.presentation.isEnabledAndVisible = providers.isNotEmpty() || toolPanelEnabled
     }
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT

@@ -37,7 +37,6 @@ import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableCellEditor
 import javax.swing.AbstractCellEditor
-import javax.swing.Box
 
 /**
  * Settings panel for managing usage accounts.
@@ -64,6 +63,10 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         isOpaque = false
     }
 
+    private val tokscaleStatsCheckBox = JCheckBox("Show Tokscale token usage panel").apply {
+        isOpaque = false
+    }
+
     private val rows: MutableList<UsageRow> = mutableListOf()
 
     private val modelList = com.intellij.util.ui.ListTableModel<UsageRow>(
@@ -86,7 +89,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         add(createSectionHeader("Tools"), GridBagConstraints().apply {
             gridx = 0; gridy = 0; weightx = 1.0
             fill = GridBagConstraints.HORIZONTAL
-            insets = JBUI.insets(0, 0, 6, 0)
+            insets = JBUI.insetsBottom(6)
         })
 
         val toolsContent = JPanel(GridBagLayout()).apply {
@@ -94,7 +97,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
             add(rtkStatsCheckBox, GridBagConstraints().apply {
                 gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
-                insets = JBUI.insets(0, 0, 2, 0)
+                insets = JBUI.insetsBottom(2)
             })
 
             val hintFont = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
@@ -115,7 +118,32 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             add(hintRow, GridBagConstraints().apply {
                 gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; weightx = 1.0
                 fill = GridBagConstraints.HORIZONTAL
-                insets = JBUI.insets(0, 20, 0, 0)
+                insets = JBUI.insetsLeft(20)
+            })
+
+            add(tokscaleStatsCheckBox, GridBagConstraints().apply {
+                gridx = 0; gridy = 2; anchor = GridBagConstraints.WEST
+                insets = JBUI.insets(8, 0, 2, 0)
+            })
+
+            val tokscaleHintRow = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
+                isOpaque = false
+                add(JBLabel("Uses local ").apply {
+                    font = hintFont
+                    foreground = UIUtil.getContextHelpForeground()
+                })
+                add(ActionLink("tokscale.") { BrowserUtil.browse("https://www.npmjs.com/package/tokscale") }.apply {
+                    font = hintFont
+                })
+                add(JBLabel(" Falls back to npx and shows week/month input, output, total tokens, and cost.").apply {
+                    font = hintFont
+                    foreground = UIUtil.getContextHelpForeground()
+                })
+            }
+            add(tokscaleHintRow, GridBagConstraints().apply {
+                gridx = 0; gridy = 3; anchor = GridBagConstraints.WEST; weightx = 1.0
+                fill = GridBagConstraints.HORIZONTAL
+                insets = JBUI.insetsLeft(20)
             })
         }
 
@@ -129,7 +157,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         add(createSectionHeader("Quota Accounts"), GridBagConstraints().apply {
             gridx = 0; gridy = 2; weightx = 1.0
             fill = GridBagConstraints.HORIZONTAL
-            insets = JBUI.insets(0, 0, 6, 0)
+            insets = JBUI.insetsBottom(6)
         })
 
         installColumnSizing()
@@ -169,6 +197,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
     fun loadFrom(registryState: UsagePlatformRegistry.State) {
         rtkStatsCheckBox.isSelected = registryState.showRtkStats
+        tokscaleStatsCheckBox.isSelected = registryState.showTokscaleStats
 
         rows.clear()
         while (modelList.rowCount > 0) modelList.removeRow(0)
@@ -185,11 +214,13 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
 
     fun isModified(registryState: UsagePlatformRegistry.State): Boolean {
         if (rtkStatsCheckBox.isSelected != registryState.showRtkStats) return true
+        if (tokscaleStatsCheckBox.isSelected != registryState.showTokscaleStats) return true
         return toAccountStates() != registryState.accounts
     }
 
     fun applyTo(registryState: UsagePlatformRegistry.State) {
         registryState.showRtkStats = rtkStatsCheckBox.isSelected
+        registryState.showTokscaleStats = tokscaleStatsCheckBox.isSelected
         val accounts = toAccountStates()
         LOG.debug("Updating provider accounts: ${accounts.size} account(s)")
         accounts.forEach { state ->
@@ -333,6 +364,9 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             isOpaque = true
             border = JBUI.Borders.empty(4, 8)
         }
+
+        @Suppress("unused")
+        private fun readResolve(): Any = CheckboxRenderer
 
         override fun getTableCellRendererComponent(
             table: JTable?,

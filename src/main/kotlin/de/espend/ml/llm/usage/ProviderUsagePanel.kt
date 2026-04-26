@@ -15,6 +15,10 @@ import de.espend.ml.llm.PluginIcons
 import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.rtk.RtkStatsPanel
 import de.espend.ml.llm.rtk.RtkStatsReader
+import de.espend.ml.llm.tokscale.TokscalePeriod
+import de.espend.ml.llm.tokscale.TokscaleStatsPanel
+import de.espend.ml.llm.tokscale.TokscaleStatsReader
+import de.espend.ml.llm.tokscale.TokscaleUsageResult
 import de.espend.ml.llm.usage.ui.UsageSettingsConfigurable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +47,7 @@ class ProviderUsagePanel(
     private var removeCacheListener: (() -> Unit)? = null
     private var isLoading = false
     private val rtkPanel = RtkStatsPanel()
+    private val tokscalePanel = TokscaleStatsPanel()
 
     private val refreshIconLabel = JBLabel(AllIcons.Actions.Refresh)
     private val providerWidgets = mutableMapOf<String, ProviderWidgets>()
@@ -131,11 +136,15 @@ class ProviderUsagePanel(
         }
 
         if (UsagePlatformRegistry.getInstance().state.showRtkStats) {
-            add(Box.createVerticalStrut(JBUI.scale(8)))
-            add(createSeparator())
-            add(Box.createVerticalStrut(JBUI.scale(8)))
+            addToolSeparator()
             rtkPanel.initEmpty()
             add(rtkPanel)
+        }
+
+        if (UsagePlatformRegistry.getInstance().state.showTokscaleStats) {
+            addToolSeparator()
+            tokscalePanel.initEmpty()
+            add(tokscalePanel)
         }
 
         settingsIconButton.addMouseListener(object : java.awt.event.MouseAdapter() {
@@ -188,6 +197,12 @@ class ProviderUsagePanel(
         if (UsagePlatformRegistry.getInstance().state.showRtkStats) {
             loadRtkStats()
         }
+        if (UsagePlatformRegistry.getInstance().state.showTokscaleStats) {
+            showCachedTokscaleStats()
+            if (!TokscaleStatsReader.areCachesValid(ProviderUsageService.PANEL_CACHE_TTL_MS)) {
+                loadTokscaleStats()
+            }
+        }
     }
 
     private fun loadRtkStats() {
@@ -201,6 +216,28 @@ class ProviderUsagePanel(
         }
     }
 
+    private fun loadTokscaleStats() {
+        scope.launch(Dispatchers.IO) {
+            val (week, month) = fetchTokscaleStats()
+            withContext(Dispatchers.Main) {
+                tokscalePanel.load(week, month)
+                refreshPopupContent()
+            }
+        }
+    }
+
+    private fun showCachedTokscaleStats() {
+        val week = TokscaleStatsReader.getCachedUsage(TokscalePeriod.WEEK) ?: TokscaleUsageResult(null)
+        val month = TokscaleStatsReader.getCachedUsage(TokscalePeriod.MONTH) ?: TokscaleUsageResult(null)
+        tokscalePanel.load(week, month)
+    }
+
+    private fun fetchTokscaleStats(): Pair<TokscaleUsageResult, TokscaleUsageResult> {
+        val week = TokscaleStatsReader.getUsage(TokscalePeriod.WEEK)
+        val month = TokscaleStatsReader.getUsage(TokscalePeriod.MONTH)
+        return week to month
+    }
+
     private fun showCachedResults() {
         providers.forEach { config ->
             providerWidgets[config.id]?.let { widgets ->
@@ -211,6 +248,9 @@ class ProviderUsagePanel(
                 }
             }
         }
+        if (UsagePlatformRegistry.getInstance().state.showTokscaleStats) {
+            showCachedTokscaleStats()
+        }
         refreshPopupContent()
     }
 
@@ -220,8 +260,14 @@ class ProviderUsagePanel(
 
         scope.launch {
             service.fetchAndUpdateAccounts(providers) // updates cache + fires listeners
+            val tokscaleStats = if (UsagePlatformRegistry.getInstance().state.showTokscaleStats) {
+                withContext(Dispatchers.IO) { fetchTokscaleStats() }
+            } else null
             ApplicationManager.getApplication().invokeLater {
                 showCachedResults()
+                tokscaleStats?.let { (week, month) ->
+                    tokscalePanel.load(week, month)
+                }
                 isLoading = false
                 refreshIconLabel.icon = AllIcons.Actions.Refresh
                 refreshPopupContent()
@@ -371,6 +417,12 @@ class ProviderUsagePanel(
             maximumSize = Dimension(Int.MAX_VALUE, 1)
             foreground = JBColor.border()
         }
+    }
+
+    private fun addToolSeparator() {
+        add(Box.createVerticalStrut(JBUI.scale(8)))
+        add(createSeparator())
+        add(Box.createVerticalStrut(JBUI.scale(8)))
     }
 }
 
