@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.12.0
+* Update for latest AI plugin changes (Daniel Espendiller)</li>
+* change OpenAi compatible icon (Daniel Espendiller)</li>
+
 # 0.11.0
 * Refactor: simplify AI profile agent handling by replacing `DynamicAcpChatAgent` with direct `AcpAgentRegistry` integration (Daniel Espendiller)
 * Remove `ProviderChatAgent` and refactor AI profile agent to be a real acp (Daniel Espendiller)
