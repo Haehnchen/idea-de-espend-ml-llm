@@ -1,5 +1,6 @@
 package de.espend.ml.llm.rtk
 
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.GridLayout
@@ -43,7 +44,7 @@ class RtkStatsPanel : JPanel() {
     }
 
     private fun buildHeader() {
-        val headerLabel = JBLabel("RTK Savings").apply {
+        val headerLabel = JBLabel("RTK savings").apply {
             font = font.deriveFont(java.awt.Font.BOLD, font.size2D - 1f)
             alignmentX = 0f
         }
@@ -95,12 +96,18 @@ class RtkStatsPanel : JPanel() {
 
     private fun smallLabel(text: String) = JBLabel(text).apply {
         font = font.deriveFont(font.size2D - 2f)
+        foreground = SECONDARY_COLOR
         alignmentX = 0f
     }
 
     private fun normalLabel(text: String) = JBLabel(text).apply {
         font = font.deriveFont(font.size2D - 1.5f)
+        foreground = SECONDARY_COLOR
         alignmentX = 0f
+    }
+
+    private companion object {
+        private val SECONDARY_COLOR = JBColor(0x787878, 0x999999)
     }
 
 }

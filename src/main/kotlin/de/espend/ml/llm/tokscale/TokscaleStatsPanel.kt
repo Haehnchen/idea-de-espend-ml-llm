@@ -42,7 +42,7 @@ class TokscaleStatsPanel : JPanel() {
     }
 
     private fun buildHeader() {
-        val headerLabel = JBLabel("Tokscale usage").apply {
+        val headerLabel = JBLabel("Tokscale").apply {
             font = font.deriveFont(Font.BOLD, font.size2D - 1f)
             alignmentX = 0f
         }
