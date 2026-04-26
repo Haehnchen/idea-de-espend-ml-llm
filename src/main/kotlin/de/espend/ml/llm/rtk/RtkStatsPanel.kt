@@ -3,11 +3,13 @@ package de.espend.ml.llm.rtk
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
-import java.awt.GridLayout
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
 import java.time.LocalDate
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
+import javax.swing.SwingConstants
 
 /**
  * Compact 3-column panel showing the last 2 days and the current week of RTK token savings.
@@ -20,14 +22,14 @@ class RtkStatsPanel : JPanel() {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         buildHeader()
-        add(createGrid(null, null, null))
+        add(createTable(null, null, null))
     }
 
     /**
      * Pre-render with placeholder data so the panel has the correct size immediately.
      */
     fun initEmpty() {
-        // Already has placeholder grid from init — nothing to do.
+        // Already has placeholder table from init; nothing to do.
     }
 
     fun load(days: List<RtkDayStat>, week: RtkWeekStat?) {
@@ -36,9 +38,9 @@ class RtkStatsPanel : JPanel() {
         val todayStat = days.find { it.date == today }
         val yesterdayStat = days.find { it.date == yesterday }
 
-        // Replace placeholder grid with real data
+        // Replace placeholder table with real data.
         remove(componentCount - 1)
-        add(createGrid(yesterdayStat, todayStat, week))
+        add(createTable(yesterdayStat, todayStat, week))
         revalidate()
         repaint()
     }
@@ -52,62 +54,84 @@ class RtkStatsPanel : JPanel() {
         add(Box.createVerticalStrut(JBUI.scale(6)))
     }
 
-    private fun createGrid(yesterdayStat: RtkDayStat?, todayStat: RtkDayStat?, week: RtkWeekStat?): JPanel {
-        return JPanel(GridLayout(1, 3, JBUI.scale(4), 0)).apply {
+    private fun createTable(yesterdayStat: RtkDayStat?, todayStat: RtkDayStat?, week: RtkWeekStat?): JPanel {
+        val columns = listOf(
+            createDayColumn("Yesterday", yesterdayStat),
+            createDayColumn("Today", todayStat),
+            createWeekColumn(week)
+        )
+
+        return JPanel(GridBagLayout()).apply {
             isOpaque = false
             alignmentX = 0f
-            add(createDayCard("Yesterday", yesterdayStat))
-            add(createDayCard("Today", todayStat))
-            add(createWeekCard(week))
-            maximumSize = preferredSize
+
+            columns.forEachIndexed { column, data ->
+                addHeaderCell(data.label, column)
+                addDataCell(normalLabel(data.tokens), column, 1)
+                addDataCell(normalLabel(data.savings), column, 2)
+            }
         }
     }
 
-    private fun createDayCard(label: String, stat: RtkDayStat?): JPanel {
-        val panel = JPanel()
-        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
-        panel.isOpaque = false
+    private fun JPanel.addHeaderCell(text: String, column: Int) {
+        add(smallLabel(text), constraints(column, 0))
+    }
 
-        panel.add(smallLabel(label))
-        panel.add(Box.createVerticalStrut(JBUI.scale(2)))
-        if (stat != null) {
-            panel.add(normalLabel("${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}"))
-            panel.add(normalLabel("-${"%.1f".format(stat.savingsPct)}%"))
+    private fun JPanel.addDataCell(label: JBLabel, column: Int, row: Int) {
+        add(label, constraints(column, row))
+    }
+
+    private fun constraints(column: Int, row: Int): GridBagConstraints =
+        GridBagConstraints().apply {
+            gridx = column
+            gridy = row
+            weightx = 1.0
+            fill = GridBagConstraints.HORIZONTAL
+            anchor = GridBagConstraints.WEST
+            insets = if (column == 0) JBUI.emptyInsets() else JBUI.insetsLeft(4)
+        }
+
+    private fun createDayColumn(label: String, stat: RtkDayStat?): RtkColumn {
+        return if (stat != null) {
+            RtkColumn(
+                label = label,
+                tokens = "${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}",
+                savings = "-${"%.1f".format(stat.savingsPct)}%"
+            )
         } else {
-            panel.add(normalLabel("--"))
-            panel.add(normalLabel(" "))
+            RtkColumn(label, "--", " ")
         }
-        return panel
     }
 
-    private fun createWeekCard(stat: RtkWeekStat?): JPanel {
-        val panel = JPanel()
-        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
-        panel.isOpaque = false
-
-        panel.add(smallLabel("7d"))
-        panel.add(Box.createVerticalStrut(JBUI.scale(2)))
-        if (stat != null) {
-            panel.add(normalLabel("${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}"))
-            panel.add(normalLabel("-${"%.1f".format(stat.savingsPct)}%"))
+    private fun createWeekColumn(stat: RtkWeekStat?): RtkColumn {
+        return if (stat != null) {
+            RtkColumn(
+                label = "7d",
+                tokens = "${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}",
+                savings = "-${"%.1f".format(stat.savingsPct)}%"
+            )
         } else {
-            panel.add(normalLabel("--"))
-            panel.add(normalLabel(" "))
+            RtkColumn("7d", "--", " ")
         }
-        return panel
     }
 
-    private fun smallLabel(text: String) = JBLabel(text).apply {
+    private fun smallLabel(text: String) = gridLabel(text).apply {
         font = font.deriveFont(font.size2D - 2f)
-        foreground = SECONDARY_COLOR
-        alignmentX = 0f
     }
 
-    private fun normalLabel(text: String) = JBLabel(text).apply {
+    private fun normalLabel(text: String) = gridLabel(text).apply {
         font = font.deriveFont(font.size2D - 1.5f)
-        foreground = SECONDARY_COLOR
-        alignmentX = 0f
     }
+
+    private fun gridLabel(text: String) = JBLabel(text, SwingConstants.RIGHT).apply {
+        foreground = SECONDARY_COLOR
+    }
+
+    private data class RtkColumn(
+        val label: String,
+        val tokens: String,
+        val savings: String
+    )
 
     private companion object {
         private val SECONDARY_COLOR = JBColor(0x787878, 0x999999)
