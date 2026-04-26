@@ -1,9 +1,9 @@
 package de.espend.ml.llm
 
 import com.intellij.openapi.util.IconLoader
-import com.intellij.util.ui.ImageUtil
+import com.intellij.util.IconUtil
+import com.intellij.util.ui.JBUI
 import javax.swing.Icon
-import javax.swing.ImageIcon
 
 object PluginIcons {
     // Provider icons
@@ -40,9 +40,13 @@ object PluginIcons {
     val AI_PROVIDER_16: Icon = scaleIcon(AI_PROVIDER, 16)
 
     fun scaleIcon(icon: Icon, size: Int): Icon {
-        val image = IconLoader.toImage(icon) ?: return icon
-        val scaledImage = ImageUtil.scaleImage(image, size, size)
-        return ImageIcon(scaledImage)
+        val targetSize = JBUI.scale(size)
+        val currentSize = icon.iconWidth.coerceAtLeast(1)
+        if (currentSize == targetSize) {
+            return icon
+        }
+
+        return IconUtil.scale(icon, null, targetSize.toFloat() / currentSize)
     }
 
 }

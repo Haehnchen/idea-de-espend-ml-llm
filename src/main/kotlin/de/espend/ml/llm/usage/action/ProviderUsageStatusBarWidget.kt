@@ -111,7 +111,7 @@ class ProviderUsageStatusBarWidget(
             .forEach { account ->
                 val provider = service.getProvider(account.providerId)
                 val icon = provider?.providerInfo?.icon
-                    ?.let { PluginIcons.scaleIcon(it, JBUI.scale(12)) }
+                    ?.let { PluginIcons.scaleIcon(it, 12) }
                 val providerName = provider?.providerInfo?.providerName ?: account.providerId
                 val label = if (account.label.isBlank()) {
                     providerName
@@ -180,7 +180,7 @@ class ProviderUsageStatusBarWidget(
                     val response = service.getCachedResponse(account.id) ?: return@mapNotNull null
                     val provider = service.getProvider(account.providerId)
                     val icon = provider?.providerInfo?.icon
-                        ?.let { PluginIcons.scaleIcon(it, JBUI.scale(13)) }
+                        ?.let { PluginIcons.scaleIcon(it, 13) }
 
                     if (response.error != null) {
                         val entryCount = provider?.getAccountPanelInfo(account)?.usageEntryCount ?: 1
