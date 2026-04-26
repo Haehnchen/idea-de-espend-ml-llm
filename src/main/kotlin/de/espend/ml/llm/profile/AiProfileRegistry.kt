@@ -418,14 +418,18 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     }
 
     private fun hostEelPlatform(): EelPlatform {
-        val os = when {
-            SystemInfoRt.isMac -> "darwin"
-            SystemInfoRt.isWindows -> "windows"
-            else -> "linux"
+        val arch = when (System.getProperty("os.arch").lowercase()) {
+            "aarch64", "arm64" -> EelPlatform.Arch.ARM_64
+            "amd64", "x86_64" -> EelPlatform.Arch.X86_64
+            else -> error("Unsupported host architecture for ACP distribution: ${System.getProperty("os.arch")}")
         }
-        val arch = System.getProperty("os.arch")
-        return EelPlatform.getFor(os, arch)
-            ?: error("Unsupported host platform for ACP distribution: $os/$arch")
+
+        return when {
+            SystemInfoRt.isMac -> EelPlatform.Darwin(arch)
+            SystemInfoRt.isWindows -> EelPlatform.Windows(arch)
+            SystemInfoRt.isLinux -> EelPlatform.Linux(arch)
+            else -> error("Unsupported host OS for ACP distribution: ${System.getProperty("os.name")}")
+        }
     }
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
