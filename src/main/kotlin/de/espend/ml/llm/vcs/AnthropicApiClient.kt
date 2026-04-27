@@ -44,10 +44,11 @@ object AnthropicApiClient {
 
         // Validate configuration
         val baseUrl = AiProfilePlatformRegistry.getResolvedBaseUrl(endpoint, config.baseUrl)
+            .trimEnd('/')
             .takeIf { it.isNotBlank() }
             ?: return ApiResult.Error("No base URL configured for ${config.name.ifBlank { config.id }}")
 
-        val apiKey = config.apiKey.takeIf { it.isNotEmpty() }
+        val apiKey = config.apiKey.trim().takeIf { it.isNotEmpty() }
             ?: return ApiResult.Error("No API key configured for ${config.name.ifBlank { config.id }}")
 
         val model = config.model.takeIf { it.isNotEmpty() }
@@ -60,8 +61,8 @@ object AnthropicApiClient {
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "POST"
                 connection.setRequestProperty("Content-Type", "application/json")
-                connection.setRequestProperty("x-api-key", apiKey)
                 connection.setRequestProperty("anthropic-version", "2023-06-01")
+                connection.setRequestProperty("Authorization", "Bearer $apiKey")
                 connection.doOutput = true
                 connection.connectTimeout = 30000
                 connection.readTimeout = 60000

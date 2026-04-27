@@ -104,7 +104,7 @@ class ProviderCommitMessageAction : AnAction(
         val platform = AiProfilePlatformRegistry.findPlatform(config.platform) ?: return false
         val endpoint = AiProfilePlatformRegistry.resolveEndpoint(platform, config.effectiveApiType()) ?: return false
         val hasBaseUrl = AiProfilePlatformRegistry.getResolvedBaseUrl(endpoint, config.baseUrl).isNotBlank()
-        val hasApiKey = config.apiKey.isNotEmpty()
+        val hasApiKey = config.apiKey.isNotBlank()
         val hasModel = config.model.isNotEmpty() || platform.defaultModel.isNotEmpty()
         return hasBaseUrl && hasApiKey && hasModel
     }

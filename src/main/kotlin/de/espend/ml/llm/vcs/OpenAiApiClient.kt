@@ -40,7 +40,7 @@ object OpenAiApiClient {
             .takeIf { it.isNotBlank() }
             ?: return ApiResult.Error("No base URL configured for ${config.name.ifBlank { config.id }}")
 
-        val apiKey = config.apiKey.takeIf { it.isNotEmpty() }
+        val apiKey = config.apiKey.trim().takeIf { it.isNotEmpty() }
             ?: return ApiResult.Error("No API key configured for ${config.name.ifBlank { config.id }}")
 
         val model = config.model
