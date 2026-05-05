@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.13.0
+* Fix API auth headers and sanitize URL/key inputs for commit messages generator (Daniel Espendiller)
+* Refactor stats panel to use GridBagLayout (Daniel Espendiller)
+* rtk panel styling (Daniel Espendiller)
+* Add Tokscale token usage panel with week/month stats (Daniel Espendiller)
+
 # 0.12.0
 * Update for latest AI plugin changes (Daniel Espendiller)</li>
 * change OpenAi compatible icon (Daniel Espendiller)</li>
