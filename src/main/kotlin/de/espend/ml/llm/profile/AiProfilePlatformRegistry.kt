@@ -71,6 +71,8 @@ object AiProfilePlatformRegistry {
     const val PLATFORM_PI_DIRECT = "pi-direct"
     const val PLATFORM_GEMINI = "gemini"
     const val PLATFORM_OPENCODE = "opencode"
+    const val PLATFORM_OPENCODE_GO = "opencode-go"
+    const val PLATFORM_OPENCODE_ZEN = "opencode-zen"
     const val PLATFORM_CURSOR = "cursor"
     const val PLATFORM_KILO = "kilo"
     const val PLATFORM_FACTORY_AI = "factory-ai"
@@ -266,7 +268,33 @@ object AiProfilePlatformRegistry {
             openai = AiProfilePlatformEndpoint(
                 baseUrl = "https://ollama.com/v1/"
             )
-        )
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_OPENCODE_GO,
+            label = "OpenCode Go",
+            icon = PluginIcons.OPENCODE_GO,
+            defaultModel = "kimi-k2.6",
+            modelsUrl = "https://opencode.ai/zen/go/v1/models",
+            anthropic = AiProfilePlatformEndpoint(
+                baseUrl = "https://opencode.ai/zen"
+            ),
+            openai = AiProfilePlatformEndpoint(
+                baseUrl = "https://opencode.ai/zen/v1"
+            )
+        ),
+        AiProfilePlatformInfo(
+            id = PLATFORM_OPENCODE_ZEN,
+            label = "OpenCode Zen",
+            icon = PluginIcons.OPENCODE_ZEN,
+            defaultModel = "big-pickle",
+            modelsUrl = "https://opencode.ai/zen/v1/models",
+            anthropic = AiProfilePlatformEndpoint(
+                baseUrl = "https://opencode.ai/zen"
+            ),
+            openai = AiProfilePlatformEndpoint(
+                baseUrl = "https://opencode.ai/zen/v1"
+            )
+        ),
     )
 
     fun findPlatform(id: String): AiProfilePlatformInfo? {
