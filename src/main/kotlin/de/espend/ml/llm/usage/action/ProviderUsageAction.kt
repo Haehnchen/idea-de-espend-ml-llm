@@ -15,7 +15,6 @@ import de.espend.ml.llm.ProjectResolutionUtils
 import de.espend.ml.llm.usage.ProviderUsagePanel
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsagePlatformRegistry
-import java.awt.Dimension
 import javax.swing.JComponent
 
 /**
@@ -34,16 +33,15 @@ class ProviderUsageAction : AnAction(), DumbAware, CustomComponentAction {
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        val popupWidth = JBUI.scale(POPUP_WIDTH)
         val anchor = e.presentation.getClientProperty(CustomComponentAction.COMPONENT_KEY) ?: return
-        val actualPanel = ProviderUsagePanel(ProjectResolutionUtils.resolveProject(e))
+        val popupWidth = JBUI.scale(POPUP_WIDTH)
+        val actualPanel = ProviderUsagePanel(ProjectResolutionUtils.resolveProject(e), popupWidth)
 
         val popup = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(actualPanel, null)
             .setResizable(false)
             .setMovable(false)
             .setRequestFocus(true)
-            .setMinSize(Dimension(popupWidth, 0))
             .createPopup()
 
         actualPanel.start(popup)

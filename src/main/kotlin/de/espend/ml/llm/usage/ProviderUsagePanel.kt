@@ -36,7 +36,8 @@ import javax.swing.*
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
 class ProviderUsagePanel(
-    private var contextProject: Project? = null
+    private var contextProject: Project? = null,
+    private val fixedWidth: Int = JBUI.scale(DEFAULT_POPUP_WIDTH)
 ) : JPanel() {
 
     private val service = ProviderUsageService.getInstance()
@@ -163,6 +164,11 @@ class ProviderUsagePanel(
             override fun mouseExited(evt: java.awt.event.MouseEvent) { refreshIconButton.hovered = false; refreshIconButton.repaint() }
             override fun mouseClicked(evt: java.awt.event.MouseEvent) { if (!isLoading) doRefresh() }
         })
+    }
+
+    override fun getPreferredSize(): Dimension {
+        val size = super.getPreferredSize()
+        return Dimension(fixedWidth, size.height)
     }
 
     fun start(popup: JBPopup) {
@@ -429,6 +435,8 @@ class ProviderUsagePanel(
 private val SECONDARY_COLOR = JBColor(0x787878, 0x999999)
 private val ERROR_COLOR = JBColor(0xD84A4A, 0xE06C75)
 private val COLOR_OK = JBColor(0x3574F0, 0x3574F0)
+
+private const val DEFAULT_POPUP_WIDTH = 240
 
 private fun quotaColor(percentageUsed: Float) = when {
     percentageUsed >= 100f -> JBColor(0xD84A4A, 0xE06C75)
