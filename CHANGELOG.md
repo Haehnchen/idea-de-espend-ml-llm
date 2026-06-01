@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.14.0
+* Update IntelliJ dependency to 2026.1.2 and refactor `AgentServerConfig` initialization (Daniel Espendiller)
+* Extend `CodexUsageProvider` to support secondary rate limit windows and improve Spark usage handling (Daniel Espendiller)
+* Add OpenCode Go and OpenCode Zen support to platform registry and icons (Daniel Espendiller)
+
 # 0.13.0
 * Fix API auth headers and sanitize URL/key inputs for commit messages generator (Daniel Espendiller)
 * Refactor stats panel to use GridBagLayout (Daniel Espendiller)
