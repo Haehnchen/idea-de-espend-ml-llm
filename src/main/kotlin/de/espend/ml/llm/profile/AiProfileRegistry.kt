@@ -113,7 +113,11 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         platform: AiProfilePlatformInfo
     ): LocalAcpAgentConfig {
         val serverConfig = createServerConfig(profile, platform)
-        val defaultMcpSettings = DefaultMcpSettings(useCustomMcp = true, useIdeaMcp = true)
+        val defaultMcpSettings = DefaultMcpSettings(
+            useCustomMcp = true,
+            useIdeaMcp = true,
+            ideaMcpAllowedTools = null
+        )
         return LocalAcpAgentConfig.fromServerConfig(displayName, serverConfig, defaultMcpSettings)
     }
 
@@ -171,7 +175,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             resolveInstalledTransportServerConfig(AiProfileTransport.CLAUDE_ACP, env)?.let { return it }
         }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = CommandPathUtils.findClaudeAgentAcpPath() ?: "claude-agent-acp",
             args = emptyList(),
             env = env
@@ -201,7 +205,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
         resolveInstalledTransportServerConfig(AiProfileTransport.PI, env)?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.PI) ?: (CommandPathUtils.findPiAcpPath() ?: "pi-acp"),
             args = emptyList(),
             env = env
@@ -217,7 +221,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         if (endpoint == null) {
             resolveInstalledTransportServerConfig(AiProfileTransport.DROID, emptyMap())?.let { return it }
 
-            return AgentServerConfig(
+            return agentServerConfig(
                 command = resolveExecutable(profile, AiProfileTransport.DROID) ?: (CommandPathUtils.findDroidPath() ?: "droid"),
                 args = listOf("exec", "--output-format", "acp"),
                 env = emptyMap()
@@ -241,7 +245,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
         resolveInstalledDroidServerConfig(customModelId, env)?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.DROID) ?: (CommandPathUtils.findDroidPath() ?: "droid"),
             args = listOf(
                 "exec",
@@ -257,7 +261,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private fun createGeminiServerConfig(profile: AiProfileConfig): AgentServerConfig {
         resolveInstalledTransportServerConfig(AiProfileTransport.GEMINI, emptyMap())?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.GEMINI) ?: (CommandPathUtils.findGeminiPath() ?: "gemini"),
             args = listOf("--experimental-acp"),
             env = emptyMap()
@@ -267,7 +271,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private fun createOpenCodeServerConfig(profile: AiProfileConfig): AgentServerConfig {
         resolveInstalledTransportServerConfig(AiProfileTransport.OPENCODE, emptyMap())?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.OPENCODE) ?: (CommandPathUtils.findOpenCodePath() ?: "opencode"),
             args = listOf("acp"),
             env = emptyMap()
@@ -277,7 +281,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private fun createCursorServerConfig(profile: AiProfileConfig): AgentServerConfig {
         resolveInstalledTransportServerConfig(AiProfileTransport.CURSOR, emptyMap())?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.CURSOR) ?: (CommandPathUtils.findCursorAgentPath() ?: "agent"),
             args = listOf("acp"),
             env = emptyMap()
@@ -287,7 +291,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     private fun createKiloServerConfig(profile: AiProfileConfig): AgentServerConfig {
         resolveInstalledTransportServerConfig(AiProfileTransport.KILO, emptyMap())?.let { return it }
 
-        return AgentServerConfig(
+        return agentServerConfig(
             command = resolveExecutable(profile, AiProfileTransport.KILO) ?: (CommandPathUtils.findKiloPath() ?: "kilo"),
             args = listOf("acp"),
             env = emptyMap()
@@ -307,7 +311,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
-                AgentServerConfig(
+                agentServerConfig(
                     command = startConfig.command,
                     args = startConfig.args + listOf("--model", customModelId),
                     env = buildMap {
@@ -327,7 +331,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                     return null
                 }
 
-                AgentServerConfig(
+                agentServerConfig(
                     command = startConfig.command,
                     args = startConfig.args + listOf("--model", customModelId),
                     env = buildMap {
@@ -354,7 +358,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
-                AgentServerConfig(
+                agentServerConfig(
                     command = startConfig.command,
                     args = startConfig.args,
                     env = buildMap {
@@ -374,7 +378,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                     return null
                 }
 
-                AgentServerConfig(
+                agentServerConfig(
                     command = startConfig.command,
                     args = startConfig.args,
                     env = buildMap {
@@ -416,6 +420,12 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
 
         return true
     }
+
+    private fun agentServerConfig(
+        command: String,
+        args: List<String>,
+        env: Map<String, String>
+    ): AgentServerConfig = AgentServerConfig(command, args, env, null, null, null)
 
     private fun hostEelPlatform(): EelPlatform {
         val arch = when (System.getProperty("os.arch").lowercase()) {
