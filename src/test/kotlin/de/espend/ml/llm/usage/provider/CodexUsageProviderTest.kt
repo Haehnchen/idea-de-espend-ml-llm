@@ -17,6 +17,10 @@ class CodexUsageProviderTest {
                     "primary_window": {
                         "used_percent": 45.5,
                         "reset_at": 1741440000.0
+                    },
+                    "secondary_window": {
+                        "used_percent": 12.0,
+                        "reset_at": 1741880000.0
                     }
                 }
             }
@@ -25,7 +29,11 @@ class CodexUsageProviderTest {
         val result = provider.parseResponseBody(json)
 
         assertTrue("Should be success", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(45.5f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(12.0f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertTrue(result.data!!.entries[0].subtitle?.startsWith("5h") == true)
+        assertTrue(result.data!!.entries[1].subtitle?.startsWith("Weekly") == true)
     }
 
     @Test
@@ -174,13 +182,17 @@ class CodexUsageProviderTest {
     }
 
     @Test
-    fun `parseResponseBody should include spark primary window when enabled`() {
+    fun `parseResponseBody should include spark windows when enabled`() {
         val json = """
             {
                 "rate_limit": {
                     "primary_window": {
                         "used_percent": 15.5,
                         "reset_at": 1741443600.0
+                    },
+                    "secondary_window": {
+                        "used_percent": 22.5,
+                        "reset_at": 1741880000.0
                     }
                 },
                 "additional_rate_limits": [
@@ -190,6 +202,10 @@ class CodexUsageProviderTest {
                             "primary_window": {
                                 "used_percent": 7.0,
                                 "reset_at": 1741447200.0
+                            },
+                            "secondary_window": {
+                                "used_percent": 13.0,
+                                "reset_at": 1741887200.0
                             }
                         }
                     }
@@ -200,14 +216,46 @@ class CodexUsageProviderTest {
         val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals(2, result.data!!.entries.size)
+        assertEquals(4, result.data!!.entries.size)
         assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
-        assertEquals(7.0f, result.data!!.entries[1].percentageUsed, 0.1f)
-        assertTrue(result.data!!.entries[1].subtitle?.contains("Spark") == true)
+        assertEquals(22.5f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertEquals(7.0f, result.data!!.entries[2].percentageUsed, 0.1f)
+        assertEquals(13.0f, result.data!!.entries[3].percentageUsed, 0.1f)
+        assertTrue(result.data!!.entries[2].subtitle?.contains("Spark") == true)
+        assertTrue(result.data!!.entries[3].subtitle?.contains("Weekly") == true)
     }
 
     @Test
-    fun `parseResponseBody should use empty spark entry when enabled but unavailable`() {
+    fun `parseResponseBody should use empty spark entries when enabled but unavailable`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 15.5,
+                        "reset_at": 1741443600.0
+                    },
+                    "secondary_window": {
+                        "used_percent": 8.0,
+                        "reset_at": 1741880000.0
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals(4, result.data!!.entries.size)
+        assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(8.0f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertEquals(0f, result.data!!.entries[2].percentageUsed, 0.1f)
+        assertEquals(0f, result.data!!.entries[3].percentageUsed, 0.1f)
+        assertEquals("Spark 5h unavailable", result.data!!.entries[2].subtitle)
+        assertEquals("Spark Weekly unavailable", result.data!!.entries[3].subtitle)
+    }
+
+    @Test
+    fun `parseResponseBody should use empty weekly entry when secondary window is missing`() {
         val json = """
             {
                 "rate_limit": {
@@ -219,12 +267,13 @@ class CodexUsageProviderTest {
             }
         """.trimIndent()
 
-        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+        val result = provider.parseResponseBody(json)
 
         assertTrue("Should be success", result.data != null)
         assertEquals(2, result.data!!.entries.size)
+        assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
         assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
-        assertEquals("Spark unavailable", result.data!!.entries[1].subtitle)
+        assertEquals("Weekly unavailable", result.data!!.entries[1].subtitle)
     }
 
     // ==================== parseResponseBody - Error Cases ====================
@@ -334,14 +383,22 @@ class CodexUsageProviderTest {
     }
 
     @Test
-    fun `getAccountPanelInfo should return two progress bars when spark is enabled`() {
+    fun `getAccountPanelInfo should return two progress bars by default`() {
+        val panelInfo = provider.getAccountPanelInfo(CodexUsageProvider.CodexUsageAccountConfig())
+
+        assertEquals(2, panelInfo.usageEntryCount)
+        assertEquals(0, panelInfo.lineCount)
+    }
+
+    @Test
+    fun `getAccountPanelInfo should return four progress bars when spark is enabled`() {
         val config = CodexUsageProvider.CodexUsageAccountConfig().apply {
             showSparkPrimaryWindow = true
         }
 
         val panelInfo = provider.getAccountPanelInfo(config)
 
-        assertEquals(2, panelInfo.usageEntryCount)
+        assertEquals(4, panelInfo.usageEntryCount)
         assertEquals(0, panelInfo.lineCount)
     }
 
@@ -357,7 +414,8 @@ class CodexUsageProviderTest {
                         "reset_at": 1741443600.0
                     },
                     "secondary_window": {
-                        "used_percent": 5.2
+                        "used_percent": 5.2,
+                        "limit_window_seconds": 604800
                     }
                 }
             }
@@ -366,7 +424,9 @@ class CodexUsageProviderTest {
         val result = provider.parseResponseBody(json)
 
         assertTrue("Should be success", result.data != null)
+        assertEquals(2, result.data!!.entries.size)
         assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(5.2f, result.data!!.entries[1].percentageUsed, 0.1f)
     }
 
     @Test

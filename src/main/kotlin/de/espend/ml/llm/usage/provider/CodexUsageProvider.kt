@@ -1,5 +1,6 @@
 package de.espend.ml.llm.usage.provider
 
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
@@ -9,7 +10,7 @@ import de.espend.ml.llm.usage.AccountPanelInfo
 import de.espend.ml.llm.usage.ProviderInfo
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
-import de.espend.ml.llm.usage.UsageData
+import de.espend.ml.llm.usage.UsageEntry
 import de.espend.ml.llm.usage.UsageFetchResult
 import de.espend.ml.llm.usage.UsageFormatUtils
 import de.espend.ml.llm.usage.UsagePlatformRegistry
@@ -65,7 +66,7 @@ class CodexUsageProvider : UsageProvider {
 
     override fun getAccountPanelInfo(account: UsageAccountConfig): AccountPanelInfo {
         val config = account as? CodexUsageAccountConfig
-        return AccountPanelInfo.progressbar(if (config?.showSparkPrimaryWindow == true) 2 else 1)
+        return AccountPanelInfo.progressbar(if (config?.showSparkPrimaryWindow == true) 4 else 2)
     }
     override val configClass = CodexUsageAccountConfig::class
 
@@ -136,7 +137,7 @@ class CodexUsageProvider : UsageProvider {
             add(statusLabel)
         }
 
-        val sparkPrimaryWindowCheckbox = JCheckBox("Show GPT-5.3-Codex-Spark primary window", config.showSparkPrimaryWindow).apply {
+        val sparkPrimaryWindowCheckbox = JCheckBox("Show GPT-5.3-Codex-Spark windows", config.showSparkPrimaryWindow).apply {
             font = smallFont
             alignmentX = Component.LEFT_ALIGNMENT
             isOpaque = false
@@ -399,33 +400,33 @@ class CodexUsageProvider : UsageProvider {
     }
 
     private fun parseUsageEntries(
-        root: com.google.gson.JsonObject,
+        root: JsonObject,
         headerPercent: Double?,
         includeSparkPrimaryWindow: Boolean
     ): UsageFetchResult {
         val rateLimit = root.getAsJsonObject("rate_limit")
         val primaryWindow = rateLimit?.getAsJsonObject("primary_window")
+        val secondaryWindow = rateLimit?.getAsJsonObject("secondary_window")
 
-        val usedPercent: Double = headerPercent
-            ?: primaryWindow?.get("used_percent")?.asDouble
-            ?: return UsageFetchResult.error("No usage data found in response")
+        val primaryEntry = parseWindowEntry(
+            primaryWindow,
+            headerPercent,
+            PRIMARY_WINDOW_LABEL
+        ) ?: return UsageFetchResult.error("No usage data found in response")
 
-        val entries = mutableListOf(
-            de.espend.ml.llm.usage.UsageEntry(
-                percentageUsed = usedPercent.toFloat().coerceIn(0f, 100f),
-                subtitle = buildSubtitle(primaryWindow)
-            )
-        )
+        val entries = mutableListOf(primaryEntry)
+        entries += parseWindowEntry(secondaryWindow, null, WEEKLY_WINDOW_LABEL)
+            ?: unavailableEntry(WEEKLY_WINDOW_LABEL)
 
         if (includeSparkPrimaryWindow) {
-            entries += parseSparkPrimaryWindowEntry(root)
+            entries += parseSparkWindowEntries(root)
         }
 
         return UsageFetchResult.success(entries)
     }
 
-    private fun parseSparkPrimaryWindowEntry(root: com.google.gson.JsonObject): de.espend.ml.llm.usage.UsageEntry {
-        val sparkWindow = root.getAsJsonArray("additional_rate_limits")
+    private fun parseSparkWindowEntries(root: JsonObject): List<UsageEntry> {
+        val sparkRateLimit = root.getAsJsonArray("additional_rate_limits")
             ?.mapNotNull { element -> element?.asJsonObject }
             ?.firstOrNull { entry ->
                 entry.get("limit_name")
@@ -433,27 +434,61 @@ class CodexUsageProvider : UsageProvider {
                     ?.contains(SPARK_LIMIT_INDICATOR, ignoreCase = true) == true
             }
             ?.getAsJsonObject("rate_limit")
-            ?.getAsJsonObject("primary_window")
 
-        if (sparkWindow == null) {
-            return de.espend.ml.llm.usage.UsageEntry(
-                percentageUsed = 0f,
-                subtitle = "$SPARK_SHORT_LABEL unavailable"
+        if (sparkRateLimit == null) {
+            return listOf(
+                unavailableEntry("$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"),
+                unavailableEntry("$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL")
             )
         }
 
-        return de.espend.ml.llm.usage.UsageEntry(
-            percentageUsed = (sparkWindow.get("used_percent")?.asDouble ?: 0.0).toFloat().coerceIn(0f, 100f),
-            subtitle = listOfNotNull(SPARK_SHORT_LABEL, buildSubtitle(sparkWindow)).joinToString(" · ")
+        return listOf(
+            parseWindowEntry(
+                sparkRateLimit.getAsJsonObject("primary_window"),
+                null,
+                "$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"
+            ) ?: unavailableEntry("$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"),
+            parseWindowEntry(
+                sparkRateLimit.getAsJsonObject("secondary_window"),
+                null,
+                "$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL"
+            ) ?: unavailableEntry("$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL")
         )
     }
 
-    private fun buildSubtitle(primaryWindow: com.google.gson.JsonObject?): String? {
-        primaryWindow ?: return null
+    private fun parseWindowEntry(
+        window: JsonObject?,
+        headerPercent: Double?,
+        label: String
+    ): UsageEntry? {
+        val usedPercent: Double = headerPercent
+            ?: window?.get("used_percent")?.asDouble
+            ?: return null
+
+        return UsageEntry(
+            percentageUsed = usedPercent.toFloat().coerceIn(0f, 100f),
+            subtitle = buildWindowSubtitle(label, window)
+        )
+    }
+
+    private fun unavailableEntry(label: String): UsageEntry {
+        return UsageEntry(
+            percentageUsed = 0f,
+            subtitle = "$label unavailable"
+        )
+    }
+
+    private fun buildWindowSubtitle(label: String, window: JsonObject?): String {
+        val reset = buildResetSubtitle(window)
+        return if (reset != null) "$label · $reset" else label
+    }
+
+    private fun buildResetSubtitle(window: JsonObject?): String? {
+        window ?: return null
 
         val nowSeconds = System.currentTimeMillis() / 1000.0
-        val resetAtSeconds: Double = primaryWindow.get("reset_at")?.asDouble
-            ?: primaryWindow.get("reset_after_seconds")?.asDouble?.let { nowSeconds + it }
+        val resetAtSeconds: Double = window.get("reset_at")?.asDouble
+            ?: window.get("reset_after_seconds")?.asDouble?.let { nowSeconds + it }
             ?: return null
 
         val secondsUntil = (resetAtSeconds - nowSeconds).toLong()
@@ -517,6 +552,8 @@ class CodexUsageProvider : UsageProvider {
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
         private const val SPARK_LIMIT_INDICATOR = "spark"
         private const val SPARK_SHORT_LABEL = "Spark"
+        private const val PRIMARY_WINDOW_LABEL = "5h"
+        private const val WEEKLY_WINDOW_LABEL = "Weekly"
     }
 
     private data class Credentials(
