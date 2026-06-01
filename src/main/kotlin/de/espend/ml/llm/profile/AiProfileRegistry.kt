@@ -20,7 +20,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.util.SystemInfoRt
-import com.intellij.platform.eel.EelPlatform
 import com.intellij.util.xmlb.XmlSerializerUtil
 import de.espend.ml.llm.CommandPathUtils
 import de.espend.ml.llm.PluginIcons
@@ -308,7 +307,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
             ?: return null
 
-        return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
+        return when (val resolved = resolveInstalledDistribution(installedAgent) ?: return null) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
                 agentServerConfig(
@@ -355,7 +354,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             ?.getInstalledAgent(AcpRegistryAgentId(registryAgentId))
             ?: return null
 
-        return when (val resolved = AcpDistributionResolver.resolve(installedAgent, hostEelPlatform())) {
+        return when (val resolved = resolveInstalledDistribution(installedAgent) ?: return null) {
             is AcpDistributionResolver.ResolvedDistribution.Package -> {
                 val startConfig = AcpDistributionResolver.toAgentStartConfig(resolved)
                 agentServerConfig(
@@ -427,20 +426,38 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
         env: Map<String, String>
     ): AgentServerConfig = AgentServerConfig(command, args, env, null, null, null)
 
-    private fun hostEelPlatform(): EelPlatform {
+    private fun resolveInstalledDistribution(installedAgent: Any): AcpDistributionResolver.ResolvedDistribution? {
+        return runCatching {
+            val externalAgentClass = Class.forName("com.intellij.ml.llm.agents.acp.registry.ExternalAgent")
+            val eelPlatformClass = Class.forName("com.intellij.platform.eel.EelPlatform")
+            AcpDistributionResolver::class.java
+                .getMethod("resolve", externalAgentClass, eelPlatformClass)
+                .invoke(AcpDistributionResolver, installedAgent, hostEelPlatform())
+                as? AcpDistributionResolver.ResolvedDistribution
+        }.onFailure {
+            LOG.warn("Failed to resolve installed ACP distribution", it)
+        }.getOrNull()
+    }
+
+    private fun hostEelPlatform(): Any {
         val arch = when (System.getProperty("os.arch").lowercase()) {
-            "aarch64", "arm64" -> EelPlatform.Arch.ARM_64
-            "amd64", "x86_64" -> EelPlatform.Arch.X86_64
+            "aarch64", "arm64" -> singleton("com.intellij.platform.eel.EelPlatform\$Arch\$ARM_64")
+            "amd64", "x86_64" -> singleton("com.intellij.platform.eel.EelPlatform\$Arch\$X86_64")
             else -> error("Unsupported host architecture for ACP distribution: ${System.getProperty("os.arch")}")
         }
-
-        return when {
-            SystemInfoRt.isMac -> EelPlatform.Darwin(arch)
-            SystemInfoRt.isWindows -> EelPlatform.Windows(arch)
-            SystemInfoRt.isLinux -> EelPlatform.Linux(arch)
+        val platformClass = when {
+            SystemInfoRt.isMac -> "com.intellij.platform.eel.EelPlatform\$Darwin"
+            SystemInfoRt.isWindows -> "com.intellij.platform.eel.EelPlatform\$Windows"
+            SystemInfoRt.isLinux -> "com.intellij.platform.eel.EelPlatform\$Linux"
             else -> error("Unsupported host OS for ACP distribution: ${System.getProperty("os.name")}")
         }
+
+        val archClass = Class.forName("com.intellij.platform.eel.EelPlatform\$Arch")
+        return Class.forName(platformClass).getConstructor(archClass).newInstance(arch)
     }
+
+    private fun singleton(className: String): Any =
+        Class.forName(className).getField("INSTANCE").get(null)
 
     private fun resolveDisplayName(profile: AiProfileConfig, platform: AiProfilePlatformInfo): String {
         val explicitName = profile.name.trim()
