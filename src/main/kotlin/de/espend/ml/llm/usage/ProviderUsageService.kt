@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Application-wide service for fetching and caching provider usage data.
@@ -36,6 +38,10 @@ class ProviderUsageService {
 
     // Per-account cache: accountId → CachedEntry
     private val accountCache = ConcurrentHashMap<String, CachedEntry>()
+
+    // OAuth refresh tokens are often single-use. Serialize fetches per account so
+    // stale UI/statusbar snapshots cannot consume the same refresh token twice.
+    private val accountFetchLocks = ConcurrentHashMap<String, Mutex>()
 
     // Listeners notified on every cache update or clear
     private val cacheListeners = CopyOnWriteArrayList<() -> Unit>()
@@ -77,33 +83,47 @@ class ProviderUsageService {
      * Fetch usage for a specific account.
      */
     suspend fun fetchUsage(account: UsageAccountConfig): ProviderUsageResponse {
-        val provider = providers[account.providerId] ?: return ProviderUsageResponse.error("No provider for ${account.providerId}")
+        val lock = accountFetchLocks.computeIfAbsent(account.id) { Mutex() }
+        return lock.withLock {
+            val currentAccount = getCurrentAccountConfig(account)
+            val provider = providers[currentAccount.providerId]
+                ?: return@withLock ProviderUsageResponse.error("No provider for ${currentAccount.providerId}")
 
-        LOG.debug("Fetching usage: provider=${account.providerId}, account=${account.id} (${account.name})")
-        return try {
-            val result = provider.fetchUsage(account)
-            if (result.data != null) {
-                val entries = result.data.entries.map {
-                    ProviderUsageEntry(it.percentageUsed, it.subtitle)
+            LOG.debug("Fetching usage: provider=${currentAccount.providerId}, account=${currentAccount.id} (${currentAccount.name})")
+            try {
+                val result = provider.fetchUsage(currentAccount)
+                if (result.data != null) {
+                    val entries = result.data.entries.map {
+                        ProviderUsageEntry(it.percentageUsed, it.subtitle)
+                    }
+                    val lines = result.data.lines.map {
+                        ProviderUsageLine(it.text)
+                    }
+                    ProviderUsageResponse(
+                        ProviderUsage(
+                            providerId = provider.providerInfo.providerId,
+                            providerName = provider.providerInfo.providerName,
+                            entries = entries,
+                            lines = lines
+                        ),
+                        null
+                    )
+                } else {
+                    ProviderUsageResponse.error(result.error ?: "Unknown error")
                 }
-                val lines = result.data.lines.map {
-                    ProviderUsageLine(it.text)
-                }
-                ProviderUsageResponse(
-                    ProviderUsage(
-                        providerId = provider.providerInfo.providerId,
-                        providerName = provider.providerInfo.providerName,
-                        entries = entries,
-                        lines = lines
-                    ),
-                    null
-                )
-            } else {
-                ProviderUsageResponse.error(result.error ?: "Unknown error")
+            } catch (e: Exception) {
+                ProviderUsageResponse.error(e.message ?: "Unknown error")
             }
-        } catch (e: Exception) {
-            ProviderUsageResponse.error(e.message ?: "Unknown error")
         }
+    }
+
+    private fun getCurrentAccountConfig(account: UsageAccountConfig): UsageAccountConfig {
+        val state = UsagePlatformRegistry.getInstance()
+            .getAccountStates()
+            .firstOrNull { it.id == account.id && it.providerId == account.providerId }
+            ?: return account
+
+        return providers[state.providerId]?.fromState(state) ?: account
     }
 
     /**

@@ -250,8 +250,8 @@ class CodexUsageProviderTest {
         assertEquals(8.0f, result.data!!.entries[1].percentageUsed, 0.1f)
         assertEquals(0f, result.data!!.entries[2].percentageUsed, 0.1f)
         assertEquals(0f, result.data!!.entries[3].percentageUsed, 0.1f)
-        assertEquals("Spark 5h unavailable", result.data!!.entries[2].subtitle)
-        assertEquals("Spark Weekly unavailable", result.data!!.entries[3].subtitle)
+        assertEquals("Spark 5h · n/a", result.data!!.entries[2].subtitle)
+        assertEquals("Spark Weekly · n/a", result.data!!.entries[3].subtitle)
     }
 
     @Test
@@ -273,7 +273,89 @@ class CodexUsageProviderTest {
         assertEquals(2, result.data!!.entries.size)
         assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
         assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
-        assertEquals("Weekly unavailable", result.data!!.entries[1].subtitle)
+        assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+    }
+
+    @Test
+    fun `parseResponseBody should parse free account monthly response with null optional windows`() {
+        val json = """
+            {
+                "plan_type": "free",
+                "rate_limit": {
+                    "allowed": true,
+                    "limit_reached": false,
+                    "primary_window": {
+                        "used_percent": 10,
+                        "limit_window_seconds": 2592000,
+                        "reset_after_seconds": 2591253,
+                        "reset_at": 1783063148
+                    },
+                    "secondary_window": null
+                },
+                "code_review_rate_limit": null,
+                "additional_rate_limits": null,
+                "credits": {
+                    "has_credits": false,
+                    "unlimited": false,
+                    "overage_limit_reached": false,
+                    "balance": null,
+                    "approx_local_messages": null,
+                    "approx_cloud_messages": null
+                },
+                "spend_control": {
+                    "reached": false,
+                    "individual_limit": null
+                },
+                "rate_limit_reached_type": null,
+                "promo": null,
+                "referral_beacon": null,
+                "rate_limit_reset_credits": {
+                    "available_count": 0
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        assertTrue("Should be success", result.data != null)
+        assertNull("Should not expose parse/cast errors to the user", result.error)
+        assertEquals(2, result.data!!.entries.size)
+        assertEquals(10f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertTrue(result.data!!.entries[0].subtitle?.startsWith("Monthly") == true)
+        assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
+        assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+    }
+
+    @Test
+    fun `parseResponseBody should parse free account response with spark enabled and null additional limits`() {
+        val json = """
+            {
+                "plan_type": "free",
+                "rate_limit": {
+                    "allowed": true,
+                    "limit_reached": false,
+                    "primary_window": {
+                        "used_percent": 10,
+                        "limit_window_seconds": 2592000,
+                        "reset_after_seconds": 2591253,
+                        "reset_at": 1783063148
+                    },
+                    "secondary_window": null
+                },
+                "additional_rate_limits": null
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+
+        assertTrue("Should be success", result.data != null)
+        assertNull("Should not expose parse/cast errors to the user", result.error)
+        assertEquals(4, result.data!!.entries.size)
+        assertEquals(10f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertTrue(result.data!!.entries[0].subtitle?.startsWith("Monthly") == true)
+        assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+        assertEquals("Spark 5h · n/a", result.data!!.entries[2].subtitle)
+        assertEquals("Spark Weekly · n/a", result.data!!.entries[3].subtitle)
     }
 
     // ==================== parseResponseBody - Error Cases ====================

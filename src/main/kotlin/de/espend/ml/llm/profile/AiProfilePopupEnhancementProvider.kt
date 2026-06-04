@@ -1,8 +1,10 @@
 package de.espend.ml.llm.profile
 
 import com.intellij.ml.llm.core.chat.ui.AgentPopupEnhancementProvider
+import com.intellij.ml.llm.core.chat.ui.AgentPopupFirstLevelEntry
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.project.Project
+import de.espend.ml.llm.PluginIcons
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import javax.swing.Icon
@@ -14,6 +16,26 @@ class AiProfilePopupEnhancementProvider : AgentPopupEnhancementProvider {
 
     override fun getFirstLevelActions(): List<AnAction> {
         return listOf(OpenAiProfilesSettingsAction())
+    }
+
+    override fun getFirstLevelEntries(project: Project): List<AgentPopupFirstLevelEntry> {
+        return listOf(
+            AgentPopupFirstLevelEntry(
+                ENTRY_AGENT_PROFILES,
+                "Agent Profiles",
+                PluginIcons.AI_PROVIDER_16,
+                "Open Agent Profiles settings"
+            )
+        )
+    }
+
+    override fun handleFirstLevelEntrySelection(entryId: String, project: Project): Boolean {
+        if (entryId != ENTRY_AGENT_PROFILES) {
+            return false
+        }
+
+        openAiProfilesSettings(project)
+        return true
     }
 
     override fun hasUpdate(agentId: String): Boolean = false
@@ -37,4 +59,8 @@ class AiProfilePopupEnhancementProvider : AgentPopupEnhancementProvider {
     override fun getNotReadyReason(agentId: String, project: Project): String? = null
 
     override fun getAgentReadinessFlow(agentId: String): Flow<Boolean> = flowOf(true)
+
+    private companion object {
+        const val ENTRY_AGENT_PROFILES = "de.espend.ml.llm.agentProfiles"
+    }
 }

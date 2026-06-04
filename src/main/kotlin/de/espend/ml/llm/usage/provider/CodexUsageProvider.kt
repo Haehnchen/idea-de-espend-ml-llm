@@ -154,8 +154,7 @@ class CodexUsageProvider : UsageProvider {
             } else if (creds.refreshToken != null) {
                 try {
                     val refreshed = runBlocking { refreshAccessToken(creds.refreshToken) }
-                    config.cachedAccessToken = refreshed.accessToken
-                    config.cachedRefreshToken = refreshed.refreshToken ?: ""
+                    persistCachedCredentials(config, refreshed, credentialMode = "manual")
                     updateTokenStatus(refreshed.accessToken)
                 } catch (e: Exception) {
                     // Refresh failed - show truncated error
@@ -274,19 +273,32 @@ class CodexUsageProvider : UsageProvider {
             return UsageFetchResult.error("Token refresh failed: ${e.message}")
         }
 
-        // Persist the new access_token in plugin state (never modify the CLI credential file)
-        config.cachedAccessToken = refreshed.accessToken
-        config.cachedRefreshToken = refreshed.refreshToken ?: config.cachedRefreshToken
-        UsagePlatformRegistry.getInstance().updateAccountProperties(
-            config.id,
-            buildMap {
-                put("cachedAccessToken", refreshed.accessToken)
-                if (refreshed.refreshToken != null) put("cachedRefreshToken", refreshed.refreshToken)
-            }
-        )
+        // Persist the rotated token chain before retrying. Refresh tokens are single-use.
+        persistCachedCredentials(config, refreshed)
 
         val response = fetchUsageHttp(refreshed.accessToken)
         return parseUsageResponse(response, config.showSparkPrimaryWindow)
+    }
+
+    private fun persistCachedCredentials(
+        config: CodexUsageAccountConfig,
+        credentials: Credentials,
+        credentialMode: String? = null
+    ) {
+        if (credentialMode != null) {
+            config.credentialMode = credentialMode
+        }
+        config.cachedAccessToken = credentials.accessToken
+        config.cachedRefreshToken = credentials.refreshToken ?: config.cachedRefreshToken
+
+        UsagePlatformRegistry.getInstance().updateAccountProperties(
+            config.id,
+            buildMap {
+                if (credentialMode != null) put("credentialMode", credentialMode)
+                put("cachedAccessToken", config.cachedAccessToken)
+                put("cachedRefreshToken", config.cachedRefreshToken)
+            }
+        )
     }
 
     private suspend fun fetchUsageHttp(accessToken: String): HttpResponse<String> {
@@ -404,14 +416,15 @@ class CodexUsageProvider : UsageProvider {
         headerPercent: Double?,
         includeSparkPrimaryWindow: Boolean
     ): UsageFetchResult {
-        val rateLimit = root.getAsJsonObject("rate_limit")
-        val primaryWindow = rateLimit?.getAsJsonObject("primary_window")
-        val secondaryWindow = rateLimit?.getAsJsonObject("secondary_window")
+        val rateLimit = root.getObjectOrNull("rate_limit")
+        val primaryWindow = rateLimit?.getObjectOrNull("primary_window")
+        val secondaryWindow = rateLimit?.getObjectOrNull("secondary_window")
+        val primaryWindowLabel = labelForWindow(primaryWindow, PRIMARY_WINDOW_LABEL)
 
         val primaryEntry = parseWindowEntry(
             primaryWindow,
             headerPercent,
-            PRIMARY_WINDOW_LABEL
+            primaryWindowLabel
         ) ?: return UsageFetchResult.error("No usage data found in response")
 
         val entries = mutableListOf(primaryEntry)
@@ -426,14 +439,13 @@ class CodexUsageProvider : UsageProvider {
     }
 
     private fun parseSparkWindowEntries(root: JsonObject): List<UsageEntry> {
-        val sparkRateLimit = root.getAsJsonArray("additional_rate_limits")
-            ?.mapNotNull { element -> element?.asJsonObject }
+        val sparkRateLimit = root.getArrayOrNull("additional_rate_limits")
+            ?.mapNotNull { element -> element.asObjectOrNull() }
             ?.firstOrNull { entry ->
-                entry.get("limit_name")
-                    ?.asString
+                entry.getStringOrNull("limit_name")
                     ?.contains(SPARK_LIMIT_INDICATOR, ignoreCase = true) == true
             }
-            ?.getAsJsonObject("rate_limit")
+            ?.getObjectOrNull("rate_limit")
 
         if (sparkRateLimit == null) {
             return listOf(
@@ -442,17 +454,22 @@ class CodexUsageProvider : UsageProvider {
             )
         }
 
+        val primaryWindow = sparkRateLimit.getObjectOrNull("primary_window")
+        val secondaryWindow = sparkRateLimit.getObjectOrNull("secondary_window")
+        val primaryWindowLabel = "$SPARK_SHORT_LABEL ${labelForWindow(primaryWindow, PRIMARY_WINDOW_LABEL)}"
+        val secondaryWindowLabel = "$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL"
+
         return listOf(
             parseWindowEntry(
-                sparkRateLimit.getAsJsonObject("primary_window"),
+                primaryWindow,
                 null,
-                "$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"
-            ) ?: unavailableEntry("$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"),
+                primaryWindowLabel
+            ) ?: unavailableEntry(primaryWindowLabel),
             parseWindowEntry(
-                sparkRateLimit.getAsJsonObject("secondary_window"),
+                secondaryWindow,
                 null,
-                "$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL"
-            ) ?: unavailableEntry("$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL")
+                secondaryWindowLabel
+            ) ?: unavailableEntry(secondaryWindowLabel)
         )
     }
 
@@ -462,7 +479,7 @@ class CodexUsageProvider : UsageProvider {
         label: String
     ): UsageEntry? {
         val usedPercent: Double = headerPercent
-            ?: window?.get("used_percent")?.asDouble
+            ?: window?.getDoubleOrNull("used_percent")
             ?: return null
 
         return UsageEntry(
@@ -474,7 +491,7 @@ class CodexUsageProvider : UsageProvider {
     private fun unavailableEntry(label: String): UsageEntry {
         return UsageEntry(
             percentageUsed = 0f,
-            subtitle = "$label unavailable"
+            subtitle = "$label · n/a"
         )
     }
 
@@ -487,12 +504,45 @@ class CodexUsageProvider : UsageProvider {
         window ?: return null
 
         val nowSeconds = System.currentTimeMillis() / 1000.0
-        val resetAtSeconds: Double = window.get("reset_at")?.asDouble
-            ?: window.get("reset_after_seconds")?.asDouble?.let { nowSeconds + it }
+        val resetAtSeconds: Double = window.getDoubleOrNull("reset_at")
+            ?: window.getDoubleOrNull("reset_after_seconds")?.let { nowSeconds + it }
             ?: return null
 
         val secondsUntil = (resetAtSeconds - nowSeconds).toLong()
         return UsageFormatUtils.formatSecondsUntilReset(secondsUntil)
+    }
+
+    private fun labelForWindow(window: JsonObject?, fallback: String): String {
+        val seconds = window?.getDoubleOrNull("limit_window_seconds")?.toLong() ?: return fallback
+        return when {
+            seconds in MONTHLY_WINDOW_SECONDS_RANGE -> MONTHLY_WINDOW_LABEL
+            else -> fallback
+        }
+    }
+
+    private fun JsonObject.getObjectOrNull(memberName: String): JsonObject? {
+        return get(memberName)?.asObjectOrNull()
+    }
+
+    private fun JsonObject.getArrayOrNull(memberName: String): Iterable<com.google.gson.JsonElement>? {
+        val element = get(memberName) ?: return null
+        return if (element.isJsonArray) element.asJsonArray else null
+    }
+
+    private fun com.google.gson.JsonElement.asObjectOrNull(): JsonObject? {
+        return if (isJsonObject) asJsonObject else null
+    }
+
+    private fun JsonObject.getDoubleOrNull(memberName: String): Double? {
+        val element = get(memberName) ?: return null
+        if (!element.isJsonPrimitive) return null
+        return runCatching { element.asDouble }.getOrNull()
+    }
+
+    private fun JsonObject.getStringOrNull(memberName: String): String? {
+        val element = get(memberName) ?: return null
+        if (!element.isJsonPrimitive) return null
+        return runCatching { element.asString }.getOrNull()
     }
 
     // -------------------------------------------------------------------------
@@ -554,6 +604,8 @@ class CodexUsageProvider : UsageProvider {
         private const val SPARK_SHORT_LABEL = "Spark"
         private const val PRIMARY_WINDOW_LABEL = "5h"
         private const val WEEKLY_WINDOW_LABEL = "Weekly"
+        private const val MONTHLY_WINDOW_LABEL = "Monthly"
+        private val MONTHLY_WINDOW_SECONDS_RANGE = (28L * 24 * 60 * 60)..(31L * 24 * 60 * 60)
     }
 
     private data class Credentials(
