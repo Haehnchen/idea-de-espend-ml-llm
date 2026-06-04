@@ -1,6 +1,13 @@
 Changelog
 =========
 
+# 0.14.1
+* Refactor `OpenAiProfilesSettingsAction` to streamline settings dialog invocation and enhance `AiProfilePopupEnhancementProvider` with first-level entries for Agent Profiles
+* Refactor `CodexUsageProvider` and `ProviderUsageService` to serialize token refresh handling, introduce per-account fetch locks, and streamline credential persistence logic
+* Refactor `CodexUsageProvider` tests and logic for improved parsing of optional rate limit windows and consistent subtitle formatting (Daniel Espendiller)
+* Add fixed popup width to `ProviderUsagePanel` (Daniel Espendiller)
+* Refactor `AiProfileRegistry` to use reflection for `EelPlatform` handling and simplify distribution resolution logic (Daniel Espendiller)
+
 # 0.14.0
 * Update IntelliJ dependency to 2026.1.2 and refactor `AgentServerConfig` initialization (Daniel Espendiller)
 * Extend `CodexUsageProvider` to support secondary rate limit windows and improve Spark usage handling (Daniel Espendiller)
