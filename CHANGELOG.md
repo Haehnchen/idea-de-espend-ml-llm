@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.14.2
+* Add OpenCode Go usage provider (Daniel Espendiller)
+
 # 0.14.1
 * Refactor `OpenAiProfilesSettingsAction` to streamline settings dialog invocation and enhance `AiProfilePopupEnhancementProvider` with first-level entries for Agent Profiles
 * Refactor `CodexUsageProvider` and `ProviderUsageService` to serialize token refresh handling, introduce per-account fetch locks, and streamline credential persistence logic
