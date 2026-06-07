@@ -9,6 +9,7 @@ import de.espend.ml.llm.usage.provider.ClaudeUsageProvider
 import de.espend.ml.llm.usage.provider.CodexUsageProvider
 import de.espend.ml.llm.usage.provider.JunieUsageProvider
 import de.espend.ml.llm.usage.provider.OllamaUsageProvider
+import de.espend.ml.llm.usage.provider.OpenCodeGoUsageProvider
 import de.espend.ml.llm.usage.provider.ZaiUsageProvider
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -59,6 +60,7 @@ class ProviderUsageService {
         registerProvider(ClaudeUsageProvider())
         registerProvider(JunieUsageProvider())
         registerProvider(OllamaUsageProvider())
+        registerProvider(OpenCodeGoUsageProvider())
     }
 
     fun registerProvider(provider: UsageProvider) {
