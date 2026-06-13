@@ -16,7 +16,7 @@ class OpenCodeGoUsageProviderTest {
             "${d}R[24](${d}R[18],${d}R[27]={mine:!0,useBalance:!1," +
             "rollingUsage:${d}R[28]={status:\"ok\",resetInSec:17591,usagePercent:10}," +
             "weeklyUsage:${d}R[29]={status:\"ok\",resetInSec:444552,usagePercent:20}," +
-            "monthlyUsage:${d}R[30]={status:\"ok\",resetInSec:2591424,usagePercent:30}});"
+            "monthlyUsage:${d}R[30]={status:\"ok\",resetInSec:2591424,usagePercent:1}});"
 
         val result = provider.parseResponseText(text)
 
@@ -24,20 +24,40 @@ class OpenCodeGoUsageProviderTest {
         assertEquals(3, result.data!!.entries.size)
         assertEquals(10f, result.data.entries[0].percentageUsed, 0.1f)
         assertEquals(20f, result.data.entries[1].percentageUsed, 0.1f)
-        assertEquals(30f, result.data.entries[2].percentageUsed, 0.1f)
+        assertEquals(1f, result.data.entries[2].percentageUsed, 0.1f)
         assertTrue(result.data.entries[0].subtitle!!.startsWith("5h"))
         assertTrue(result.data.entries[1].subtitle!!.startsWith("Week"))
         assertTrue(result.data.entries[2].subtitle!!.startsWith("Month"))
     }
 
     @Test
-    fun `parseResponseText should parse json ratio percentages and reset fields`() {
+    fun `parseResponseText should parse json explicit percent values and reset fields`() {
         val json = """
             {
               "usage": {
-                "rollingUsage": { "usagePercent": 0.25, "resetInSec": 300 },
-                "weeklyUsage": { "usagePercent": 0.5, "resetInSec": 600 },
-                "monthlyUsage": { "usagePercent": 0.75, "resetInSec": 900 }
+                "rollingUsage": { "usagePercent": 9, "resetInSec": 300 },
+                "weeklyUsage": { "usagePercent": 3, "resetInSec": 600 },
+                "monthlyUsage": { "usagePercent": 1, "resetInSec": 900 }
+              }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseText(json)
+
+        assertNotNull(result.data)
+        assertEquals(9f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(3f, result.data.entries[1].percentageUsed, 0.1f)
+        assertEquals(1f, result.data.entries[2].percentageUsed, 0.1f)
+    }
+
+    @Test
+    fun `parseResponseText should parse ratio values from utilization fields`() {
+        val json = """
+            {
+              "usage": {
+                "rollingUsage": { "utilization": 0.25, "resetInSec": 300 },
+                "weeklyUsage": { "utilization": 0.5, "resetInSec": 600 },
+                "monthlyUsage": { "utilization": 0.75, "resetInSec": 900 }
               }
             }
         """.trimIndent()
@@ -68,6 +88,29 @@ class OpenCodeGoUsageProviderTest {
         assertEquals(10f, result.data!!.entries[0].percentageUsed, 0.1f)
         assertEquals(20f, result.data.entries[1].percentageUsed, 0.1f)
         assertEquals(30f, result.data.entries[2].percentageUsed, 0.1f)
+    }
+
+    @Test
+    fun `parseResponseText should keep fallback windows ordered from shortest to longest reset`() {
+        val json = """
+            {
+              "items": [
+                { "usagePercent": 30, "resetInSec": 900 },
+                { "usagePercent": 10, "resetInSec": 300 },
+                { "usagePercent": 20, "resetInSec": 600 }
+              ]
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseText(json)
+
+        assertNotNull(result.data)
+        assertEquals(10f, result.data!!.entries[0].percentageUsed, 0.1f)
+        assertEquals(20f, result.data.entries[1].percentageUsed, 0.1f)
+        assertEquals(30f, result.data.entries[2].percentageUsed, 0.1f)
+        assertTrue(result.data.entries[0].subtitle!!.startsWith("5h"))
+        assertTrue(result.data.entries[1].subtitle!!.startsWith("Week"))
+        assertTrue(result.data.entries[2].subtitle!!.startsWith("Month"))
     }
 
     @Test

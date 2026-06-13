@@ -297,7 +297,7 @@ class OpenCodeGoUsageProvider : UsageProvider {
 
         if (percent == null && resetInSec == null) return null
         return UsageWindow(
-            percent = normalizePercent(percent ?: 0.0),
+            percent = clampPercent(percent ?: 0.0),
             resetInSeconds = resetInSec
         )
     }
@@ -389,25 +389,17 @@ class OpenCodeGoUsageProvider : UsageProvider {
         collectWindowCandidates(element, now, emptyList(), candidates)
         if (candidates.isEmpty()) return null
 
-        val fiveHourCandidates = candidates.filter { isFiveHourKey(it.pathLower) }
-        val weekCandidates = candidates.filter { isWeekKey(it.pathLower) }
-        val monthCandidates = candidates.filter { isMonthKey(it.pathLower) }
+        val selectedIds = mutableSetOf<Int>()
+        val fiveHour = pickShortest(candidates.filter { isFiveHourKey(it.pathLower) })
+            ?: pickShortest(candidates)
+        fiveHour?.index?.let { selectedIds += it }
 
-        val fiveHour = pickCandidate(
-            candidates = fiveHourCandidates.ifEmpty { candidates },
-            pickShorter = true
-        )
-        val month = pickCandidate(
-            candidates = monthCandidates.filter { it.id != fiveHour?.id },
-            pickShorter = false
-        )
-        val week = pickCandidate(
-            candidates = weekCandidates.filter { it.id != fiveHour?.id && it.id != month?.id }
-                .ifEmpty {
-                    candidates.filter { it.id != fiveHour?.id && it.id != month?.id }
-                },
-            pickShorter = false
-        )
+        val week = pickShortest(candidates.filter { it.index !in selectedIds && isWeekKey(it.pathLower) })
+            ?: pickShortest(candidates.filter { it.index !in selectedIds })
+        week?.index?.let { selectedIds += it }
+
+        val month = pickLongest(candidates.filter { it.index !in selectedIds && isMonthKey(it.pathLower) })
+            ?: pickLongest(candidates.filter { it.index !in selectedIds })
 
         return UsageWindows(
             fiveHour = fiveHour?.window,
@@ -426,7 +418,7 @@ class OpenCodeGoUsageProvider : UsageProvider {
             element.isJsonObject -> {
                 val obj = element.asJsonObject
                 parseWindow(obj, now)?.let { window ->
-                    out += WindowCandidate(UUID.randomUUID(), window, path.joinToString(".").lowercase())
+                    out += WindowCandidate(out.size, window, path.joinToString(".").lowercase())
                 }
                 for ((key, value) in obj.entrySet()) {
                     collectWindowCandidates(value, now, path + key, out)
@@ -441,7 +433,8 @@ class OpenCodeGoUsageProvider : UsageProvider {
     }
 
     private fun parseWindow(obj: JsonObject, now: Instant): UsageWindow? {
-        var percent = firstDouble(obj, PERCENT_KEYS)
+        var percent = firstDouble(obj, PERCENT_KEYS)?.let { clampPercent(it) }
+            ?: firstDouble(obj, RATIO_KEYS)?.let { normalizeRatioPercent(it) }
         if (percent == null) {
             val used = firstDouble(obj, USED_KEYS)
             val limit = firstDouble(obj, LIMIT_KEYS)
@@ -459,7 +452,7 @@ class OpenCodeGoUsageProvider : UsageProvider {
 
         if (percent == null && resetInSeconds == null) return null
         return UsageWindow(
-            percent = normalizePercent(percent ?: 0.0),
+            percent = clampPercent(percent ?: 0.0),
             resetInSeconds = resetInSeconds?.coerceAtLeast(0)
         )
     }
@@ -476,20 +469,33 @@ class OpenCodeGoUsageProvider : UsageProvider {
         )
     }
 
-    private fun normalizePercent(raw: Double): Double {
+    private fun normalizeRatioPercent(raw: Double): Double {
         val asPercent = if (raw in 0.0..1.0) raw * 100 else raw
-        return asPercent.coerceIn(0.0, 100.0)
+        return clampPercent(asPercent)
     }
 
-    private fun pickCandidate(candidates: List<WindowCandidate>, pickShorter: Boolean): WindowCandidate? {
-        if (candidates.isEmpty()) return null
-        val comparator = compareBy<WindowCandidate> { it.window.resetInSeconds ?: Long.MAX_VALUE }
+    private fun clampPercent(raw: Double): Double {
+        return raw.coerceIn(0.0, 100.0)
+    }
+
+    private fun pickShortest(candidates: List<WindowCandidate>): WindowCandidate? {
+        return candidates.minWithOrNull(compareByResetAscending())
+    }
+
+    private fun pickLongest(candidates: List<WindowCandidate>): WindowCandidate? {
+        return candidates
+            .sortedWith(
+                compareByDescending<WindowCandidate> { it.window.resetInSeconds ?: Long.MAX_VALUE }
+                    .thenByDescending { it.window.percent }
+                    .thenBy { it.index }
+            )
+            .firstOrNull()
+    }
+
+    private fun compareByResetAscending(): Comparator<WindowCandidate> {
+        return compareBy<WindowCandidate> { it.window.resetInSeconds ?: Long.MAX_VALUE }
             .thenByDescending { it.window.percent }
-        return if (pickShorter) {
-            candidates.minWithOrNull(comparator)
-        } else {
-            candidates.maxWithOrNull(comparator)
-        }
+            .thenBy { it.index }
     }
 
     private fun parseWorkspaceIds(text: String): List<String> {
@@ -662,10 +668,15 @@ class OpenCodeGoUsageProvider : UsageProvider {
             "percent",
             "usage_percent",
             "used_percent",
-            "utilization",
             "utilizationPercent",
-            "utilization_percent",
-            "usage"
+            "utilization_percent"
+        )
+        private val RATIO_KEYS = listOf(
+            "utilization",
+            "utilizationRatio",
+            "utilization_ratio",
+            "usageRatio",
+            "usage_ratio"
         )
         private val USED_KEYS = listOf("used", "usage", "consumed", "count", "usedTokens")
         private val LIMIT_KEYS = listOf("limit", "total", "quota", "max", "cap", "tokenLimit")
@@ -730,7 +741,7 @@ class OpenCodeGoUsageProvider : UsageProvider {
     }
 
     private data class WindowCandidate(
-        val id: UUID,
+        val index: Int,
         val window: UsageWindow,
         val pathLower: String
     )
