@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.14.3
+* Refactor `OpenCodeGoUsageProvider` to simplify candidate selection logic, enhance percentage parsing, and add support for ratio-based utilization fields (Daniel Espendiller)
+
 # 0.14.2
 * Add OpenCode Go usage provider (Daniel Espendiller)
 
