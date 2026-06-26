@@ -3,13 +3,13 @@ package de.espend.ml.llm.profile
 import com.intellij.ml.llm.agents.acp.config.AgentServerConfig
 import com.intellij.ml.llm.agents.acp.config.DefaultMcpSettings
 import com.intellij.ml.llm.agents.acp.config.LocalAcpAgentConfig
-import com.intellij.ml.llm.agents.acp.registry.AcpAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentInstallationState
-import com.intellij.ml.llm.agents.acp.registry.AcpCustomAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpDistributionResolver
 import com.intellij.ml.llm.agents.acp.registry.AcpAgentRegistry
 import com.intellij.ml.llm.agents.acp.registry.AcpPaths
-import com.intellij.ml.llm.agents.acp.registry.AcpRegistryAgentId
+import com.intellij.platform.acp.AcpAgentId
+import com.intellij.platform.acp.AcpCustomAgentId
+import com.intellij.platform.acp.AcpRegistryAgentId
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent

@@ -1,8 +1,8 @@
 package de.espend.ml.llm.profile
 
-import com.intellij.ml.llm.agents.acp.registry.AcpAgentId
 import com.intellij.ml.llm.agents.acp.registry.AcpChatAgentExtension
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.platform.acp.AcpAgentId
 import javax.swing.Icon
 
 class AiProfileAcpChatAgentExtension : AcpChatAgentExtension {

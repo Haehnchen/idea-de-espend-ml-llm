@@ -24,7 +24,7 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        intellijIdeaUltimate("2026.1.2")
+        intellijIdeaUltimate("2026.1.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
         bundledModule("intellij.platform.vcs.impl")
         bundledModule("intellij.platform.vcs.log")
@@ -60,7 +60,7 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            create("IU", "2026.1.2") {
+            create("IU", "2026.1.3") {
                 useInstaller.set(true)
                 useCache.set(true)
             }
