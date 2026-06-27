@@ -53,6 +53,7 @@
         <table>
             <tr><th>Tool</th><th>Description</th></tr>
             <tr><td><b>RTK Savings</b></td><td>Token savings statistics from RTK (Rust Token Killer) CLI. Shows yesterday, today, and 7-day totals in the Usage popup.</td></tr>
+            <tr><td><b>Semantic Diff</b></td><td>Structure-aware diffs from Difftastic, Diffsitter, or Sem inside IntelliJ's native diff viewer.</td></tr>
         </table>
 
         <h2>Using AI Providers</h3>
@@ -106,6 +107,18 @@
         <!-- AI Provider Agent Registry - dynamic agent registration -->
         <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
 
+        <!-- Native IntelliJ semantic diff viewer plus the experimental custom Difftastic preview. -->
+        <applicationService serviceImplementation="de.espend.ml.llm.structurediff.StructuralDiffSettings"/>
+        <diff.DiffTool implementation="de.espend.ml.llm.structurediff.StructuralDiffTool" order="first"/>
+        <diff.DiffTool implementation="de.espend.ml.llm.difftastic.DifftasticDiffTool" order="last"/>
+
+        <applicationConfigurable parentId="diff.base"
+                                 id="de.espend.ml.llm.structurediff.settings"
+                                 instance="de.espend.ml.llm.structurediff.StructuralDiffConfigurable"
+                                 displayName="Semantic Diff"/>
+
+        <notificationGroup id="Structural Diff" displayType="BALLOON"/>
+
         <!-- Settings for AI providers - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
                                  id="de.espend.ml.llm.AgentSettings"
@@ -121,6 +134,7 @@
 
         <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
         <postStartupActivity implementation="de.espend.ml.llm.ui.AiAssistantFeedbackLinkHiderActivity"/>
+        <backgroundPostStartupActivity implementation="de.espend.ml.llm.structurediff.StructuralDiffStartupActivity"/>
 
         <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>

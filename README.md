@@ -15,6 +15,22 @@ Includes a Session Browser with MCP for viewing / search chat sessions from exte
 
 ## Features
 
+### Semantic Diff
+
+Use Difftastic, Diffsitter, or Sem to calculate structure-aware changes while keeping IntelliJ's
+native diff gutters, folding, navigation, aligned mode, and editing actions. Unsupported files,
+tool failures, and timeouts automatically fall back to IntelliJ's built-in comparison.
+
+Configure it under **Settings → Tools → Diff & Merge → Semantic Diff**. Install one of the supported
+CLI tools separately, then use **Detect Installed Tools** or select its executable manually. Optional
+file globs such as `*.kt` or `*.java` can route different languages to different tools.
+
+The diff viewer chooser contains:
+
+- **Semantic** — the native IntelliJ side-by-side viewer with semantic fragments.
+- **Difftastic Preview** — an experimental custom structural presentation with side-by-side and
+  unified modes.
+
 ### Provider Usage Toolbar & Status Bar
 
 Monitor your AI provider quota usage across multiple accounts directly from the toolbar or status bar. Click the usage icon to see current usage percentages and reset times.
@@ -83,6 +99,7 @@ Additional tools integrated into the plugin:
 | Tool | Description |
 |------|-------------|
 | **RTK Savings** | Token savings statistics from RTK (Rust Token Killer) CLI. Shows yesterday, today, and 7-day totals in the Usage popup. |
+| **Semantic Diff** | Native IntelliJ diff integration for Difftastic, Diffsitter, and Sem, with discovery, validation, fallback, and per-file routing. |
 
 ## Installation
 

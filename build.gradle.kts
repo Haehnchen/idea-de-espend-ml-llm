@@ -29,6 +29,7 @@ dependencies {
     intellijPlatform {
         intellijIdeaUltimate("2026.2.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        bundledModule("intellij.platform.diff.impl")
         bundledModule("intellij.platform.vcs.dvcs")
         bundledModule("intellij.platform.vcs.dvcs.impl")
         bundledModule("intellij.platform.vcs.impl")
@@ -40,7 +41,7 @@ dependencies {
             "com.intellij.mcpServer",
             "com.intellij.modules.jcef",
             "com.intellij.platform.acp",
-            "org.intellij.plugins.markdown"
+            "org.intellij.plugins.markdown",
         )
 
         // AI Assistant plugin (ml.llm) from marketplace
@@ -84,6 +85,17 @@ intellijPlatform {
 }
 
 tasks {
+    withType<Test> {
+        // AI Assistant currently embeds an older FastUtil copy in its embeddings module.
+        // The IDE isolates plugin classloaders, but Gradle's IntelliJ test runner flattens
+        // plugin dependencies onto one classpath. Keep the platform-patched copy first so
+        // workspace-model fixtures see the API shipped by the target IDE.
+        val platformFastUtil = intellijPlatform.platformPath
+            .resolve("lib/intellij.libraries.fastutil.jar")
+            .toFile()
+        classpath = files(platformFastUtil) + classpath
+    }
+
     // Set the JVM compatibility versions
     withType<JavaCompile> {
         sourceCompatibility = "25"
@@ -110,7 +122,6 @@ tasks {
 
 kotlin {
     jvmToolchain(25)
-
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
         jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
