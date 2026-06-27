@@ -105,6 +105,9 @@
         <!-- AI Provider Agent Registry - dynamic agent registration -->
         <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
 
+        <!-- Difftastic structural diff viewer. Appears in the diff tool dropdown. -->
+        <diff.DiffTool implementation="de.espend.ml.llm.difftastic.DifftasticDiffTool"/>
+
         <!-- Settings for AI providers - placed under AI Assistant -->
         <applicationConfigurable parentId="ml.llm.LLMConfigurable"
                                  id="de.espend.ml.llm.AgentSettings"
@@ -119,6 +122,7 @@
                                  groupWeight="15"/>
 
         <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
+        <postStartupActivity implementation="de.espend.ml.llm.difftastic.DifftasticStartupActivity"/>
 
         <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>

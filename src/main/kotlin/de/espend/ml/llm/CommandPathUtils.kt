@@ -226,4 +226,27 @@ object CommandPathUtils {
             .takeIf { it.exists() && it.canExecute() }
             ?.absolutePath
     }
+
+    /**
+     * Finds the Difftastic CLI command.
+     * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin -> $HOME/.cargo/bin
+     * Returns null if not found.
+     */
+    fun findDifftasticPath(): String? {
+        findCommandPath("difft")?.let { return it }
+        findCommandPath("difftastic")?.let { return it }
+
+        File("/usr/bin/difft").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        File("/usr/bin/difftastic").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+
+        val userHome = System.getProperty("user.home") ?: return null
+
+        for (command in listOf("difft", "difftastic")) {
+            File(userHome, "bin/$command").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+            File(userHome, ".local/bin/$command").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+            File(userHome, ".cargo/bin/$command").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
+        }
+
+        return null
+    }
 }

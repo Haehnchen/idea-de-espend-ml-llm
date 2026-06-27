@@ -26,6 +26,7 @@ dependencies {
     intellijPlatform {
         intellijIdeaUltimate("2026.1.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        bundledModule("intellij.platform.diff.impl")
         bundledModule("intellij.platform.vcs.impl")
         bundledModule("intellij.platform.vcs.log")
 
