@@ -134,7 +134,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> createClaudeAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.PI -> createPiAcpServerConfig(profile, platform, transportOption)
             AiProfileTransport.DROID -> createDroidServerConfig(profile, platform, transportOption)
-            AiProfileTransport.GEMINI -> createGeminiServerConfig(profile)
             AiProfileTransport.OPENCODE -> createOpenCodeServerConfig(profile)
             AiProfileTransport.CURSOR -> createCursorServerConfig(profile)
             AiProfileTransport.KILO -> createKiloServerConfig(profile)
@@ -254,16 +253,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
                 customModelId
             ),
             env = env
-        )
-    }
-
-    private fun createGeminiServerConfig(profile: AiProfileConfig): AgentServerConfig {
-        resolveInstalledTransportServerConfig(AiProfileTransport.GEMINI, emptyMap())?.let { return it }
-
-        return agentServerConfig(
-            command = resolveExecutable(profile, AiProfileTransport.GEMINI) ?: (CommandPathUtils.findGeminiPath() ?: "gemini"),
-            args = listOf("--experimental-acp"),
-            env = emptyMap()
         )
     }
 
@@ -499,7 +488,6 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             AiProfileTransport.CLAUDE_ACP -> "claude-acp"
             AiProfileTransport.PI -> "pi-acp"
             AiProfileTransport.DROID -> "factory-droid"
-            AiProfileTransport.GEMINI -> "gemini"
             AiProfileTransport.OPENCODE -> "opencode"
             AiProfileTransport.CURSOR -> "cursor"
             AiProfileTransport.KILO -> "kilo"

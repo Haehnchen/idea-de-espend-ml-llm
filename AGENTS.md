@@ -60,9 +60,9 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 
 #### Path Detection for CLI-based Providers
 
-For CLI-based providers (like Gemini, OpenCode, Cursor), add a detection function to `CommandPathUtils.kt`:
+For CLI-based providers (like OpenCode, Cursor, Kilo Code), add a detection function to `CommandPathUtils.kt`:
 
-**Search order**: PATH → `/usr/bin` → `$HOME/bin` → `$HOME/.local/bin` → provider-specific directory (e.g., `$HOME/.gemini/bin`)
+**Search order**: PATH → `/usr/bin` → `$HOME/bin` → `$HOME/.local/bin` → provider-specific directory (e.g., `$HOME/.opencode/bin`)
 
 ### Session Explorer
 
@@ -153,7 +153,7 @@ A standalone CLI tool is available for dumping session HTML without running Inte
 
 #### Adding Support for a New AI Tool
 
-To add session viewing for a new AI tool (e.g., Cursor, Gemini):
+To add session viewing for a new AI tool (e.g., Cursor):
 
 1. **Create adapter package**: `src/main/kotlin/de/espend/ml/llm/session/adapter/{toolname}/`
 

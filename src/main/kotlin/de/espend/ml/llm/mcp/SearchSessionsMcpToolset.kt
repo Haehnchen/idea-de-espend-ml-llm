@@ -14,7 +14,7 @@ class SearchSessionsMcpToolset : McpToolset {
 
     @McpTool
     @McpDescription("""
-        Search across AI coding sessions (Claude Code, Amp, Codex, OpenCode, Junie, Gemini, Droid, Kilo Code)
+        Search across AI coding sessions (Claude Code, Amp, Codex, OpenCode, Junie, Droid, Kilo Code)
         for a given query string. Returns matching sessions with text snippets showing where the
         query was found. Use this to find past conversations about specific topics, code, or problems.
 

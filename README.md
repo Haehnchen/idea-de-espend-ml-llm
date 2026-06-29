@@ -42,7 +42,6 @@ Configure multiple AI providers through **Settings → AI Assistant → Agent Pr
 |----------|-------------|----------|
 | **Claude CLI** | Uses Claude Code's built-in Anthropic integration | - |
 | **Anthropic Compatible** | Any Anthropic-like API (via `@zed-industries/claude-agent-acp`) | - |
-| **Gemini** | Google's Gemini CLI | - |
 | **OpenCode** | The OpenCode CLI | - |
 | **Cursor** | Cursor's built-in ACP support (via `agent acp`) | - |
 | **Z.AI** | Z.AI via Anthropic Compatible API | [Register](https://z.ai/subscribe?ic=BCLQG4VJIO) |
@@ -63,7 +62,6 @@ Browse and view chat sessions from external AI tools directly in the IDE.
 | **OpenCode**    | Chat sessions from OpenCode CLI |
 | **Amp**         | Chat sessions from ampcode.com |
 | **Junie**       | Chat sessions from Junie CLI (JetBrains) |
-| **Gemini**      | Chat sessions from Gemini CLI (Google) |
 | **Droid**       | Chat sessions from Factory.ai CLI |
 | **Kilo Code**   | Chat sessions from Kilo Code CLI |
 

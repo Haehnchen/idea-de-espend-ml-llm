@@ -25,7 +25,6 @@ enum class AiProfileTransport(
     CLAUDE_ACP("claude-agent-acp"),
     PI("pi-acp"),
     DROID("droid"),
-    GEMINI("gemini"),
     OPENCODE("opencode"),
     CURSOR("cursor"),
     KILO("kilo");
@@ -69,7 +68,6 @@ data class AiProfilePlatformInfo(
 object AiProfilePlatformRegistry {
     const val PLATFORM_CLAUDE_CODE = "claude-code"
     const val PLATFORM_PI_DIRECT = "pi-direct"
-    const val PLATFORM_GEMINI = "gemini"
     const val PLATFORM_OPENCODE = "opencode"
     const val PLATFORM_OPENCODE_GO = "opencode-go"
     const val PLATFORM_OPENCODE_ZEN = "opencode-zen"
@@ -101,12 +99,6 @@ object AiProfilePlatformRegistry {
             label = "PI",
             icon = PluginIcons.PI,
             directTransport = AiProfileTransport.PI
-        ),
-        AiProfilePlatformInfo(
-            id = PLATFORM_GEMINI,
-            label = "Gemini",
-            icon = PluginIcons.GEMINI,
-            directTransport = AiProfileTransport.GEMINI
         ),
         AiProfilePlatformInfo(
             id = PLATFORM_OPENCODE,
@@ -226,7 +218,6 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_NANOGPT,
             label = "Nano-GPT",
             icon = PluginIcons.NANOGPT,
-            defaultModel = "gemini-3-pro-preview",
             modelsUrl = "https://nano-gpt.com/api/v1/models",
             anthropic = AiProfilePlatformEndpoint(
                 baseUrl = "https://nano-gpt.com/api/v1"
@@ -239,7 +230,6 @@ object AiProfilePlatformRegistry {
             id = PLATFORM_AIHUBMIX,
             label = "AIHubMix",
             icon = PluginIcons.AIHUBMIX,
-            defaultModel = "gemini-3-flash-preview-free",
             modelsUrl = "https://aihubmix.com/v1/models",
             anthropic = AiProfilePlatformEndpoint(
                 baseUrl = "https://aihubmix.com"
@@ -347,7 +337,6 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP,
             AiProfileTransport.PI,
             AiProfileTransport.DROID,
-            AiProfileTransport.GEMINI,
             AiProfileTransport.OPENCODE,
             AiProfileTransport.CURSOR,
             AiProfileTransport.KILO -> true
@@ -359,7 +348,6 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP -> "claude"
             AiProfileTransport.PI -> "pi-acp"
             AiProfileTransport.DROID -> "droid"
-            AiProfileTransport.GEMINI -> "gemini"
             AiProfileTransport.OPENCODE -> "opencode"
             AiProfileTransport.CURSOR -> "agent"
             AiProfileTransport.KILO -> "kilo"
@@ -371,7 +359,6 @@ object AiProfilePlatformRegistry {
             AiProfileTransport.CLAUDE_ACP -> CommandPathUtils.findClaudePath()
             AiProfileTransport.PI -> CommandPathUtils.findPiAcpPath()
             AiProfileTransport.DROID -> CommandPathUtils.findDroidPath()
-            AiProfileTransport.GEMINI -> CommandPathUtils.findGeminiPath()
             AiProfileTransport.OPENCODE -> CommandPathUtils.findOpenCodePath()
             AiProfileTransport.CURSOR -> CommandPathUtils.findCursorAgentPath()
             AiProfileTransport.KILO -> CommandPathUtils.findKiloPath()
@@ -384,8 +371,6 @@ object AiProfilePlatformRegistry {
                 "Uses the local Claude Code account via Claude ACP and keeps authentication managed by the Claude CLI."
             platform.id == PLATFORM_PI_DIRECT && transport == AiProfileTransport.PI ->
                 "Runs pi-acp directly without generated API configuration."
-            platform.id == PLATFORM_GEMINI && transport == AiProfileTransport.GEMINI ->
-                "Uses the Gemini CLI directly via ACP."
             platform.id == PLATFORM_OPENCODE && transport == AiProfileTransport.OPENCODE ->
                 "Uses the OpenCode CLI directly via ACP."
             platform.id == PLATFORM_CURSOR && transport == AiProfileTransport.CURSOR ->

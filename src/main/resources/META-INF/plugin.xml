@@ -35,7 +35,6 @@
             <tr><td><b>OpenCode</b></td><td>Chat sessions from OpenCode CLI</td></tr>
             <tr><td><b>Amp</b></td><td>Chat sessions from ampcode.com</td></tr>
             <tr><td><b>Junie</b></td><td>Chat sessions from Junie CLI (JetBrains)</td></tr>
-            <tr><td><b>Gemini</b></td><td>Chat sessions from Gemini CLI (Google)</td></tr>
             <tr><td><b>Droid</b></td><td>Chat sessions from Factory.ai CLI</td></tr>
             <tr><td><b>Kilo Code</b></td><td>Chat sessions from Kilo Code CLI</td></tr>
         </table>
