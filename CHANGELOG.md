@@ -1,6 +1,12 @@
 Changelog
 =========
 
+# 0.15.0
+* optimize decimal token display formatting logic (Daniel Espendiller)
+* [#39](https://github.com/Haehnchen/idea-php-symfony2-plugin/issues/39) Usage toolbar - rtk savings doesn't show anything on Windows: support all os structures (Daniel Espendiller)
+* Support "resets" parsing for codex usages (Daniel Espendiller)
+* gemini cli is no more (Daniel Espendiller)
+
 # 0.14.4
 * Update IntelliJ dependency to 2026.1.3 and refactor `AcpAgentId` imports (Daniel Espendiller)
 
