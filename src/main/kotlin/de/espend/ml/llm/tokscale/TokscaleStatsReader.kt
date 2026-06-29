@@ -96,13 +96,6 @@ object TokscaleStatsReader {
         )
     }
 
-    fun formatTokens(tokens: Long): String = when {
-        tokens >= 1_000_000_000L -> formatScaled(tokens, 1_000_000_000.0, "B")
-        tokens >= 1_000_000L -> formatScaled(tokens, 1_000_000.0, "M")
-        tokens >= 1_000L -> formatScaled(tokens, 1_000.0, "K")
-        else -> tokens.toString()
-    }
-
     fun formatCost(cost: Double): String = when {
         cost <= 0.0 -> "$0"
         cost >= 1_000_000_000.0 -> "$" + formatScaled(cost, 1_000_000_000.0, "B")

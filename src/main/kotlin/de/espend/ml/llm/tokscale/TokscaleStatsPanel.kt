@@ -3,6 +3,7 @@ package de.espend.ml.llm.tokscale
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
+import de.espend.ml.llm.usage.UsageFormatUtils
 import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -105,9 +106,9 @@ class TokscaleStatsPanel : JPanel() {
             return
         }
 
-        row.inputLabel.text = TokscaleStatsReader.formatTokens(stat.inputTokens)
-        row.outputLabel.text = TokscaleStatsReader.formatTokens(stat.outputTokens)
-        row.totalLabel.text = TokscaleStatsReader.formatTokens(stat.totalTokens)
+        row.inputLabel.text = UsageFormatUtils.formatTokenAmount(stat.inputTokens)
+        row.outputLabel.text = UsageFormatUtils.formatTokenAmount(stat.outputTokens)
+        row.totalLabel.text = UsageFormatUtils.formatTokenAmount(stat.totalTokens)
         row.costLabel.text = TokscaleStatsReader.formatCost(stat.cost)
         row.setForeground(SECONDARY_COLOR)
     }

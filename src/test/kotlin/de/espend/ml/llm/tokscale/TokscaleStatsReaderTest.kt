@@ -93,15 +93,6 @@ class TokscaleStatsReaderTest {
     }
 
     @Test
-    fun `formatTokens uses compact units`() {
-        assertEquals("999", TokscaleStatsReader.formatTokens(999))
-        assertEquals("1K", TokscaleStatsReader.formatTokens(1_000))
-        assertEquals("9.5K", TokscaleStatsReader.formatTokens(9_500))
-        assertEquals("14.7M", TokscaleStatsReader.formatTokens(14_719_457))
-        assertEquals("1.5B", TokscaleStatsReader.formatTokens(1_533_409_133))
-    }
-
-    @Test
     fun `formatCost uses dollars`() {
         assertEquals("$0", TokscaleStatsReader.formatCost(0.0))
         assertEquals("$0", TokscaleStatsReader.formatCost(0.004))
@@ -114,9 +105,6 @@ class TokscaleStatsReaderTest {
     fun `formatting uses system format locale`() {
         Locale.setDefault(Locale.Category.FORMAT, Locale.GERMANY)
 
-        assertEquals("9,5K", TokscaleStatsReader.formatTokens(9_500))
-        assertEquals("14,7M", TokscaleStatsReader.formatTokens(14_719_457))
-        assertEquals("1,5B", TokscaleStatsReader.formatTokens(1_533_409_133))
         assertEquals("$259", TokscaleStatsReader.formatCost(258.7336788699999))
         assertEquals("$1,2K", TokscaleStatsReader.formatCost(1_234.56))
     }

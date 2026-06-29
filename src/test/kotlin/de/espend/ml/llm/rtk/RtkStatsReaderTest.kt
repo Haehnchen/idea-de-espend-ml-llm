@@ -184,29 +184,6 @@ class RtkStatsReaderTest {
         assertEquals(9_000L, result[0].savedTokens)
     }
 
-    // ── formatTokens ─────────────────────────────────────────────────────────
-
-    @Test
-    fun `formatTokens returns raw number below 1000`() {
-        assertEquals("0", RtkStatsReader.formatTokens(0))
-        assertEquals("999", RtkStatsReader.formatTokens(999))
-    }
-
-    @Test
-    fun `formatTokens returns K suffix for thousands`() {
-        assertEquals("1K", RtkStatsReader.formatTokens(1_000))
-        assertEquals("1K", RtkStatsReader.formatTokens(1_999))
-        assertEquals("26K", RtkStatsReader.formatTokens(26_400))
-        assertEquals("999K", RtkStatsReader.formatTokens(999_999))
-    }
-
-    @Test
-    fun `formatTokens returns M suffix for millions`() {
-        assertEquals("1M", RtkStatsReader.formatTokens(1_000_000))
-        assertEquals("1M", RtkStatsReader.formatTokens(1_900_000))
-        assertEquals("26M", RtkStatsReader.formatTokens(26_100_000))
-    }
-
     // ── getLastDays ───────────────────────────────────────────────────────────
 
     @Test
