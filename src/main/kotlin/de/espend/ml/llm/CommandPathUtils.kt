@@ -76,25 +76,6 @@ object CommandPathUtils {
     }
 
     /**
-     * Finds the gemini command with specific fallback paths.
-     * Order: PATH -> $HOME/bin -> $HOME/.gemini/bin
-     * Returns null if not found.
-     */
-    fun findGeminiPath(): String? {
-        findCommandPath("gemini")?.let { return it }
-
-        val userHome = System.getProperty("user.home") ?: return null
-
-        // Check $HOME/bin
-        File(userHome, "bin/gemini").takeIf { it.exists() && it.canExecute() }?.let { return it.absolutePath }
-
-        // Check $HOME/.gemini/bin
-        return File(userHome, ".gemini/bin/gemini")
-            .takeIf { it.exists() && it.canExecute() }
-            ?.absolutePath
-    }
-
-    /**
      * Finds the claude-agent-acp command with specific fallback paths.
      * Order: PATH -> /usr/bin -> $HOME/bin -> $HOME/.local/bin
      * Returns null if not found.

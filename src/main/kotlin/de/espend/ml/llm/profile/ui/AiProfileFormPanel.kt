@@ -47,7 +47,6 @@ class AiProfileFormPanel(
         private val DIRECT_PLATFORM_IDS = setOf(
             AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
             AiProfilePlatformRegistry.PLATFORM_PI_DIRECT,
-            AiProfilePlatformRegistry.PLATFORM_GEMINI,
             AiProfilePlatformRegistry.PLATFORM_OPENCODE,
             AiProfilePlatformRegistry.PLATFORM_CURSOR,
             AiProfilePlatformRegistry.PLATFORM_KILO,
@@ -296,7 +295,6 @@ class AiProfileFormPanel(
         AiProfileTransport.CLAUDE_ACP -> PluginIcons.scaleIcon(PluginIcons.CLAUDE, 16)
         AiProfileTransport.PI -> PluginIcons.scaleIcon(PluginIcons.PI, 16)
         AiProfileTransport.DROID -> PluginIcons.scaleIcon(PluginIcons.DROID, 16)
-        AiProfileTransport.GEMINI -> PluginIcons.scaleIcon(PluginIcons.GEMINI, 16)
         AiProfileTransport.OPENCODE -> PluginIcons.scaleIcon(PluginIcons.OPENCODE, 16)
         AiProfileTransport.CURSOR -> PluginIcons.scaleIcon(PluginIcons.CURSOR, 16)
         AiProfileTransport.KILO -> PluginIcons.scaleIcon(PluginIcons.KILO, 16)
@@ -510,7 +508,6 @@ class AiProfileFormPanel(
         return listOfNotNull(
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE),
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_PI_DIRECT),
-            AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_GEMINI),
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_OPENCODE),
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_CURSOR),
             AiProfilePlatformRegistry.findPlatform(AiProfilePlatformRegistry.PLATFORM_KILO),

@@ -11,8 +11,6 @@ import de.espend.ml.llm.session.adapter.codex.CodexSessionFinder
 import de.espend.ml.llm.session.adapter.codex.CodexSessionParser
 import de.espend.ml.llm.session.adapter.droid.DroidSessionFinder
 import de.espend.ml.llm.session.adapter.droid.DroidSessionParser
-import de.espend.ml.llm.session.adapter.gemini.GeminiSessionFinder
-import de.espend.ml.llm.session.adapter.gemini.GeminiSessionParser
 import de.espend.ml.llm.session.adapter.junie.JunieSessionFinder
 import de.espend.ml.llm.session.adapter.junie.JunieSessionParser
 import de.espend.ml.llm.session.adapter.kilocode.KiloSessionFinder
@@ -134,15 +132,6 @@ private fun findAndParseSession(sessionId: String): Triple<String, SessionDetail
         val detail = DroidSessionParser.parseFile(droidFile)
         if (detail != null) {
             return Triple("droid", detail, droidFile.absolutePath)
-        }
-    }
-
-    // Try Gemini
-    val geminiFile = GeminiSessionFinder.findSessionFile(sessionId)
-    if (geminiFile != null) {
-        val detail = GeminiSessionParser.parseFile(geminiFile)
-        if (detail != null) {
-            return Triple("gemini", detail, geminiFile.absolutePath)
         }
     }
 
@@ -268,22 +257,6 @@ private fun listSessions() {
         }
         if (droidSessions.size > 50) {
             println("  ... and ${droidSessions.size - 50} more")
-        }
-    }
-
-    println()
-
-    // List Gemini sessions
-    println("Gemini Sessions:")
-    val geminiSessions = GeminiSessionFinder.listSessions()
-    if (geminiSessions.isEmpty()) {
-        println("  No sessions found")
-    } else {
-        geminiSessions.take(50).forEach { session ->
-            println("  [${session.created.take(16)}] ${session.sessionId} - ${session.projectName}")
-        }
-        if (geminiSessions.size > 50) {
-            println("  ... and ${geminiSessions.size - 50} more")
         }
     }
 

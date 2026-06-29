@@ -10,7 +10,6 @@ enum class SessionProvider(val displayName: String, val iconClass: String) {
     AMP("Amp", "amp-icon"),
     JUNIE("Junie", "junie-icon"),
     DROID("Droid", "droid-icon"),
-    GEMINI("Gemini", "gemini-icon"),
     KILO_CODE("Kilo Code", "kilocode-icon")
 }
 

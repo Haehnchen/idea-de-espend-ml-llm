@@ -110,15 +110,5 @@ class PackageActionLink(
             )
         }
 
-        /**
-         * Creates a PackageActionLink for Gemini CLI installation.
-         */
-        fun forGemini(): PackageActionLink {
-            return PackageActionLink(
-                packageName = "@google/gemini-cli",
-                githubUrl = "https://github.com/google-gemini/gemini-cli",
-                installCommand = "npm install -g @google/gemini-cli"
-            )
-        }
     }
 }

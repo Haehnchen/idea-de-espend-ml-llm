@@ -5,7 +5,6 @@ import de.espend.ml.llm.session.adapter.AmpSessionAdapter
 import de.espend.ml.llm.session.adapter.ClaudeSessionAdapter
 import de.espend.ml.llm.session.adapter.CodexSessionAdapter
 import de.espend.ml.llm.session.adapter.DroidSessionAdapter
-import de.espend.ml.llm.session.adapter.GeminiSessionAdapter
 import de.espend.ml.llm.session.adapter.JunieSessionAdapter
 import de.espend.ml.llm.session.adapter.KiloSessionAdapter
 import de.espend.ml.llm.session.adapter.OpenCodeSessionAdapter
@@ -23,29 +22,27 @@ object SessionService {
             SessionProvider.AMP -> AmpSessionAdapter(project).getSessionDetail(sessionId)
             SessionProvider.JUNIE -> JunieSessionAdapter(project).getSessionDetail(sessionId)
             SessionProvider.DROID -> DroidSessionAdapter(project).getSessionDetail(sessionId)
-            SessionProvider.GEMINI -> GeminiSessionAdapter(project).getSessionDetail(sessionId)
             SessionProvider.KILO_CODE -> KiloSessionAdapter(project).getSessionDetail(sessionId)
         }
     }
 
     /**
      * Returns all sessions from all providers, merged and sorted by date (newest first).
-     * Uses 8 threads for parallel provider queries.
+     * Uses one thread per provider for parallel provider queries.
      */
     fun getAllSessions(project: Project): List<SessionListItem> {
-        val executor = Executors.newFixedThreadPool(8)
-        return try {
-            val tasks = listOf(
-                Callable { ClaudeSessionAdapter(project).findSessions() },
-                Callable { OpenCodeSessionAdapter(project).findSessions() },
-                Callable { CodexSessionAdapter(project).findSessions() },
-                Callable { AmpSessionAdapter(project).findSessions() },
-                Callable { JunieSessionAdapter(project).findSessions() },
-                Callable { DroidSessionAdapter(project).findSessions() },
-                Callable { GeminiSessionAdapter(project).findSessions() },
-                Callable { KiloSessionAdapter(project).findSessions() }
-            )
+        val tasks = listOf(
+            Callable { ClaudeSessionAdapter(project).findSessions() },
+            Callable { OpenCodeSessionAdapter(project).findSessions() },
+            Callable { CodexSessionAdapter(project).findSessions() },
+            Callable { AmpSessionAdapter(project).findSessions() },
+            Callable { JunieSessionAdapter(project).findSessions() },
+            Callable { DroidSessionAdapter(project).findSessions() },
+            Callable { KiloSessionAdapter(project).findSessions() }
+        )
 
+        val executor = Executors.newFixedThreadPool(tasks.size)
+        return try {
             executor.invokeAll(tasks)
                 .flatMap { future ->
                     try {
