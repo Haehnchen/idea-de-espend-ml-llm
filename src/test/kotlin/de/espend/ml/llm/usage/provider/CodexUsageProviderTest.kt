@@ -324,6 +324,56 @@ class CodexUsageProviderTest {
         assertTrue(result.data!!.entries[0].subtitle?.startsWith("Monthly") == true)
         assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
         assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+        assertEquals(1, result.data!!.lines.size)
+        assertEquals("0 usage limit resets available", result.data!!.lines[0].text)
+    }
+
+    @Test
+    fun `parseResponseBody should parse rate limit reset credit count`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 10,
+                        "reset_after_seconds": 3600
+                    },
+                    "secondary_window": {
+                        "used_percent": 20,
+                        "reset_after_seconds": 604800
+                    }
+                },
+                "rate_limit_reset_credits": {
+                    "available_count": 3
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals(1, result.data!!.lines.size)
+        assertEquals("3 usage limit resets available", result.data!!.lines[0].text)
+    }
+
+    @Test
+    fun `parseResponseBody should use singular reset credit label`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 10
+                    }
+                },
+                "rate_limit_reset_credits": {
+                    "available_count": 1
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals("1 usage limit reset available", result.data!!.lines[0].text)
     }
 
     @Test
@@ -469,7 +519,7 @@ class CodexUsageProviderTest {
         val panelInfo = provider.getAccountPanelInfo(CodexUsageProvider.CodexUsageAccountConfig())
 
         assertEquals(2, panelInfo.usageEntryCount)
-        assertEquals(0, panelInfo.lineCount)
+        assertEquals(1, panelInfo.lineCount)
     }
 
     @Test
@@ -481,7 +531,7 @@ class CodexUsageProviderTest {
         val panelInfo = provider.getAccountPanelInfo(config)
 
         assertEquals(4, panelInfo.usageEntryCount)
-        assertEquals(0, panelInfo.lineCount)
+        assertEquals(1, panelInfo.lineCount)
     }
 
     // ==================== Real-world Examples ====================

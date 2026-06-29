@@ -21,7 +21,8 @@ data class ProviderInfo(
 
 /**
  * Panel layout info for a specific account.
- * Use [progressbar] for progress bar entries or [lines] for text lines - not both.
+ * Use [progressbar] for progress bar entries, [lines] for text lines,
+ * or [progressbarWithLines] for providers that show both.
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
@@ -35,6 +36,13 @@ class AccountPanelInfo private constructor(
          */
         @JvmStatic
         fun progressbar(count: Int) = AccountPanelInfo(usageEntryCount = count, lineCount = 0)
+
+        /**
+         * Create panel info for progress bar entries followed by text lines.
+         */
+        @JvmStatic
+        fun progressbarWithLines(progressbarCount: Int, lineCount: Int) =
+            AccountPanelInfo(usageEntryCount = progressbarCount, lineCount = lineCount)
 
         /**
          * Create panel info for text lines
