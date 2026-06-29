@@ -12,6 +12,7 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ElementProducer
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import de.espend.ml.llm.rtk.RtkStatsReader
 import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
@@ -103,7 +104,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
             val hintFont = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
             val hintRow = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
                 isOpaque = false
-                add(JBLabel("Reads token savings from ~/.local/share/rtk/history.db written by ").apply {
+                add(JBLabel("Reads token savings from RTK's history database (default: ${RtkStatsReader.defaultDbPathForDisplay()}) written by ").apply {
                     font = hintFont
                     foreground = UIUtil.getContextHelpForeground()
                 })

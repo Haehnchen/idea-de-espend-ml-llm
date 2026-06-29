@@ -54,6 +54,136 @@ class RtkStatsReaderTest {
         }
     }
 
+    // ── path resolution ──────────────────────────────────────────────────────
+
+    @Test
+    fun `dbPathCandidates reads environment config and platform defaults in order`() {
+        val homeDir = java.nio.file.Files.createTempDirectory("rtk-home-").toFile()
+        val configuredDbPath = File(homeDir, "custom/history.db").absolutePath
+        val configFile = File(homeDir, ".config/rtk/config.toml")
+
+        try {
+            configFile.parentFile.mkdirs()
+            configFile.writeText(
+                """
+                [tracking]
+                database_path = '$configuredDbPath'
+                """.trimIndent()
+            )
+
+            val candidates = RtkStatsReader.dbPathCandidates(
+                osName = "Linux",
+                userHome = homeDir.absolutePath,
+                environment = { name -> if (name == "RTK_DB_PATH") "/env/history.db" else null }
+            )
+
+            assertEquals("/env/history.db", candidates[0])
+            assertEquals(configuredDbPath, candidates[1])
+            assertEquals(File(homeDir, ".local/share/rtk/history.db").absolutePath, candidates[2])
+        } finally {
+            homeDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `defaultDbPathCandidates uses Windows LocalAppData and Roaming fallbacks`() {
+        val environment = mapOf(
+            "LOCALAPPDATA" to "C:\\Users\\Ada\\AppData\\Local",
+            "APPDATA" to "C:\\Users\\Ada\\AppData\\Roaming"
+        )
+
+        val candidates = RtkStatsReader.defaultDbPathCandidates(
+            osName = "Windows 11",
+            userHome = "C:\\Users\\Ada",
+            environment = { environment[it] }
+        )
+
+        assertEquals("C:\\Users\\Ada\\AppData\\Local\\rtk\\history.db", candidates[0])
+        assertTrue(candidates.contains("C:\\Users\\Ada\\AppData\\Roaming\\rtk\\history.db"))
+    }
+
+    @Test
+    fun `defaultDbPathCandidates uses macOS application support before legacy local share`() {
+        val candidates = RtkStatsReader.defaultDbPathCandidates(
+            osName = "Mac OS X",
+            userHome = "/Users/ada",
+            environment = { null }
+        )
+
+        assertEquals("/Users/ada/Library/Application Support/rtk/history.db", candidates[0])
+        assertEquals("/Users/ada/.local/share/rtk/history.db", candidates[1])
+    }
+
+    @Test
+    fun `defaultDbPathForDisplay compacts path below user home`() {
+        assertEquals(
+            "~/Library/Application Support/rtk/history.db",
+            RtkStatsReader.defaultDbPathForDisplay(
+                osName = "Mac OS X",
+                userHome = "/Users/ada",
+                environment = { null }
+            )
+        )
+    }
+
+    @Test
+    fun `defaultDbPathCandidates uses XDG data home before Linux fallback`() {
+        val candidates = RtkStatsReader.defaultDbPathCandidates(
+            osName = "Linux",
+            userHome = "/home/ada",
+            environment = { name -> if (name == "XDG_DATA_HOME") "/custom/data" else null }
+        )
+
+        assertEquals("/custom/data/rtk/history.db", candidates[0])
+        assertEquals("/home/ada/.local/share/rtk/history.db", candidates[1])
+    }
+
+    @Test
+    fun `parseConfiguredDbPath reads tracking database path from literal string`() {
+        val path = """C:\Users\Ada\AppData\Local\rtk\history.db"""
+
+        val result = RtkStatsReader.parseConfiguredDbPath(
+            """
+            [display]
+            colors = true
+
+            [tracking]
+            database_path = '$path' # comment
+            """.trimIndent()
+        )
+
+        assertEquals(path, result)
+    }
+
+    @Test
+    fun `parseConfiguredDbPath unescapes basic string backslashes`() {
+        val result = RtkStatsReader.parseConfiguredDbPath(
+            """
+            [tracking]
+            database_path = "C:\\Users\\Ada\\rtk\\history.db"
+            """.trimIndent()
+        )
+
+        assertEquals("""C:\Users\Ada\rtk\history.db""", result)
+    }
+
+    @Test
+    fun `getLastDays checks all candidate paths until populated database is found`() {
+        val today = LocalDate.now()
+        insert(today, 10_000, 1_000, 9_000)
+
+        val result = RtkStatsReader.getLastDays(
+            n = 1,
+            dbPathCandidates = listOf(
+                File(dbFile.parentFile, "missing-history.db").absolutePath,
+                dbFile.absolutePath
+            )
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(9_000L, result[0].savedTokens)
+    }
+
     // ── formatTokens ─────────────────────────────────────────────────────────
 
     @Test
