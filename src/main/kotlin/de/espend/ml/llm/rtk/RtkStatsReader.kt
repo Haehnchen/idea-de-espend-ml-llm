@@ -150,12 +150,6 @@ object RtkStatsReader {
         }
     }
 
-    fun formatTokens(tokens: Long): String = when {
-        tokens >= 1_000_000L -> "${tokens / 1_000_000}M"
-        tokens >= 1_000L -> "${tokens / 1_000}K"
-        else -> tokens.toString()
-    }
-
     internal fun dbPathCandidates(
         osName: String,
         userHome: String,

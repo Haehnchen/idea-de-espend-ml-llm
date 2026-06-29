@@ -3,6 +3,7 @@ package de.espend.ml.llm.rtk
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
+import de.espend.ml.llm.usage.UsageFormatUtils
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.time.LocalDate
@@ -95,7 +96,7 @@ class RtkStatsPanel : JPanel() {
         return if (stat != null) {
             RtkColumn(
                 label = label,
-                tokens = "${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}",
+                tokens = "${UsageFormatUtils.formatTokenAmount(stat.inputTokens)} · ${UsageFormatUtils.formatTokenAmount(stat.outputTokens)}",
                 savings = "-${"%.1f".format(stat.savingsPct)}%"
             )
         } else {
@@ -107,7 +108,7 @@ class RtkStatsPanel : JPanel() {
         return if (stat != null) {
             RtkColumn(
                 label = "7d",
-                tokens = "${RtkStatsReader.formatTokens(stat.inputTokens)} · ${RtkStatsReader.formatTokens(stat.outputTokens)}",
+                tokens = "${UsageFormatUtils.formatTokenAmount(stat.inputTokens)} · ${UsageFormatUtils.formatTokenAmount(stat.outputTokens)}",
                 savings = "-${"%.1f".format(stat.savingsPct)}%"
             )
         } else {
