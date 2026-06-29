@@ -10,9 +10,11 @@ import de.espend.ml.llm.usage.AccountPanelInfo
 import de.espend.ml.llm.usage.ProviderInfo
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
+import de.espend.ml.llm.usage.UsageData
 import de.espend.ml.llm.usage.UsageEntry
 import de.espend.ml.llm.usage.UsageFetchResult
 import de.espend.ml.llm.usage.UsageFormatUtils
+import de.espend.ml.llm.usage.UsageLine
 import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.UsageProvider
 import de.espend.ml.llm.usage.ui.UsageFormPanel
@@ -66,7 +68,10 @@ class CodexUsageProvider : UsageProvider {
 
     override fun getAccountPanelInfo(account: UsageAccountConfig): AccountPanelInfo {
         val config = account as? CodexUsageAccountConfig
-        return AccountPanelInfo.progressbar(if (config?.showSparkPrimaryWindow == true) 4 else 2)
+        return AccountPanelInfo.progressbarWithLines(
+            if (config?.showSparkPrimaryWindow == true) 4 else 2,
+            1
+        )
     }
     override val configClass = CodexUsageAccountConfig::class
 
@@ -435,7 +440,21 @@ class CodexUsageProvider : UsageProvider {
             entries += parseSparkWindowEntries(root)
         }
 
-        return UsageFetchResult.success(entries)
+        return UsageFetchResult.success(
+            UsageData(
+                entries = entries,
+                lines = parseResetCreditLines(root)
+            )
+        )
+    }
+
+    private fun parseResetCreditLines(root: JsonObject): List<UsageLine> {
+        val availableCount = root.getObjectOrNull("rate_limit_reset_credits")
+            ?.getIntOrNull("available_count")
+            ?: return emptyList()
+
+        val resetLabel = if (availableCount == 1) "reset" else "resets"
+        return listOf(UsageLine("$availableCount usage limit $resetLabel available"))
     }
 
     private fun parseSparkWindowEntries(root: JsonObject): List<UsageEntry> {
@@ -537,6 +556,12 @@ class CodexUsageProvider : UsageProvider {
         val element = get(memberName) ?: return null
         if (!element.isJsonPrimitive) return null
         return runCatching { element.asDouble }.getOrNull()
+    }
+
+    private fun JsonObject.getIntOrNull(memberName: String): Int? {
+        val element = get(memberName) ?: return null
+        if (!element.isJsonPrimitive) return null
+        return runCatching { element.asInt }.getOrNull()
     }
 
     private fun JsonObject.getStringOrNull(memberName: String): String? {
