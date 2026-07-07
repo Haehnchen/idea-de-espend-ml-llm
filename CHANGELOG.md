@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.15.1
+* Add ClinePass usage provider with usage limits (Daniel Espendiller)
+
 # 0.15.0
 * optimize decimal token display formatting logic (Daniel Espendiller)
 * [#39](https://github.com/Haehnchen/idea-php-symfony2-plugin/issues/39) Usage toolbar - rtk savings doesn't show anything on Windows: support all os structures (Daniel Espendiller)
