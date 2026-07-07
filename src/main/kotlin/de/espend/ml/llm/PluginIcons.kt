@@ -16,6 +16,7 @@ object PluginIcons {
     val MIMO: Icon = IconLoader.getIcon("/icons/mimo.png", PluginIcons::class.java)
     val ANTHROPIC: Icon = IconLoader.getIcon("/icons/anthropic.png", PluginIcons::class.java)
     val CLAUDE: Icon = IconLoader.getIcon("/icons/claude.png", PluginIcons::class.java)
+    val CLINEPASS: Icon = IconLoader.getIcon("/icons/clinepass.png", PluginIcons::class.java)
     val PI: Icon = IconLoader.getIcon("/icons/pi.png", PluginIcons::class.java)
     val OPENCODE: Icon = IconLoader.getIcon("/icons/opencode.png", PluginIcons::class.java)
     val OPENCODE_GO: Icon = IconLoader.getIcon("/icons/opencode-go.png", PluginIcons::class.java)

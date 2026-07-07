@@ -1,0 +1,22 @@
+{
+  "data": {
+    "limits": [
+      {
+        "type": "five_hour",
+        "percentUsed": 12.5,
+        "resetsAt": "2026-07-07T12:34:14.63901491Z"
+      },
+      {
+        "type": "weekly",
+        "percentUsed": 34,
+        "resetsAt": "2026-07-14T07:34:14.640545819Z"
+      },
+      {
+        "type": "monthly",
+        "percentUsed": 56.75,
+        "resetsAt": "2026-08-06T07:34:14.641838219Z"
+      }
+    ]
+  },
+  "success": true
+}

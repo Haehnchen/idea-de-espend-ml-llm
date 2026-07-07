@@ -6,6 +6,7 @@ import com.intellij.openapi.components.Service.Level
 import com.intellij.openapi.diagnostic.Logger
 import de.espend.ml.llm.usage.provider.AmpcodeUsageProvider
 import de.espend.ml.llm.usage.provider.ClaudeUsageProvider
+import de.espend.ml.llm.usage.provider.ClinePassUsageProvider
 import de.espend.ml.llm.usage.provider.CodexUsageProvider
 import de.espend.ml.llm.usage.provider.JunieUsageProvider
 import de.espend.ml.llm.usage.provider.OllamaUsageProvider
@@ -61,6 +62,7 @@ class ProviderUsageService {
         registerProvider(JunieUsageProvider())
         registerProvider(OllamaUsageProvider())
         registerProvider(OpenCodeGoUsageProvider())
+        registerProvider(ClinePassUsageProvider())
     }
 
     fun registerProvider(provider: UsageProvider) {
