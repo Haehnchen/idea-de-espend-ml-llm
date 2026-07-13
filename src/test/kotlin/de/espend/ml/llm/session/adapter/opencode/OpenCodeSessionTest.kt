@@ -329,7 +329,7 @@ class OpenCodeSessionTest {
         insertSession("ses_004", "Test session")
         insertMessage("msg_001", "ses_004", "assistant")
         insertPart("prt_001", "msg_001", "ses_004", """
-            {"type":"tool","callID":"call_abc","tool":"read","state":{"status":"completed","input":{"filePath":"/src/main.kt"},"output":"file contents here"}}
+            {"type":"tool","callID":"call_abc","tool":"read","state":{"status":"completed","input":{"filePath":"/src/main.kt"},"output":"file contents here","metadata":{"exit":0}}}
         """.trimIndent())
 
         val session = OpenCodeSessionParser.parseSession("ses_004")
@@ -357,6 +357,22 @@ class OpenCodeSessionTest {
         assertNotNull(session)
         val tool = session!!.messages[0] as ParsedMessage.ToolUse
         assertEquals("bash", tool.toolName)
+        assertTrue(tool.hasResults())
+        assertTrue(tool.results[0].isError)
+    }
+
+    @Test
+    fun `parseSession should mark completed tool with non-zero exit code as error`() {
+        insertSession("ses_non_zero_exit", "Test session")
+        insertMessage("msg_001", "ses_non_zero_exit", "assistant")
+        insertPart("prt_001", "msg_001", "ses_non_zero_exit", """
+            {"type":"tool","callID":"call_failed_bash","tool":"bash","state":{"status":"completed","input":{"command":"false"},"output":"Command failed","metadata":{"exit":1}}}
+        """.trimIndent())
+
+        val session = OpenCodeSessionParser.parseSession("ses_non_zero_exit")
+
+        assertNotNull(session)
+        val tool = session!!.messages[0] as ParsedMessage.ToolUse
         assertTrue(tool.hasResults())
         assertTrue(tool.results[0].isError)
     }

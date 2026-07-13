@@ -138,6 +138,9 @@ object OpenCodeSessionParser {
                                 val inputMap = ToolInputFormatter.jsonToMap(state?.get("input"))
 
                                 val status = state?.get("status")?.jsonPrimitive?.content
+                                val exitCode = ((state?.get("metadata") as? JsonObject)?.get("exit") as? JsonPrimitive)
+                                    ?.intOrNull
+                                val isError = status == "error" || (exitCode != null && exitCode != 0)
                                 val results = mutableListOf<ParsedMessage.ToolResult>()
                                 if (status == "completed" || status == "error") {
                                     val outputEl = if (status == "error") state["error"] else state["output"]
@@ -146,7 +149,7 @@ object OpenCodeSessionParser {
                                         timestamp = partTimestamp,
                                         toolCallId = callId,
                                         output = outputBlocks,
-                                        isError = status == "error"
+                                        isError = isError
                                     ))
                                 }
 
