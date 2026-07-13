@@ -18,7 +18,7 @@ class SessionDetailView(
     private val jsQueryCursor: JBCefJSQuery? = null
 ) {
     private companion object {
-        const val MIN_GROUPED_TOOL_CALLS = 2
+        const val MIN_GROUPED_MESSAGES = 2
     }
 
     /**
@@ -190,60 +190,103 @@ class SessionDetailView(
         var index = 0
         while (index < messages.size) {
             val message = messages[index]
-            if (message !is ParsedMessage.ToolUse) {
-                appendMessage(sb, message, cwd)
-                index++
-                continue
-            }
+            val groupType = messageGroupType(message)
 
             var endIndex = index + 1
-            while (endIndex < messages.size && messages[endIndex] is ParsedMessage.ToolUse) {
+            while (endIndex < messages.size && messageGroupType(messages[endIndex]) == groupType) {
                 endIndex++
             }
 
             val count = endIndex - index
-            if (count >= MIN_GROUPED_TOOL_CALLS) {
-                val toolCalls = messages.subList(index, endIndex).map { it as ParsedMessage.ToolUse }
-                appendToolUseGroup(sb, toolCalls, cwd)
+            if (count >= MIN_GROUPED_MESSAGES) {
+                appendMessageGroup(sb, messages.subList(index, endIndex), cwd)
             } else {
-                for (messageIndex in index until endIndex) {
-                    appendMessage(sb, messages[messageIndex], cwd)
-                }
+                appendMessage(sb, message, cwd)
             }
             index = endIndex
         }
     }
 
-    private fun appendToolUseGroup(
+    private fun messageGroupType(message: ParsedMessage): String {
+        return when (message) {
+            is ParsedMessage.User -> "user"
+            is ParsedMessage.AssistantText -> message.displayType
+            is ParsedMessage.AssistantThinking -> "thinking"
+            is ParsedMessage.ToolUse -> "tool_use"
+            is ParsedMessage.ToolResult -> "tool_result"
+            is ParsedMessage.Info -> message.title
+        }
+    }
+
+    private fun appendMessageGroup(
         sb: StringBuilder,
-        toolCalls: List<ParsedMessage.ToolUse>,
+        messages: List<ParsedMessage>,
         cwd: String?
     ) {
-        val toolNames = toolCalls
-            .map { it.toolName.trim() }
-            .filter { it.isNotEmpty() }
-            .distinctBy { it.lowercase() }
-        val visibleToolNames = toolNames.take(3).joinToString(", ") { HtmlBuilder.escapeHtml(it) }
-        val toolNameSuffix = if (toolNames.size > 3) ", …" else ""
+        val groupLabel = messageGroupLabel(messages.first(), messages.size)
+        val groupDetails = messageGroupDetails(messages)
 
-        sb.appendLine("            <div class=\"tool-call-group collapsed\">")
-        sb.appendLine("                <button type=\"button\" class=\"tool-call-group-toggle clickable\" onclick=\"toggleToolCallGroup(this)\" aria-expanded=\"false\">")
-        sb.appendLine("                    <span class=\"tool-call-group-line\"></span>")
-        sb.appendLine("                    <span class=\"tool-call-group-label\">")
-        sb.appendLine("                        <span class=\"tool-call-group-text\">")
-        sb.appendLine("                            <span class=\"tool-call-group-count\">${toolCalls.size} Tool calls</span>")
-        if (visibleToolNames.isNotEmpty()) {
-            sb.appendLine("                            <span class=\"tool-call-group-names\">$visibleToolNames$toolNameSuffix</span>")
+        sb.appendLine("            <div class=\"message-group collapsed\">")
+        sb.appendLine("                <button type=\"button\" class=\"message-group-toggle clickable\" onclick=\"toggleMessageGroup(this)\" aria-expanded=\"false\">")
+        sb.appendLine("                    <span class=\"message-group-line\"></span>")
+        sb.appendLine("                    <span class=\"message-group-label\">")
+        sb.appendLine("                        <span class=\"message-group-text\">")
+        sb.appendLine("                            <span class=\"message-group-count\">${HtmlBuilder.escapeHtml(groupLabel)}</span>")
+        if (groupDetails.isNotEmpty()) {
+            sb.appendLine("                            <span class=\"message-group-details\">${HtmlBuilder.escapeHtml(groupDetails)}</span>")
         }
         sb.appendLine("                        </span>")
-        sb.appendLine("                        <span class=\"tool-call-group-icon\">${Icons.chevronDown(10)}</span>")
+        sb.appendLine("                        <span class=\"message-group-icon\">${Icons.chevronDown(10)}</span>")
         sb.appendLine("                    </span>")
-        sb.appendLine("                    <span class=\"tool-call-group-line\"></span>")
+        sb.appendLine("                    <span class=\"message-group-line\"></span>")
         sb.appendLine("                </button>")
-        sb.appendLine("                <div class=\"tool-call-group-items\">")
-        toolCalls.forEach { appendToolUseBlock(sb, it, cwd) }
+        sb.appendLine("                <div class=\"message-group-items\">")
+        messages.forEach { appendMessage(sb, it, cwd) }
         sb.appendLine("                </div>")
         sb.appendLine("            </div>")
+    }
+
+    private fun messageGroupLabel(message: ParsedMessage, count: Int): String {
+        val type = when (message) {
+            is ParsedMessage.User -> "User message"
+            is ParsedMessage.AssistantText -> when (message.displayType) {
+                "text" -> "Assistant message"
+                else -> "${message.displayType.replace('_', ' ')} message"
+            }
+            is ParsedMessage.AssistantThinking -> "Thinking block"
+            is ParsedMessage.ToolUse -> "Tool call"
+            is ParsedMessage.ToolResult -> "Tool result"
+            is ParsedMessage.Info -> message.title
+        }
+
+        return "$count ${pluralizeLastWord(type)}"
+    }
+
+    private fun pluralizeLastWord(value: String): String {
+        val lastSpace = value.lastIndexOf(' ')
+        val prefix = if (lastSpace >= 0) value.substring(0, lastSpace + 1) else ""
+        val word = if (lastSpace >= 0) value.substring(lastSpace + 1) else value
+        val plural = when {
+            word.endsWith("y", ignoreCase = true) && word.length > 1 &&
+                word[word.lastIndex - 1].lowercaseChar() !in "aeiou" -> word.dropLast(1) + "ies"
+            listOf("s", "x", "z", "ch", "sh").any { word.endsWith(it, ignoreCase = true) } -> word + "es"
+            else -> word + "s"
+        }
+        return prefix + plural
+    }
+
+    private fun messageGroupDetails(messages: List<ParsedMessage>): String {
+        val details = when (messages.first()) {
+            is ParsedMessage.ToolUse -> messages.filterIsInstance<ParsedMessage.ToolUse>().map { it.toolName }
+            is ParsedMessage.ToolResult -> messages.filterIsInstance<ParsedMessage.ToolResult>().mapNotNull { it.toolName }
+            else -> emptyList()
+        }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+
+        val visibleDetails = details.take(3).joinToString(", ")
+        return visibleDetails + if (details.size > 3) ", …" else ""
     }
 
     private fun appendThinkingBlock(sb: StringBuilder, msg: ParsedMessage.AssistantThinking) {

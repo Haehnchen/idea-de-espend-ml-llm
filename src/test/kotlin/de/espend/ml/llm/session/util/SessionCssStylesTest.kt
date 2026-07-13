@@ -30,15 +30,15 @@ class SessionCssStylesTest {
     }
 
     @Test
-    fun `detail styles should contain collapsible tool call group separator`() {
+    fun `detail styles should contain collapsible message group separator`() {
         val css = CssStyles.forDetailView()
 
-        assertTrue(css.contains(".tool-call-group-toggle"))
-        assertTrue(css.contains(".tool-call-group-line"))
-        assertTrue(css.contains(".tool-call-group-names"))
-        assertTrue(css.contains("--tool-call-group-gap: 12px"))
-        assertTrue(css.contains("padding-top: var(--tool-call-group-gap)"))
-        assertTrue(css.contains(".tool-call-group.collapsed .tool-call-group-items { display: none; }"))
-        assertTrue(css.contains(".tool-call-group.expanded .tool-call-group-icon { transform: rotate(180deg); }"))
+        assertTrue(css.contains(".message-group-toggle"))
+        assertTrue(css.contains(".message-group-line"))
+        assertTrue(css.contains(".message-group-details"))
+        assertTrue(css.contains("--message-group-gap: 12px"))
+        assertTrue(css.contains("padding-top: var(--message-group-gap)"))
+        assertTrue(css.contains(".message-group.collapsed .message-group-items { display: none; }"))
+        assertTrue(css.contains(".message-group.expanded .message-group-icon { transform: rotate(180deg); }"))
     }
 }
