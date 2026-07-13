@@ -95,6 +95,7 @@ object OpenCodeSessionParser {
                 "assistant" -> {
                     val model = msgData["modelID"]?.jsonPrimitive?.content
                     if (model != null) modelCounts[model] = (modelCounts[model] ?: 0) + 1
+                    val finish = msgData["finish"]?.jsonPrimitive?.contentOrNull
 
                     val partMessages = mutableListOf<ParsedMessage>()
                     for (part in parts) {
@@ -108,7 +109,17 @@ object OpenCodeSessionParser {
                                     ?.takeIf { it.isNotEmpty() } ?: continue
                                 partMessages.add(ParsedMessage.AssistantText(
                                     timestamp = partTimestamp,
-                                    content = listOf(MessageContent.Markdown(text))
+                                    content = listOf(MessageContent.Markdown(text)),
+                                    displayType = when (finish) {
+                                        "stop" -> "final_answer"
+                                        "tool-calls" -> "commentary"
+                                        else -> "text"
+                                    },
+                                    style = when (finish) {
+                                        "stop" -> ParsedMessage.AssistantTextStyle.RESULT
+                                        "tool-calls" -> ParsedMessage.AssistantTextStyle.STATUS
+                                        else -> ParsedMessage.AssistantTextStyle.DEFAULT
+                                    }
                                 ))
                             }
                             "reasoning" -> {

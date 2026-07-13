@@ -86,11 +86,12 @@ class OpenCodeSessionTest {
     private fun insertMessage(
         msgId: String, sessionId: String, role: String,
         model: String? = null, createdMs: Long = 1700000000000L,
-        error: String? = null
+        error: String? = null, finish: String? = null
     ) {
         val modelPart = if (model != null) ""","modelID":"$model"""" else ""
         val errorPart = if (error != null) ""","error":$error""" else ""
-        val data = """{"role":"$role","time":{"created":$createdMs}$modelPart$errorPart}"""
+        val finishPart = if (finish != null) ""","finish":"$finish"""" else ""
+        val data = """{"role":"$role","time":{"created":$createdMs}$modelPart$errorPart$finishPart}"""
         DriverManager.getConnection(dbUrl).use { conn ->
             conn.prepareStatement(
                 "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?,?,?,?,?)"
@@ -241,6 +242,72 @@ class OpenCodeSessionTest {
         assertEquals(1, session!!.messages.size)
         val msg = session.messages[0] as ParsedMessage.AssistantText
         assertEquals("This is my answer.", (msg.content[0] as MessageContent.Markdown).markdown)
+        assertEquals("text", msg.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.DEFAULT, msg.style)
+    }
+
+    @Test
+    fun `parseSession should style assistant text from finish reason`() {
+        insertSession("ses_finish", "Test session")
+        insertMessage(
+            "msg_status",
+            "ses_finish",
+            "assistant",
+            createdMs = 1700000000000L,
+            finish = "tool-calls"
+        )
+        insertPart(
+            "prt_status",
+            "msg_status",
+            "ses_finish",
+            """{"type":"text","text":"Ich prüfe jetzt die Logos."}""",
+            createdMs = 1700000000000L
+        )
+        insertMessage(
+            "msg_result",
+            "ses_finish",
+            "assistant",
+            createdMs = 1700000010000L,
+            finish = "stop"
+        )
+        insertPart(
+            "prt_result",
+            "msg_result",
+            "ses_finish",
+            """{"type":"text","text":"Alle 6 Provider-Logos sind jetzt 48x48 webp."}""",
+            createdMs = 1700000010000L
+        )
+        insertMessage(
+            "msg_length",
+            "ses_finish",
+            "assistant",
+            createdMs = 1700000020000L,
+            finish = "length"
+        )
+        insertPart(
+            "prt_length",
+            "msg_length",
+            "ses_finish",
+            """{"type":"text","text":"Unvollständige Antwort"}""",
+            createdMs = 1700000020000L
+        )
+
+        val session = OpenCodeSessionParser.parseSession("ses_finish")
+
+        assertNotNull(session)
+        assertEquals(3, session!!.messages.size)
+
+        val status = session.messages[0] as ParsedMessage.AssistantText
+        assertEquals("commentary", status.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.STATUS, status.style)
+
+        val result = session.messages[1] as ParsedMessage.AssistantText
+        assertEquals("final_answer", result.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.RESULT, result.style)
+
+        val incomplete = session.messages[2] as ParsedMessage.AssistantText
+        assertEquals("text", incomplete.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.DEFAULT, incomplete.style)
     }
 
     @Test
@@ -306,7 +373,9 @@ class OpenCodeSessionTest {
 
         assertNotNull(session)
         assertEquals(1, session!!.messages.size)
-        assertTrue(session.messages[0] is ParsedMessage.AssistantText)
+        val message = session.messages[0] as ParsedMessage.AssistantText
+        assertEquals("text", message.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.DEFAULT, message.style)
     }
 
     @Test
