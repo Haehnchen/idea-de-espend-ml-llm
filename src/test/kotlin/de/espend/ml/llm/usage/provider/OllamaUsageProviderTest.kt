@@ -299,7 +299,8 @@ class OllamaUsageProviderTest {
             id = "test-id",
             providerId = "ollama",
             label = "Test",
-            isEnabled = true
+            isEnabled = true,
+            weight = 0
         )
 
         val config = provider.fromState(state) as OllamaUsageProvider.OllamaUsageAccountConfig

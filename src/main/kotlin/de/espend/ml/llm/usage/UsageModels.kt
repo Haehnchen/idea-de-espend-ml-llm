@@ -106,6 +106,9 @@ data class ProviderUsageResponse(
 /**
  * Base configuration for usage accounts
  *
+ * [weight] controls the shared display order and is intentionally edited only by
+ * moving accounts in the settings table.
+ *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
 abstract class UsageAccountConfig(state: UsageAccountState? = null) {
@@ -114,6 +117,7 @@ abstract class UsageAccountConfig(state: UsageAccountState? = null) {
     var name: String = state?.label ?: ""
     var isEnabled: Boolean = state?.isEnabled ?: true
     var enableStatusBar: Boolean = state?.enableStatusBar ?: false
+    var weight: Int = state?.weight ?: 0
 
     open fun getInfoString(): String = ""
 
@@ -128,6 +132,7 @@ abstract class UsageAccountConfig(state: UsageAccountState? = null) {
 /**
  * Generic serializable state for any provider account — stored as a flat array in XML.
  * Provider-specific fields go into [properties].
+ * [weight] is a common field used for the display order across all providers.
  *
  * @author Daniel Espendiller <daniel@espendiller.net>
  */
@@ -137,9 +142,17 @@ data class UsageAccountState(
     var label: String = "",
     var isEnabled: Boolean = true,
     var enableStatusBar: Boolean = false,
+    var weight: Int = 0,
     var properties: MutableMap<String, String> = mutableMapOf()
 ) {
     fun getString(key: String, default: String = ""): String = properties[key] ?: default
     fun putString(key: String, value: String) { properties[key] = value }
 
 }
+
+/**
+ * Sort accounts by their user-defined display weight while preserving the stored order
+ * for legacy accounts that do not have distinct weights yet.
+ */
+internal fun accountsInDisplayOrder(accounts: List<UsageAccountState>): List<UsageAccountState> =
+    accounts.sortedBy { it.weight }

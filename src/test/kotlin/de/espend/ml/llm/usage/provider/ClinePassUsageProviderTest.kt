@@ -58,6 +58,7 @@ class ClinePassUsageProviderTest {
             name = "ClinePass"
             apiKey = "sk_test_123456"
             enableStatusBar = true
+            weight = 7
         }
 
         val state = provider.toState(original)
@@ -68,6 +69,7 @@ class ClinePassUsageProviderTest {
         assertEquals("sk_test_123456", restored.apiKey)
         assertEquals("sk_test_123456", state.getString("apiKey"))
         assertTrue(restored.enableStatusBar)
+        assertEquals(7, restored.weight)
     }
 
     @Test

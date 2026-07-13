@@ -2,9 +2,9 @@ package de.espend.ml.llm.usage.ui
 
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.AnActionButton
 import com.intellij.ui.ToolbarDecorator
-import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.table.TableView
 import com.intellij.util.IconUtil
@@ -17,6 +17,8 @@ import de.espend.ml.llm.usage.ProviderUsageService
 import de.espend.ml.llm.usage.UsageAccountConfig
 import de.espend.ml.llm.usage.UsageAccountState
 import de.espend.ml.llm.usage.UsagePlatformRegistry
+import de.espend.ml.llm.usage.UsageProvider
+import de.espend.ml.llm.usage.accountsInDisplayOrder
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.GridBagConstraints
@@ -24,9 +26,11 @@ import java.awt.GridBagLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.ItemEvent
+import javax.swing.AbstractCellEditor
 import javax.swing.Icon
 import javax.swing.JCheckBox
 import javax.swing.JComponent
+import javax.swing.JEditorPane
 import javax.swing.JMenuItem
 import javax.swing.JPanel
 import javax.swing.JPopupMenu
@@ -34,10 +38,10 @@ import javax.swing.JSeparator
 import javax.swing.JTable
 import javax.swing.ListSelectionModel
 import javax.swing.SwingConstants
+import javax.swing.event.HyperlinkEvent
 import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableCellEditor
-import javax.swing.AbstractCellEditor
+import javax.swing.table.TableCellRenderer
 
 /**
  * Settings panel for managing usage accounts.
@@ -67,8 +71,6 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
     private val tokscaleStatsCheckBox = JCheckBox("Show Tokscale token usage panel").apply {
         isOpaque = false
     }
-
-    private val rows: MutableList<UsageRow> = mutableListOf()
 
     private val modelList = com.intellij.util.ui.ListTableModel<UsageRow>(
         arrayOf(EnabledColumn(), LabelColumn(), TypeColumn(), InfoColumn()),
@@ -101,21 +103,11 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
                 insets = JBUI.insetsBottom(2)
             })
 
-            val hintFont = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
-            val hintRow = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
-                isOpaque = false
-                add(JBLabel("Reads token savings from RTK's history database (default: ${RtkStatsReader.defaultDbPathForDisplay()}) written by ").apply {
-                    font = hintFont
-                    foreground = UIUtil.getContextHelpForeground()
-                })
-                add(ActionLink("rtk") { BrowserUtil.browse("https://github.com/rtk-ai/rtk") }.apply {
-                    font = hintFont
-                })
-                add(JBLabel(", a transparent CLI proxy that reduces token usage.").apply {
-                    font = hintFont
-                    foreground = UIUtil.getContextHelpForeground()
-                })
-            }
+            val rtkPath = toWrappingHtml(RtkStatsReader.defaultDbPathForDisplay())
+            val hintRow = createWrappingHint(
+                "Reads token savings from RTK's history database (default: $rtkPath) written by " +
+                    "<a href=\"https://github.com/rtk-ai/rtk\">rtk</a>, a transparent CLI proxy that reduces token usage."
+            )
             add(hintRow, GridBagConstraints().apply {
                 gridx = 0; gridy = 1; anchor = GridBagConstraints.WEST; weightx = 1.0
                 fill = GridBagConstraints.HORIZONTAL
@@ -127,20 +119,10 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
                 insets = JBUI.insets(8, 0, 2, 0)
             })
 
-            val tokscaleHintRow = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0)).apply {
-                isOpaque = false
-                add(JBLabel("Uses local ").apply {
-                    font = hintFont
-                    foreground = UIUtil.getContextHelpForeground()
-                })
-                add(ActionLink("tokscale.") { BrowserUtil.browse("https://www.npmjs.com/package/tokscale") }.apply {
-                    font = hintFont
-                })
-                add(JBLabel(" Falls back to npx and shows week/month input, output, total tokens, and cost.").apply {
-                    font = hintFont
-                    foreground = UIUtil.getContextHelpForeground()
-                })
-            }
+            val tokscaleHintRow = createWrappingHint(
+                "Uses local <a href=\"https://www.npmjs.com/package/tokscale\">tokscale</a>. " +
+                    "Falls back to npx and shows week/month input, output, total tokens, and cost."
+            )
             add(tokscaleHintRow, GridBagConstraints().apply {
                 gridx = 0; gridy = 3; anchor = GridBagConstraints.WEST; weightx = 1.0
                 fill = GridBagConstraints.HORIZONTAL
@@ -171,8 +153,8 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         toolbarDecorator.setAddAction { button -> showProviderMenu(button.contextComponent, button) }
         toolbarDecorator.setEditAction { editSelectedRow() }
         toolbarDecorator.setRemoveAction { removeSelectedRow() }
-        toolbarDecorator.disableUpAction()
-        toolbarDecorator.disableDownAction()
+        toolbarDecorator.setMoveUpAction { moveSelectedRow(-1) }
+        toolbarDecorator.setMoveDownAction { moveSelectedRow(1) }
 
         add(toolbarDecorator.createPanel(), GridBagConstraints().apply {
             gridx = 0; gridy = 3
@@ -200,23 +182,21 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         rtkStatsCheckBox.isSelected = registryState.showRtkStats
         tokscaleStatsCheckBox.isSelected = registryState.showTokscaleStats
 
-        rows.clear()
         while (modelList.rowCount > 0) modelList.removeRow(0)
 
         val service = ProviderUsageService.getInstance()
-        registryState.accounts.forEach { state ->
+        accountsInDisplayOrder(registryState.accounts).forEach { state ->
             val config = service.getProvider(state.providerId)?.fromState(state) ?: return@forEach
-            rows.add(UsageRow(config))
+            modelList.addRow(UsageRow(config))
         }
 
-        rows.forEach { modelList.addRow(it) }
         if (modelList.rowCount > 0) tableView.setRowSelectionInterval(0, 0)
     }
 
     fun isModified(registryState: UsagePlatformRegistry.State): Boolean {
         if (rtkStatsCheckBox.isSelected != registryState.showRtkStats) return true
         if (tokscaleStatsCheckBox.isSelected != registryState.showTokscaleStats) return true
-        return toAccountStates() != registryState.accounts
+        return toAccountStates() != accountsInDisplayOrder(registryState.accounts)
     }
 
     fun applyTo(registryState: UsagePlatformRegistry.State) {
@@ -225,7 +205,10 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         val accounts = toAccountStates()
         LOG.debug("Updating provider accounts: ${accounts.size} account(s)")
         accounts.forEach { state ->
-            LOG.debug("  Account: id=${state.id}, provider=${state.providerId}, label=${state.label}, enabled=${state.isEnabled}, statusBar=${state.enableStatusBar}")
+            LOG.debug(
+                "Account: id=${state.id}, provider=${state.providerId}, label=${state.label}, " +
+                    "enabled=${state.isEnabled}, statusBar=${state.enableStatusBar}, weight=${state.weight}"
+            )
         }
         registryState.accounts = accounts.toMutableList()
     }
@@ -269,6 +252,24 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         }
     }
 
+    private fun moveSelectedRow(offset: Int) {
+        val index = tableView.selectedRow
+        val targetIndex = index + offset
+        if (index < 0 || targetIndex !in 0 until modelList.rowCount) return
+
+        val row = modelList.getItem(index)
+        modelList.removeRow(index)
+        modelList.insertRow(targetIndex, row)
+        updateWeightsFromTableOrder()
+        tableView.setRowSelectionInterval(targetIndex, targetIndex)
+    }
+
+    private fun updateWeightsFromTableOrder() {
+        modelList.items.forEachIndexed { index, row ->
+            row.config.weight = index
+        }
+    }
+
     private fun showProviderMenu(anchor: JComponent, button: AnActionButton) {
         val menu = JPopupMenu()
         val service = ProviderUsageService.getInstance()
@@ -291,6 +292,7 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
                 defaultConfig.enableStatusBar = panel.enableStatusBarCheckBox.isSelected
 
                 modelList.addRow(UsageRow(defaultConfig))
+                updateWeightsFromTableOrder()
                 tableView.setRowSelectionInterval(modelList.rowCount - 1, modelList.rowCount - 1)
             }
             menu.add(menuItem)
@@ -441,8 +443,41 @@ class UsagePlatformSettingsPanel : JPanel(GridBagLayout()) {
         }
     }
 
+    private fun createWrappingHint(html: String): JEditorPane {
+        val maxWidth = JBUI.scale(480)
+        return object : JEditorPane() {
+            override fun getPreferredSize(): Dimension {
+                val preferred = super.getPreferredSize()
+                if (preferred.width <= maxWidth) return preferred
+
+                setSize(maxWidth, Short.MAX_VALUE.toInt())
+                val wrapped = super.getPreferredSize()
+                return Dimension(maxWidth, wrapped.height)
+            }
+        }.apply {
+            contentType = "text/html"
+            isEditable = false
+            isOpaque = false
+            border = JBUI.Borders.empty()
+            putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
+            font = UIUtil.getLabelFont().deriveFont(UIUtil.getLabelFont().size2D - 1f)
+            foreground = UIUtil.getContextHelpForeground()
+            text = "<html><body style=\"margin: 0\">$html</body></html>"
+            addHyperlinkListener { event ->
+                if (event.eventType == HyperlinkEvent.EventType.ACTIVATED) {
+                    event.url?.let { BrowserUtil.browse(it.toExternalForm()) }
+                }
+            }
+        }
+    }
+
     companion object {
         private val LOG = Logger.getInstance(UsagePlatformSettingsPanel::class.java)
+        private fun toWrappingHtml(value: String): String =
+            StringUtil.escapeXmlEntities(value)
+                .replace("/", "/&#8203;")
+                .replace("\\", "\\&#8203;")
+
         private fun scaleIcon(icon: Icon, size: Int): Icon {
             val targetSize = JBUI.scale(size)
             val currentSize = icon.iconWidth.coerceAtLeast(1)

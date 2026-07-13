@@ -43,7 +43,7 @@ class UsagePlatformRegistry : PersistentStateComponent<UsagePlatformRegistry.Sta
         XmlSerializerUtil.copyBean(state, myState)
     }
 
-    fun getAccountStates(): List<UsageAccountState> = myState.accounts.toList()
+    fun getAccountStates(): List<UsageAccountState> = accountsInDisplayOrder(myState.accounts)
 
     /**
      * Update specific properties of an account's state in-place.

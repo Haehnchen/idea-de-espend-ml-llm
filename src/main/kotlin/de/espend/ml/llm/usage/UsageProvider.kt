@@ -113,7 +113,8 @@ interface UsageProvider {
             providerId = providerInfo.providerId,
             label = config.name,
             isEnabled = config.isEnabled,
-            enableStatusBar = config.enableStatusBar
+            enableStatusBar = config.enableStatusBar,
+            weight = config.weight
         ).apply(applyProperties)
     }
 
