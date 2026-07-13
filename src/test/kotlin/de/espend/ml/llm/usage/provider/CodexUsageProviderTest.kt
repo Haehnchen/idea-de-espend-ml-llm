@@ -415,7 +415,7 @@ class CodexUsageProviderTest {
         assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
         assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
         assertEquals(1, result.data!!.lines.size)
-        assertEquals("0 usage limit resets available", result.data!!.lines[0].text)
+        assertEquals("0 resets available", result.data!!.lines[0].text)
     }
 
     @Test
@@ -442,7 +442,7 @@ class CodexUsageProviderTest {
 
         assertTrue("Should be success", result.data != null)
         assertEquals(1, result.data!!.lines.size)
-        assertEquals("3 usage limit resets available", result.data!!.lines[0].text)
+        assertEquals("3 resets available", result.data!!.lines[0].text)
     }
 
     @Test
@@ -463,7 +463,7 @@ class CodexUsageProviderTest {
         val result = provider.parseResponseBody(json)
 
         assertTrue("Should be success", result.data != null)
-        assertEquals("1 usage limit reset available", result.data!!.lines[0].text)
+        assertEquals("1 reset available", result.data!!.lines[0].text)
     }
 
     @Test

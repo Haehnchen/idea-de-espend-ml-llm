@@ -444,7 +444,7 @@ class CodexUsageProvider : UsageProvider {
             ?: return emptyList()
 
         val resetLabel = if (availableCount == 1) "reset" else "resets"
-        return listOf(UsageLine("$availableCount usage limit $resetLabel available"))
+        return listOf(UsageLine("$availableCount $resetLabel available"))
     }
 
     private fun parseSparkWindowEntries(root: JsonObject): List<UsageEntry> {
