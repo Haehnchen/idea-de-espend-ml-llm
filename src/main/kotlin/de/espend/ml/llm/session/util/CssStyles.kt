@@ -14,6 +14,11 @@ object CssStyles {
         .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     """.trimIndent()
 
+    val LINKS = """
+        a, a:visited { color: var(--jb-color-link); text-decoration-color: currentColor; }
+        a:hover, a:focus { color: var(--jb-color-link-hover); }
+    """.trimIndent()
+
     val TOOLTIP = """
         [data-tooltip] { cursor: default; }
         .tooltip-popup { position: fixed; background: var(--jb-color-foreground); color: var(--jb-color-background); padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 10000; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; }
@@ -91,8 +96,10 @@ object CssStyles {
         .message { margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: var(--jb-color-background-secondary); border-left: 3px solid var(--jb-color-border); }
         .message.user { background: var(--msg-user-bg); border-left-color: var(--msg-user-border); }
         .message.assistant { background: var(--msg-assistant-bg); border-left-color: var(--msg-assistant-border); }
-        .message.tool_use { background: var(--msg-tool-use-bg); border-left-color: var(--msg-tool-use-border); }
-        .message.tool_result { background: var(--msg-tool-result-bg); border-left-color: var(--msg-tool-result-border); }
+        .message.status { background: var(--msg-status-bg); border-left-color: var(--msg-status-border); }
+        .message.result { background: var(--msg-result-bg); border-left-color: var(--msg-result-border); }
+        .message.tool-use { background: var(--msg-tool-use-bg); border-left-color: var(--msg-tool-use-border); }
+        .message.tool-result { background: var(--msg-tool-result-bg); border-left-color: var(--msg-tool-result-border); }
         .message.thinking { background: var(--msg-thinking-bg); border-left-color: var(--msg-thinking-border); }
         .message.info { background: var(--msg-info-bg); border-left-color: var(--msg-info-border); }
         .message.schema-error { background: var(--msg-error-bg); border-left-color: var(--msg-error-border); }
@@ -102,8 +109,10 @@ object CssStyles {
         .role-label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--jb-color-comment); }
         .user .role-label { color: var(--msg-user-label); }
         .assistant .role-label { color: var(--msg-assistant-label); }
-        .tool_use .role-label { color: var(--msg-tool-use-label); }
-        .tool_result .role-label { color: var(--msg-tool-result-label); }
+        .status .role-label { color: var(--msg-status-label); }
+        .result .role-label { color: var(--msg-result-label); }
+        .tool-use .role-label { color: var(--msg-tool-use-label); }
+        .tool-result .role-label { color: var(--msg-tool-result-label); }
         .thinking .role-label { color: var(--msg-thinking-label); }
         .info .role-label { color: var(--msg-info-label); }
         .schema-error .role-label { color: var(--msg-error-label); }
@@ -118,8 +127,10 @@ object CssStyles {
         .message-content-wrapper.collapsed .message-content { max-height: 200px; overflow: hidden; position: relative; }
         .message-content-wrapper.collapsed .message-content::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, var(--msg-assistant-bg)); pointer-events: none; }
         .message.user .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-user-bg)); }
-        .message.tool_use .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-tool-use-bg)); }
-        .message.tool_result .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-tool-result-bg)); }
+        .message.status .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-status-bg)); }
+        .message.result .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-result-bg)); }
+        .message.tool-use .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-tool-use-bg)); }
+        .message.tool-result .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-tool-result-bg)); }
         .message.thinking .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-thinking-bg)); }
         .message.info .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-info-bg)); }
         .message.schema-error .message-content-wrapper.collapsed .message-content::after { background: linear-gradient(transparent, var(--msg-error-bg)); }
@@ -139,8 +150,10 @@ object CssStyles {
         .type-badge { display: inline-block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 8px; }
         .type-badge.user { color: var(--msg-user-label); }
         .type-badge.assistant { color: var(--msg-assistant-label); }
+        .type-badge.status { color: var(--msg-status-label); }
+        .type-badge.result { color: var(--msg-result-label); }
         .type-badge.tool-use { color: var(--msg-tool-use-label); }
-        .type-badge.tool_result { color: var(--msg-tool-result-label); }
+        .type-badge.tool-result { color: var(--msg-tool-result-label); }
         .type-badge.thinking { color: var(--msg-thinking-label); }
         .type-badge.info { color: var(--msg-info-label); }
         .type-badge.schema-error { color: var(--msg-error-label); }
@@ -237,6 +250,7 @@ object CssStyles {
         return combine(
             ThemeColors.generateCssVariables(),
             BASE,
+            LINKS,
             TOOLTIP,
             SCROLLBAR,
             CONTAINER,
@@ -256,6 +270,7 @@ object CssStyles {
         return combine(
             ThemeColors.generateCssVariables(),
             BASE,
+            LINKS,
             TOOLTIP,
             SCROLLBAR,
             CONTAINER,
@@ -278,6 +293,7 @@ object CssStyles {
         return combine(
             ThemeColors.generateCssVariables(),
             BASE,
+            LINKS,
             TOOLTIP,
             SCROLLBAR,
             CONTAINER,

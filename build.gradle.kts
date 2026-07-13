@@ -14,6 +14,9 @@ plugins {
 
 group = "de.espend.ml.llm"
 
+// Standalone-only dependencies for SessionHtmlDumper; these are not bundled into the plugin.
+val sessionCliRuntime by configurations.creating
+
 repositories {
     mavenCentral()
     intellijPlatform {
@@ -40,6 +43,9 @@ dependencies {
 
     // SQLite JDBC for RTK stats panel
     implementation("org.xerial:sqlite-jdbc:3.51.3.0")
+
+    // The IDE supplies this through the bundled Markdown plugin, while dumpSession runs without an IDE classpath.
+    sessionCliRuntime("org.jetbrains:markdown-jvm:0.7.3")
 
     // Test dependencies
     testImplementation("junit:junit:4.13.2")
@@ -174,7 +180,7 @@ tasks.register<JavaExec>("dumpSession") {
     group = "session"
     description = "Dump session HTML to file for debugging"
     mainClass.set("de.espend.ml.llm.session.cli.SessionHtmlDumper")
-    classpath = sourceSets["main"].runtimeClasspath
+    classpath = sourceSets["main"].runtimeClasspath + sessionCliRuntime
 
     // Pass all args after -- to the application
     // Usage: ./gradlew dumpSession --args="--provider=claude --id=SESSION_ID"

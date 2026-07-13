@@ -60,6 +60,8 @@ class MessageModelsTest {
             content = content
         )
         assertEquals(1, msg.content.size)
+        assertEquals("text", msg.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.DEFAULT, msg.style)
     }
 
     @Test

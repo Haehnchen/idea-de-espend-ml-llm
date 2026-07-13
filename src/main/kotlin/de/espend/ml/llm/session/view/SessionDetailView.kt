@@ -166,7 +166,14 @@ class SessionDetailView(
     private fun appendMessage(sb: StringBuilder, msg: ParsedMessage, cwd: String? = null) {
         when (msg) {
             is ParsedMessage.User -> appendMessageBlock(sb, "user", "user", null, msg.timestamp, msg.content)
-            is ParsedMessage.AssistantText -> appendMessageBlock(sb, "assistant", "text", null, msg.timestamp, msg.content)
+            is ParsedMessage.AssistantText -> {
+                val cssClass = when (msg.style) {
+                    ParsedMessage.AssistantTextStyle.DEFAULT -> "assistant"
+                    ParsedMessage.AssistantTextStyle.STATUS -> "status"
+                    ParsedMessage.AssistantTextStyle.RESULT -> "result"
+                }
+                appendMessageBlock(sb, cssClass, msg.displayType, null, msg.timestamp, msg.content)
+            }
             is ParsedMessage.AssistantThinking -> appendThinkingBlock(sb, msg)
             is ParsedMessage.ToolUse -> appendToolUseBlock(sb, msg, cwd)
             is ParsedMessage.ToolResult -> appendMessageBlock(sb, "tool-result", "tool_result", msg.toolCallId?.take(24), msg.timestamp, msg.output)

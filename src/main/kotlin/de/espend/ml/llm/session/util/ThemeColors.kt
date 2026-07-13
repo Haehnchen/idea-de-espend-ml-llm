@@ -61,6 +61,8 @@ object ThemeColors {
         val foreground = if (isDark) Color(0xbbbbbb) else Color(0x2b2b2b)
         val comment = if (isDark) Color(0x858585) else Color(0x6b6b6b)
         val accent = if (isDark) Color(0x4a90d9) else Color(0x2470b3)
+        val link = getColor("Link.activeForeground", if (isDark) Color(0x6ea8fe) else Color(0x0057b8))
+        val linkHover = getColor("Link.hoverForeground", if (isDark) Color(0x9ec5fe) else Color(0x003d82))
         val info = if (isDark) Color(0x6db33f) else Color(0x4a8c2a)
         val error = if (isDark) Color(0xf85149) else Color(0xcf222e)
         val success = if (isDark) Color(0x3fb950) else Color(0x1a7f37)
@@ -79,6 +81,15 @@ object ThemeColors {
         val assistantBg = backgroundSecondary
         val assistantBorder = if (isDark) Color(0x6b6b6b) else Color(0xbdbdbd)
         val assistantLabel = if (isDark) Color(0x9e9e9e) else Color(0x616161)
+
+        // Status/progress: warm amber, related to thinking but slightly more orange and subdued.
+        val statusBg = if (isDark) Color(0x3a2f20) else Color(0xfff4dc)
+        val statusBorder = if (isDark) Color(0xd28b36) else Color(0xc57b1e)
+        val statusLabel = if (isDark) Color(0xefb45a) else Color(0x8b5108)
+
+        val resultBg = if (isDark) Color(0x26372c) else Color(0xedf7ee)
+        val resultBorder = if (isDark) Color(0x3a9d5d) else Color(0x2e7d32)
+        val resultLabel = if (isDark) Color(0x7bd89a) else Color(0x1b5e20)
 
         // Tool use/result: bluish info-like style
         val toolUseBg = if (isDark) Color(0x1e3a4a) else Color(0xe3f2fd)
@@ -128,6 +139,8 @@ object ThemeColors {
                 --jb-color-comment: ${toHex(comment)};
                 --jb-color-accent: ${toHex(accent)};
                 --jb-color-accent-subtle: ${toRgba(accent, 0.15)};
+                --jb-color-link: ${toHex(link)};
+                --jb-color-link-hover: ${toHex(linkHover)};
                 --jb-color-info: ${toHex(info)};
                 --jb-color-info-subtle: ${toRgba(info, 0.15)};
                 --jb-color-error: ${toHex(error)};
@@ -145,6 +158,14 @@ object ThemeColors {
                 --msg-assistant-bg: ${toHex(assistantBg)};
                 --msg-assistant-border: ${toHex(assistantBorder)};
                 --msg-assistant-label: ${toHex(assistantLabel)};
+
+                --msg-status-bg: ${toHex(statusBg)};
+                --msg-status-border: ${toHex(statusBorder)};
+                --msg-status-label: ${toHex(statusLabel)};
+
+                --msg-result-bg: ${toHex(resultBg)};
+                --msg-result-border: ${toHex(resultBorder)};
+                --msg-result-label: ${toHex(resultLabel)};
 
                 --msg-tool-use-bg: ${toHex(toolUseBg)};
                 --msg-tool-use-border: ${toHex(toolUseBorder)};
