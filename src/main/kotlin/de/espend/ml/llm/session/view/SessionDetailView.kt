@@ -17,6 +17,9 @@ class SessionDetailView(
     private val jsQueryRouter: JBCefJSQuery? = null,
     private val jsQueryCursor: JBCefJSQuery? = null
 ) {
+    private companion object {
+        const val MIN_GROUPED_TOOL_CALLS = 2
+    }
 
     /**
      * Generates the complete HTML for a session detail view.
@@ -58,9 +61,7 @@ class SessionDetailView(
                 appendLine("            <div class=\"empty-state\">No messages found in this session</div>")
             } else {
                 val cwd = metadata?.cwd
-                sessionDetail.messages.forEach { msg ->
-                    appendMessage(this, msg, cwd)
-                }
+                appendMessages(this, sessionDetail.messages, cwd)
             }
 
             appendLine("        </div>")
@@ -166,7 +167,14 @@ class SessionDetailView(
     private fun appendMessage(sb: StringBuilder, msg: ParsedMessage, cwd: String? = null) {
         when (msg) {
             is ParsedMessage.User -> appendMessageBlock(sb, "user", "user", null, msg.timestamp, msg.content)
-            is ParsedMessage.AssistantText -> appendMessageBlock(sb, "assistant", "text", null, msg.timestamp, msg.content)
+            is ParsedMessage.AssistantText -> {
+                val cssClass = when (msg.style) {
+                    ParsedMessage.AssistantTextStyle.DEFAULT -> "assistant"
+                    ParsedMessage.AssistantTextStyle.STATUS -> "status"
+                    ParsedMessage.AssistantTextStyle.RESULT -> "result"
+                }
+                appendMessageBlock(sb, cssClass, msg.displayType, null, msg.timestamp, msg.content)
+            }
             is ParsedMessage.AssistantThinking -> appendThinkingBlock(sb, msg)
             is ParsedMessage.ToolUse -> appendToolUseBlock(sb, msg, cwd)
             is ParsedMessage.ToolResult -> appendMessageBlock(sb, "tool-result", "tool_result", msg.toolCallId?.take(24), msg.timestamp, msg.output)
@@ -176,6 +184,66 @@ class SessionDetailView(
                 appendMessageBlock(sb, cssClass, msg.title, msg.subtitle, msg.timestamp, contentList)
             }
         }
+    }
+
+    private fun appendMessages(sb: StringBuilder, messages: List<ParsedMessage>, cwd: String?) {
+        var index = 0
+        while (index < messages.size) {
+            val message = messages[index]
+            if (message !is ParsedMessage.ToolUse) {
+                appendMessage(sb, message, cwd)
+                index++
+                continue
+            }
+
+            var endIndex = index + 1
+            while (endIndex < messages.size && messages[endIndex] is ParsedMessage.ToolUse) {
+                endIndex++
+            }
+
+            val count = endIndex - index
+            if (count >= MIN_GROUPED_TOOL_CALLS) {
+                val toolCalls = messages.subList(index, endIndex).map { it as ParsedMessage.ToolUse }
+                appendToolUseGroup(sb, toolCalls, cwd)
+            } else {
+                for (messageIndex in index until endIndex) {
+                    appendMessage(sb, messages[messageIndex], cwd)
+                }
+            }
+            index = endIndex
+        }
+    }
+
+    private fun appendToolUseGroup(
+        sb: StringBuilder,
+        toolCalls: List<ParsedMessage.ToolUse>,
+        cwd: String?
+    ) {
+        val toolNames = toolCalls
+            .map { it.toolName.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+        val visibleToolNames = toolNames.take(3).joinToString(", ") { HtmlBuilder.escapeHtml(it) }
+        val toolNameSuffix = if (toolNames.size > 3) ", …" else ""
+
+        sb.appendLine("            <div class=\"tool-call-group collapsed\">")
+        sb.appendLine("                <button type=\"button\" class=\"tool-call-group-toggle clickable\" onclick=\"toggleToolCallGroup(this)\" aria-expanded=\"false\">")
+        sb.appendLine("                    <span class=\"tool-call-group-line\"></span>")
+        sb.appendLine("                    <span class=\"tool-call-group-label\">")
+        sb.appendLine("                        <span class=\"tool-call-group-text\">")
+        sb.appendLine("                            <span class=\"tool-call-group-count\">${toolCalls.size} Tool calls</span>")
+        if (visibleToolNames.isNotEmpty()) {
+            sb.appendLine("                            <span class=\"tool-call-group-names\">$visibleToolNames$toolNameSuffix</span>")
+        }
+        sb.appendLine("                        </span>")
+        sb.appendLine("                        <span class=\"tool-call-group-icon\">${Icons.chevronDown(10)}</span>")
+        sb.appendLine("                    </span>")
+        sb.appendLine("                    <span class=\"tool-call-group-line\"></span>")
+        sb.appendLine("                </button>")
+        sb.appendLine("                <div class=\"tool-call-group-items\">")
+        toolCalls.forEach { appendToolUseBlock(sb, it, cwd) }
+        sb.appendLine("                </div>")
+        sb.appendLine("            </div>")
     }
 
     private fun appendThinkingBlock(sb: StringBuilder, msg: ParsedMessage.AssistantThinking) {

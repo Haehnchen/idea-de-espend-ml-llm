@@ -25,6 +25,12 @@ sealed class MessageContent {
 sealed class ParsedMessage {
     abstract val timestamp: String
 
+    enum class AssistantTextStyle {
+        DEFAULT,
+        STATUS,
+        RESULT
+    }
+
     /**
      * User message containing text or tool results.
      */
@@ -38,7 +44,9 @@ sealed class ParsedMessage {
      */
     data class AssistantText(
         override val timestamp: String,
-        val content: List<MessageContent>
+        val content: List<MessageContent>,
+        val displayType: String = "text",
+        val style: AssistantTextStyle = AssistantTextStyle.DEFAULT
     ) : ParsedMessage()
 
     /**
@@ -103,5 +111,3 @@ sealed class ParsedMessage {
         val style: InfoStyle = InfoStyle.DEFAULT
     ) : ParsedMessage()
 }
-
-

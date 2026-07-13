@@ -44,30 +44,30 @@ class CodexSessionAdapterTest {
     // ============ Event Message Tests ============
 
     @Test
-    fun `parseContent should skip user_message event (duplicate of response_item)`() {
+    fun `parseContent should use user_message event as fallback`() {
         val content = loadFixture("user_message")
         val (messages, metadata) = CodexSessionParser.parseContent(content)
 
-        // user_message from event_msg is skipped because response_item/message contains the same data
-        assertEquals("Should have 0 messages (user_message is skipped)", 0, messages.size)
+        assertEquals("Should retain event-only user messages", 1, messages.size)
+        assertTrue(messages[0] is ParsedMessage.User)
     }
 
     @Test
-    fun `parseContent should skip agent_message event (duplicate of response_item)`() {
+    fun `parseContent should use agent_message event as fallback`() {
         val content = loadFixture("agent_message")
         val (messages, metadata) = CodexSessionParser.parseContent(content)
 
-        // agent_message from event_msg is skipped because response_item/message contains the same data
-        assertEquals("Should have 0 messages (agent_message is skipped)", 0, messages.size)
+        assertEquals("Should retain event-only assistant messages", 1, messages.size)
+        assertTrue(messages[0] is ParsedMessage.AssistantText)
     }
 
     @Test
-    fun `parseContent should skip agent_reasoning event (duplicate of response_item)`() {
+    fun `parseContent should use agent_reasoning event as fallback`() {
         val content = loadFixture("agent_reasoning")
         val (messages, metadata) = CodexSessionParser.parseContent(content)
 
-        // agent_reasoning from event_msg is skipped because response_item/reasoning contains the same data
-        assertEquals("Should have 0 messages (agent_reasoning is skipped)", 0, messages.size)
+        assertEquals("Should retain event-only reasoning summaries", 1, messages.size)
+        assertTrue(messages[0] is ParsedMessage.AssistantThinking)
     }
 
     // ============ Response Item Tests ============
@@ -141,6 +141,147 @@ class CodexSessionAdapterTest {
         assertTrue("Content should contain second reasoning", msg.thinking.contains("Identifying potential issues"))
     }
 
+    @Test
+    fun `parseContent should parse current Codex messages and array tool output`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:00.000Z","type":"session_meta","payload":{"id":"current-session","cwd":"/home/user/project","cli_version":"0.144.3","git":{"branch":"main"}}}
+            {"timestamp":"2026-07-13T15:48:01.000Z","type":"turn_context","payload":{"model":"gpt-5.6-sol","summary":"auto"}}
+            {"timestamp":"2026-07-13T15:48:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Please shorten the reset label"}]}}
+            {"timestamp":"2026-07-13T15:48:02.100Z","type":"event_msg","payload":{"type":"user_message","message":"Please shorten the reset label"}}
+            {"timestamp":"2026-07-13T15:48:03.000Z","type":"event_msg","payload":{"type":"agent_message","message":"I will inspect the usage panel."}}
+            {"timestamp":"2026-07-13T15:48:03.100Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"I will inspect the usage panel."}],"phase":"commentary"}}
+            {"timestamp":"2026-07-13T15:48:04.000Z","type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"call_1","input":"const r = await tools.exec_command({cmd: 'rg reset'});"}}
+            {"timestamp":"2026-07-13T15:48:04.100Z","type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call_1","output":[{"type":"input_text","text":"Script completed\nOutput:\n"},{"type":"input_text","text":"CodexUsageProvider.kt:447"}]}}
+            {"timestamp":"2026-07-13T15:48:05.000Z","type":"response_item","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"Checking the existing wording"}],"encrypted_content":"encrypted"}}
+            {"timestamp":"2026-07-13T15:48:06.000Z","type":"event_msg","payload":{"type":"agent_message","message":"The label is shorter."}}
+            {"timestamp":"2026-07-13T15:48:06.100Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"The label is shorter.\n\n<oai-mem-citation>internal</oai-mem-citation>"}],"phase":"final_answer"}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertEquals(5, messages.size)
+        assertTrue(messages[0] is ParsedMessage.User)
+        assertTrue(messages[1] is ParsedMessage.AssistantText)
+        assertTrue(messages[2] is ParsedMessage.ToolUse)
+        assertTrue(messages[3] is ParsedMessage.AssistantThinking)
+        assertTrue(messages[4] is ParsedMessage.AssistantText)
+
+        val commentary = messages[1] as ParsedMessage.AssistantText
+        assertEquals("commentary", commentary.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.STATUS, commentary.style)
+        assertEquals("Please shorten the reset label", contentToString((messages[0] as ParsedMessage.User).content))
+
+        val toolUse = messages[2] as ParsedMessage.ToolUse
+        assertEquals(1, toolUse.results.size)
+        val toolOutput = contentToString(toolUse.results.single().output)
+        assertTrue(toolOutput.contains("Script completed"))
+        assertTrue(toolOutput.contains("CodexUsageProvider.kt:447"))
+
+        val finalAnswer = messages[4] as ParsedMessage.AssistantText
+        assertEquals("final_answer", finalAnswer.displayType)
+        assertEquals(ParsedMessage.AssistantTextStyle.RESULT, finalAnswer.style)
+        val finalText = contentToString(finalAnswer.content)
+        assertEquals("The label is shorter.", finalText)
+        assertEquals(5, metadata?.messageCount)
+        assertEquals("gpt-5.6-sol", metadata?.models?.single()?.first)
+
+        val listMetadata = CodexSessionParser.parseJsonlMetadata(content)
+        assertEquals("Please shorten the reset label", listMetadata.summary)
+        assertEquals(5, listMetadata.messageCount)
+    }
+
+    @Test
+    fun `parseContent should use public user events instead of response turn context`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Internal-looking but unclassified context"},{"type":"input_image","image_url":"data:image/png;base64,omitted"}]}}
+            {"timestamp":"2026-07-13T15:48:02.100Z","type":"event_msg","payload":{"type":"user_message","message":"Public user text"}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertEquals(1, messages.size)
+        assertEquals("Public user text", contentToString((messages.single() as ParsedMessage.User).content))
+        assertEquals(1, metadata?.messageCount)
+    }
+
+    @Test
+    fun `parseContent should preserve response user content when public events are unavailable`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Unclassified response-only content"},{"type":"input_image","image_url":"data:image/png;base64,omitted"}]}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertEquals(1, messages.size)
+        assertEquals("Unclassified response-only content\n[image]", contentToString((messages.single() as ParsedMessage.User).content))
+        assertEquals(1, metadata?.messageCount)
+    }
+
+    @Test
+    fun `parseJsonlMetadata should prefer the public user event for the session summary`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Internal turn context"}]}}
+            {"timestamp":"2026-07-13T15:48:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Public user text"}]}}
+            {"timestamp":"2026-07-13T15:48:02.100Z","type":"event_msg","payload":{"type":"user_message","message":"Public user text"}}
+        """.trimIndent()
+
+        val metadata = CodexSessionParser.parseJsonlMetadata(content)
+
+        assertEquals("Public user text", metadata.summary)
+        assertEquals(1, metadata.messageCount)
+    }
+
+    @Test
+    fun `parseContent should parse array function output`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:00.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","call_id":"call_array","arguments":"{\"cmd\":\"pwd\"}"}}
+            {"timestamp":"2026-07-13T15:48:01.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_array","output":[{"type":"input_text","text":"Command completed\n"},{"type":"input_text","text":"/home/user/project"}]}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertEquals(1, messages.size)
+        val toolUse = messages.single() as ParsedMessage.ToolUse
+        assertEquals("exec_command", toolUse.toolName)
+        assertEquals(1, toolUse.results.size)
+        assertTrue(contentToString(toolUse.results.single().output).contains("/home/user/project"))
+        assertEquals(1, metadata?.messageCount)
+    }
+
+    @Test
+    fun `parseContent should parse current auxiliary response items`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:00.000Z","type":"response_item","payload":{"type":"tool_search_call","call_id":"search_1","arguments":{"query":"session parser","limit":8}}}
+            {"timestamp":"2026-07-13T15:48:00.100Z","type":"response_item","payload":{"type":"tool_search_output","call_id":"search_1","tools":[{"type":"namespace","name":"github"}]}}
+            {"timestamp":"2026-07-13T15:48:01.000Z","type":"response_item","payload":{"type":"web_search_call","id":"web_1","status":"completed","action":{"type":"search","query":"Codex JSONL"}}}
+            {"timestamp":"2026-07-13T15:48:02.000Z","type":"response_item","payload":{"type":"image_generation_call","id":"image_1","status":"completed","revised_prompt":"A compact session browser","result":"omitted"}}
+            {"timestamp":"2026-07-13T15:48:03.000Z","type":"response_item","payload":{"type":"agent_message","author":"/root/reviewer","recipient":"/root","content":[{"type":"input_text","text":"Message Type: FINAL_ANSWER\nParser review complete."}]}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertEquals(4, messages.size)
+        val toolSearch = messages[0] as ParsedMessage.ToolUse
+        assertEquals("tool_search", toolSearch.toolName)
+        assertTrue(toolSearch.hasResults())
+        assertEquals("web_search", (messages[1] as ParsedMessage.ToolUse).toolName)
+        assertEquals("image_generation", (messages[2] as ParsedMessage.ToolUse).toolName)
+        assertTrue(messages[3] is ParsedMessage.Info)
+        assertEquals(4, metadata?.messageCount)
+    }
+
+    @Test
+    fun `parseContent should ignore encrypted reasoning without a summary`() {
+        val content = """
+            {"timestamp":"2026-07-13T15:48:00.000Z","type":"response_item","payload":{"type":"reasoning","summary":[],"encrypted_content":"encrypted"}}
+        """.trimIndent()
+
+        val (messages, metadata) = CodexSessionParser.parseContent(content)
+
+        assertTrue(messages.isEmpty())
+        assertEquals(0, metadata?.messageCount)
+    }
+
     // ============ Tool Connection Tests ============
 
     @Test
@@ -171,9 +312,8 @@ class CodexSessionAdapterTest {
         val content = loadFixture("mixed_conversation")
         val (messages, metadata) = CodexSessionParser.parseContent(content)
 
-        // Should have: agent_reasoning, function_call (connected with output)
-        // Note: user_message, agent_message, and agent_reasoning from event_msg are skipped
-        assertTrue("Should have at least 1 message", messages.size >= 1)
+        // Event-only text remains visible and the tool result is attached to its call.
+        assertEquals("Should have user, reasoning, tool, and assistant messages", 4, messages.size)
 
         // Check metadata
         assertNotNull("Metadata should not be null", metadata)

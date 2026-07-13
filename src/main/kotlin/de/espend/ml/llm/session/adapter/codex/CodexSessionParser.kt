@@ -24,6 +24,21 @@ object CodexSessionParser {
 
     val JSON = Json { ignoreUnknownKeys = true }
 
+    private enum class MessageSource {
+        EVENT,
+        RESPONSE_ITEM
+    }
+
+    private data class MessageRecord(
+        val message: ParsedMessage,
+        val source: MessageSource
+    )
+
+    private data class AssistantTextPresentation(
+        val displayType: String,
+        val style: ParsedMessage.AssistantTextStyle
+    )
+
     /**
      * Parses a Codex session file and returns SessionDetail.
      */
@@ -35,10 +50,11 @@ object CodexSessionParser {
             val sessionId = CodexSessionFinder.extractSessionId(file) ?: file.nameWithoutExtension
             val (messages, metadata) = parseContent(content)
 
-            val title = messages.filterIsInstance<ParsedMessage.User>().firstOrNull()?.let { userMsg ->
+            val title = findFirstPublicUserMessage(content)?.let(::summarizeText)
+                ?: messages.filterIsInstance<ParsedMessage.User>().firstOrNull()?.let { userMsg ->
                 val text = userMsg.content.filterIsInstance<MessageContent.Text>().joinToString(" ") { it.text }
                     .ifEmpty { userMsg.content.filterIsInstance<MessageContent.Markdown>().joinToString(" ") { it.markdown } }
-                text.take(100) + if (text.length > 100) "..." else ""
+                summarizeText(text)
             } ?: "Untitled"
 
             SessionDetail(
@@ -56,15 +72,11 @@ object CodexSessionParser {
      * Parses Codex .jsonl content and extracts messages with metadata.
      */
     fun parseContent(content: String): Pair<List<ParsedMessage>, SessionMetadata?> {
-        val rawMessages = mutableListOf<ParsedMessage>()
+        val rawMessages = mutableListOf<MessageRecord>()
         var metadata: SessionMetadata? = null
         var created: String? = null
         var modified: String? = null
-        var messageCount = 0
         val modelCounts = mutableMapOf<String, Int>()
-
-        // Map to track function_call by call_id for connecting with outputs
-        val functionCallsByCallId = mutableMapOf<String, ParsedMessage.ToolUse>()
 
         val lines = content.lines()
 
@@ -96,7 +108,11 @@ object CodexSessionParser {
                     }
 
                     "event_msg" -> {
-                        // Skip event_msg - all relevant data is in response_item
+                        val payload = json["payload"]?.jsonObject
+                        val parsed = parseEventMessage(payload, timestamp ?: "")
+                        if (parsed != null) {
+                            rawMessages.add(MessageRecord(parsed, MessageSource.EVENT))
+                        }
                     }
 
                     "response_item" -> {
@@ -104,13 +120,7 @@ object CodexSessionParser {
                         val payloadType = payload?.get("type")?.jsonPrimitive?.content
                         val parsed = parseResponseItem(payloadType, payload, timestamp ?: "")
                         if (parsed != null) {
-                            rawMessages.add(parsed)
-                            messageCount++
-
-                            // Track ToolUse for later connection with output
-                            if (parsed is ParsedMessage.ToolUse && parsed.toolCallId != null) {
-                                functionCallsByCallId[parsed.toolCallId] = parsed
-                            }
+                            rawMessages.add(MessageRecord(parsed, MessageSource.RESPONSE_ITEM))
                         }
                     }
 
@@ -127,8 +137,11 @@ object CodexSessionParser {
             }
         }
 
-        // Post-process: Connect tool outputs to their corresponding tool calls
-        val finalMessages = connectToolOutputsToToolCalls(rawMessages)
+        // Current Codex writes public user/assistant text both as event_msg and response_item.
+        // LEGACY_CODEX_FORMAT: retain event-only messages from older sessions. Remove this fallback
+        // once pre-response_item session files no longer need to be supported.
+        val deduplicatedMessages = deduplicateEventMessages(rawMessages)
+        val finalMessages = connectToolOutputsToToolCalls(deduplicatedMessages)
 
         val sortedModels = modelCounts.entries
             .sortedByDescending { it.value }
@@ -137,16 +150,128 @@ object CodexSessionParser {
         metadata = metadata?.copy(
             created = created,
             modified = modified,
-            messageCount = messageCount,
+            messageCount = finalMessages.size,
             models = sortedModels
         ) ?: SessionMetadata(
             created = created,
             modified = modified,
-            messageCount = messageCount,
+            messageCount = finalMessages.size,
             models = sortedModels
         )
 
         return Pair(finalMessages, metadata)
+    }
+
+    /**
+     * Uses the public user event stream as the canonical source for user cards. Response user
+     * records can also contain injected turn context, while event_msg/user_message represents
+     * what the user submitted. Response user records remain as a fallback when no public user
+     * events exist. Other event messages are removed only when an identical response item exists.
+     */
+    private fun deduplicateEventMessages(records: List<MessageRecord>): List<ParsedMessage> {
+        val hasPublicUserEvents = records.any {
+            it.source == MessageSource.EVENT && it.message is ParsedMessage.User
+        }
+        val remainingResponseCounts = records
+            .asSequence()
+            .filter { it.source == MessageSource.RESPONSE_ITEM }
+            .mapNotNull { messageDeduplicationKey(it.message) }
+            .groupingBy { it }
+            .eachCount()
+            .toMutableMap()
+
+        return records.mapNotNull { record ->
+            val key = messageDeduplicationKey(record.message)
+            when {
+                hasPublicUserEvents && record.source == MessageSource.RESPONSE_ITEM && record.message is ParsedMessage.User -> null
+                record.source == MessageSource.EVENT && record.message !is ParsedMessage.User && key != null && remainingResponseCounts.getOrDefault(key, 0) > 0 -> {
+                    remainingResponseCounts[key] = remainingResponseCounts.getValue(key) - 1
+                    null
+                }
+                else -> record.message
+            }
+        }
+    }
+
+    private fun messageDeduplicationKey(message: ParsedMessage): String? {
+        return when (message) {
+            is ParsedMessage.User -> "user:${normalizeDeduplicationText(contentAsText(message.content))}"
+            is ParsedMessage.AssistantText -> "assistant:${normalizeDeduplicationText(contentAsText(message.content))}"
+            is ParsedMessage.AssistantThinking -> "thinking:${message.thinking.trim()}"
+            else -> null
+        }
+    }
+
+    private fun normalizeDeduplicationText(text: String): String {
+        return text.trim()
+    }
+
+    private fun contentAsText(content: List<MessageContent>): String {
+        return content.joinToString("\n") { block ->
+            when (block) {
+                is MessageContent.Text -> block.text
+                is MessageContent.Code -> block.code
+                is MessageContent.Markdown -> block.markdown
+                is MessageContent.Json -> block.json
+            }
+        }
+    }
+
+    private fun findFirstPublicUserMessage(content: String): String? {
+        for (line in content.lineSequence()) {
+            val trimmed = line.trim()
+            if (!trimmed.startsWith("{")) continue
+
+            try {
+                val json = JSON.parseToJsonElement(trimmed).jsonObject
+                if (json["type"]?.jsonPrimitive?.contentOrNull != "event_msg") continue
+                val payload = json["payload"]?.jsonObject ?: continue
+                if (payload["type"]?.jsonPrimitive?.contentOrNull != "user_message") continue
+                return payload["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            } catch (_: Exception) {
+                // Continue with the next record.
+            }
+        }
+        return null
+    }
+
+    private fun summarizeText(text: String): String {
+        return text.take(100) + if (text.length > 100) "..." else ""
+    }
+
+    /**
+     * Parses public event messages as a fallback for older or partially-written sessions.
+     * LEGACY_CODEX_FORMAT: current completed sessions should use response_item as the canonical text.
+     */
+    private fun parseEventMessage(payload: JsonObject?, timestamp: String): ParsedMessage? {
+        if (payload == null) return null
+
+        return when (payload["type"]?.jsonPrimitive?.content) {
+            "user_message" -> payload["message"]?.jsonPrimitive?.contentOrNull
+                ?.takeIf { it.isNotBlank() }
+                ?.let { ParsedMessage.User(timestamp, listOf(MessageContent.Text(it))) }
+
+            "agent_message" -> payload["message"]?.jsonPrimitive?.contentOrNull
+                ?.let(::stripInternalAssistantMetadata)
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    val presentation = parseAssistantTextPresentation(payload["phase"]?.jsonPrimitive?.contentOrNull)
+                    ParsedMessage.AssistantText(
+                        timestamp = timestamp,
+                        content = listOf(MessageContent.Markdown(it)),
+                        displayType = presentation.displayType,
+                        style = presentation.style
+                    )
+                }
+
+            // LEGACY_CODEX_FORMAT: older rollouts exposed reasoning as a clear-text event.
+            // Current rollouts use response_item/reasoning with summary_text or encrypted content.
+            "agent_reasoning" -> payload["text"]?.jsonPrimitive?.contentOrNull
+                ?.takeIf { it.isNotBlank() }
+                ?.let { ParsedMessage.AssistantThinking(timestamp, it) }
+
+            else -> null
+        }
     }
 
     /**
@@ -235,16 +360,11 @@ object CodexSessionParser {
 
             "function_call_output" -> {
                 val callId = payload["call_id"]?.jsonPrimitive?.content
-                val output = payload["output"]?.jsonPrimitive?.content ?: ""
 
                 ParsedMessage.ToolResult(
                     timestamp = timestamp,
                     toolCallId = callId,
-                    output = if (output.isNotEmpty()) {
-                        listOf(MessageContent.Code(ToolOutputFormatter.truncateContent(output)))
-                    } else {
-                        emptyList()
-                    }
+                    output = parseToolOutput(payload["output"])
                 )
             }
 
@@ -269,32 +389,16 @@ object CodexSessionParser {
 
             "custom_tool_call_output" -> {
                 val callId = payload["call_id"]?.jsonPrimitive?.content
-                val outputStr = payload["output"]?.jsonPrimitive?.content ?: ""
-
-                val outputContent = if (outputStr.isNotEmpty()) {
-                    try {
-                        val outputJson = JSON.parseToJsonElement(outputStr).jsonObject
-                        val resultOutput = outputJson["output"]?.jsonPrimitive?.content ?: outputStr
-                        listOf(MessageContent.Code(ToolOutputFormatter.truncateContent(resultOutput)))
-                    } catch (_: Exception) {
-                        listOf(MessageContent.Code(ToolOutputFormatter.truncateContent(outputStr)))
-                    }
-                } else {
-                    emptyList()
-                }
 
                 ParsedMessage.ToolResult(
                     timestamp = timestamp,
                     toolCallId = callId,
-                    output = outputContent
+                    output = parseToolOutput(payload["output"])
                 )
             }
 
             "reasoning" -> {
-                val summary = payload["summary"]?.jsonArray
-                val summaryText = summary?.mapNotNull { item ->
-                    item.jsonObject["text"]?.jsonPrimitive?.content
-                }?.joinToString("\n") ?: ""
+                val summaryText = extractReasoningSummary(payload)
 
                 if (summaryText.isNotEmpty()) {
                     ParsedMessage.AssistantThinking(
@@ -306,8 +410,138 @@ object CodexSessionParser {
                 }
             }
 
+            "agent_message" -> parseAgentMessagePayload(payload, timestamp)
+
+            "tool_search_call" -> {
+                ParsedMessage.ToolUse(
+                    timestamp = timestamp,
+                    toolName = "tool_search",
+                    toolCallId = payload["call_id"]?.jsonPrimitive?.contentOrNull,
+                    input = ToolInputFormatter.jsonToMap(payload["arguments"])
+                )
+            }
+
+            "tool_search_output" -> {
+                ParsedMessage.ToolResult(
+                    timestamp = timestamp,
+                    toolName = "tool_search",
+                    toolCallId = payload["call_id"]?.jsonPrimitive?.contentOrNull,
+                    output = summarizeToolSearchOutput(payload["tools"])
+                )
+            }
+
+            "web_search_call" -> {
+                ParsedMessage.ToolUse(
+                    timestamp = timestamp,
+                    toolName = "web_search",
+                    toolCallId = payload["id"]?.jsonPrimitive?.contentOrNull,
+                    input = ToolInputFormatter.jsonToMap(payload["action"])
+                )
+            }
+
+            "image_generation_call" -> {
+                val input = buildMap {
+                    payload["status"]?.jsonPrimitive?.contentOrNull?.let { put("status", it) }
+                    payload["revised_prompt"]?.jsonPrimitive?.contentOrNull?.let {
+                        put("prompt", ToolOutputFormatter.truncateContent(it))
+                    }
+                }
+                ParsedMessage.ToolUse(
+                    timestamp = timestamp,
+                    toolName = "image_generation",
+                    toolCallId = payload["id"]?.jsonPrimitive?.contentOrNull,
+                    input = input
+                )
+            }
+
             else -> null
         }
+    }
+
+    private fun extractReasoningSummary(payload: JsonObject): String {
+        fun extractText(element: JsonElement?): List<String> {
+            return when (element) {
+                is JsonArray -> element.flatMap(::extractText)
+                is JsonObject -> listOfNotNull(element["text"]?.jsonPrimitive?.contentOrNull)
+                is JsonPrimitive -> listOfNotNull(element.contentOrNull)
+                else -> emptyList()
+            }
+        }
+
+        return (extractText(payload["summary"]) + extractText(payload["content"]))
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+    }
+
+    /**
+     * Codex 0.144+ stores tool output as either a legacy string or a Responses API
+     * content array containing input_text/input_image blocks.
+     */
+    private fun parseToolOutput(output: JsonElement?): List<MessageContent> {
+        val text = extractToolOutputText(output).trim()
+        if (text.isEmpty()) return emptyList()
+        return listOf(MessageContent.Code(ToolOutputFormatter.truncateContent(text)))
+    }
+
+    private fun extractToolOutputText(output: JsonElement?): String {
+        return when (output) {
+            null, JsonNull -> ""
+            is JsonArray -> output.mapNotNull { item ->
+                val obj = item as? JsonObject ?: return@mapNotNull null
+                when (obj["type"]?.jsonPrimitive?.contentOrNull) {
+                    "input_text", "output_text", "text" -> obj["text"]?.jsonPrimitive?.contentOrNull
+                    "input_image", "output_image" -> "[image]"
+                    else -> obj["text"]?.jsonPrimitive?.contentOrNull
+                }
+            }.joinToString("\n")
+
+            is JsonObject -> {
+                val nested = output["output"] ?: output["content"] ?: output["result"]
+                if (nested != null) extractToolOutputText(nested) else output.toString()
+            }
+
+            // LEGACY_CODEX_FORMAT: older tool results stored output as a plain string or as a
+            // JSON object encoded inside a string. Current Responses-style output is a content array.
+            is JsonPrimitive -> {
+                val raw = output.contentOrNull ?: return ""
+                try {
+                    val parsed = JSON.parseToJsonElement(raw)
+                    if (parsed is JsonObject || parsed is JsonArray) extractToolOutputText(parsed) else raw
+                } catch (_: Exception) {
+                    raw
+                }
+            }
+        }
+    }
+
+    private fun summarizeToolSearchOutput(toolsElement: JsonElement?): List<MessageContent> {
+        val tools = toolsElement as? JsonArray ?: return emptyList()
+        val names = tools.mapNotNull { tool ->
+            (tool as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull
+        }
+        val summary = if (names.isEmpty()) {
+            "Found ${tools.size} tool definitions"
+        } else {
+            "Found ${tools.size} tool definitions: ${names.joinToString(", ")}"
+        }
+        return listOf(MessageContent.Text(summary))
+    }
+
+    private fun parseAgentMessagePayload(payload: JsonObject, timestamp: String): ParsedMessage? {
+        val text = extractMessageText(payload["content"])
+            .let(::stripInternalAssistantMetadata)
+            .takeIf { it.isNotBlank() }
+            ?: return null
+        val author = payload["author"]?.jsonPrimitive?.contentOrNull
+        val recipient = payload["recipient"]?.jsonPrimitive?.contentOrNull
+        val subtitle = listOfNotNull(author, recipient).joinToString(" → ").ifEmpty { null }
+
+        return ParsedMessage.Info(
+            timestamp = timestamp,
+            title = "agent_message",
+            subtitle = subtitle,
+            content = MessageContent.Markdown(text)
+        )
     }
 
     /**
@@ -326,18 +560,32 @@ object CodexSessionParser {
             when (itemType) {
                 "input_text" -> {
                     val text = obj["text"]?.jsonPrimitive?.content ?: continue
-                    // Skip system instructions and environment context
-                    if (text.contains("<permissions instructions>") ||
-                        text.contains("<environment_context>") ||
-                        text.contains("# AGENTS.md instructions")) {
-                        continue
+                    contentBlocks.add(MessageContent.Text(text))
+                }
+                "output_text" -> {
+                    val text = obj["text"]?.jsonPrimitive?.contentOrNull
+                        ?.let(::stripInternalAssistantMetadata)
+                        ?: continue
+                    val block = if (role == "assistant") {
+                        MessageContent.Markdown(text)
+                    } else {
+                        MessageContent.Text(text)
                     }
-                    contentBlocks.add(MessageContent.Text(text))
+                    contentBlocks.add(block)
                 }
+                // LEGACY_CODEX_FORMAT: old message records used the generic text block type.
                 "text" -> {
-                    val text = obj["text"]?.jsonPrimitive?.content ?: continue
-                    contentBlocks.add(MessageContent.Text(text))
+                    val text = obj["text"]?.jsonPrimitive?.contentOrNull
+                        ?.let(::stripInternalAssistantMetadata)
+                        ?: continue
+                    val block = if (role == "assistant") {
+                        MessageContent.Markdown(text)
+                    } else {
+                        MessageContent.Text(text)
+                    }
+                    contentBlocks.add(block)
                 }
+                "input_image", "output_image" -> contentBlocks.add(MessageContent.Text("[image]"))
             }
         }
 
@@ -345,32 +593,67 @@ object CodexSessionParser {
 
         return when (role) {
             "user" -> ParsedMessage.User(timestamp = timestamp, content = contentBlocks)
-            "developer" -> null  // Skip developer system messages
-            else -> ParsedMessage.User(timestamp = timestamp, content = contentBlocks)
+            "assistant" -> {
+                val presentation = parseAssistantTextPresentation(payload["phase"]?.jsonPrimitive?.contentOrNull)
+                ParsedMessage.AssistantText(
+                    timestamp = timestamp,
+                    content = contentBlocks,
+                    displayType = presentation.displayType,
+                    style = presentation.style
+                )
+            }
+            "developer", "system" -> null
+            else -> null
         }
     }
 
+    private fun parseAssistantTextPresentation(phase: String?): AssistantTextPresentation {
+        return when (phase) {
+            "commentary" -> AssistantTextPresentation("commentary", ParsedMessage.AssistantTextStyle.STATUS)
+            "final_answer" -> AssistantTextPresentation("final_answer", ParsedMessage.AssistantTextStyle.RESULT)
+            else -> AssistantTextPresentation("text", ParsedMessage.AssistantTextStyle.DEFAULT)
+        }
+    }
+
+    private fun extractMessageText(content: JsonElement?): String {
+        val contentArray = content as? JsonArray ?: return ""
+        return contentArray.mapNotNull { item ->
+            val obj = item as? JsonObject ?: return@mapNotNull null
+            when (obj["type"]?.jsonPrimitive?.contentOrNull) {
+                "input_text", "output_text", "text" -> obj["text"]?.jsonPrimitive?.contentOrNull
+                else -> null
+            }
+        }.joinToString("\n")
+    }
+
+    private fun stripInternalAssistantMetadata(text: String): String {
+        return text.replace(
+            Regex("""\s*<oai-mem-citation>.*?</oai-mem-citation>\s*$""", RegexOption.DOT_MATCHES_ALL),
+            ""
+        ).trimEnd()
+    }
+
     /**
-     * Parses JSONL file content to extract session metadata (lightweight, for list view).
-     * Only reads the first line to extract metadata.
+     * Parses JSONL file content to extract session metadata for the list view.
+     * The whole file is scanned so the displayed message count uses the same current-schema,
+     * legacy fallback, deduplication, and tool-result connection rules as the detail view.
      */
     fun parseJsonlMetadata(content: String): CodexSessionMetadata {
         return try {
             val lines = content.lines()
-            var summary: String? = null
-            var messageCount = 0
+            var eventSummary: String? = null
+            var responseSummary: String? = null
             var created: String? = null
             var lastTimestamp: String? = null
             var cwd: String? = null
             var originator: String? = null
             var model: String? = null
             var gitBranch: String? = null
+            val rawMessages = mutableListOf<MessageRecord>()
 
             for (line in lines) {
                 val trimmed = line.trim()
                 if (!trimmed.startsWith("{")) continue
-
-                messageCount++
 
                 // Extract timestamp via simple string search
                 val timestamp = extractTimestamp(trimmed)
@@ -400,13 +683,30 @@ object CodexSessionParser {
                             }
                         }
                         "event_msg" -> {
-                            if (summary == null) {
-                                val payload = json["payload"]?.jsonObject
+                            val payload = json["payload"]?.jsonObject
+                            if (eventSummary == null) {
                                 val payloadType = payload?.get("type")?.jsonPrimitive?.content
                                 if (payloadType == "user_message") {
                                     val message = payload["message"]?.jsonPrimitive?.content
                                     if (message != null && message.isNotEmpty()) {
-                                        summary = if (message.length > 100) message.take(100) + "..." else message
+                                        eventSummary = summarizeText(message)
+                                    }
+                                }
+                            }
+                            parseEventMessage(payload, timestamp ?: "")?.let {
+                                rawMessages.add(MessageRecord(it, MessageSource.EVENT))
+                            }
+                        }
+                        "response_item" -> {
+                            val payload = json["payload"]?.jsonObject
+                            val payloadType = payload?.get("type")?.jsonPrimitive?.contentOrNull
+                            val parsed = parseResponseItem(payloadType, payload, timestamp ?: "")
+                            if (parsed != null) {
+                                rawMessages.add(MessageRecord(parsed, MessageSource.RESPONSE_ITEM))
+                                if (responseSummary == null && parsed is ParsedMessage.User) {
+                                    val message = normalizeDeduplicationText(contentAsText(parsed.content))
+                                    if (message.isNotEmpty()) {
+                                        responseSummary = summarizeText(message)
                                     }
                                 }
                             }
@@ -418,8 +718,8 @@ object CodexSessionParser {
             }
 
             CodexSessionMetadata(
-                summary = summary,
-                messageCount = messageCount,
+                summary = eventSummary ?: responseSummary,
+                messageCount = connectToolOutputsToToolCalls(deduplicateEventMessages(rawMessages)).size,
                 created = created,
                 modified = lastTimestamp,
                 cwd = cwd,
