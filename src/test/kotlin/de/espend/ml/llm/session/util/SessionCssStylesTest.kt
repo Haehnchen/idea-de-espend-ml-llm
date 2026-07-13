@@ -22,9 +22,23 @@ class SessionCssStylesTest {
     fun `tool message selectors should match rendered hyphenated classes`() {
         val css = CssStyles.forDetailView()
 
+        assertTrue(css.contains(".header-left { display: flex; align-items: baseline;"))
         assertTrue(css.contains(".message.tool-use"))
         assertTrue(css.contains(".message.tool-result"))
         assertTrue(css.contains(".type-badge.tool-use"))
         assertTrue(css.contains(".type-badge.tool-result"))
+    }
+
+    @Test
+    fun `detail styles should contain collapsible tool call group separator`() {
+        val css = CssStyles.forDetailView()
+
+        assertTrue(css.contains(".tool-call-group-toggle"))
+        assertTrue(css.contains(".tool-call-group-line"))
+        assertTrue(css.contains(".tool-call-group-names"))
+        assertTrue(css.contains("--tool-call-group-gap: 12px"))
+        assertTrue(css.contains("padding-top: var(--tool-call-group-gap)"))
+        assertTrue(css.contains(".tool-call-group.collapsed .tool-call-group-items { display: none; }"))
+        assertTrue(css.contains(".tool-call-group.expanded .tool-call-group-icon { transform: rotate(180deg); }"))
     }
 }

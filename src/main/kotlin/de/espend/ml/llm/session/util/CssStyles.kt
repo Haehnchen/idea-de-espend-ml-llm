@@ -104,7 +104,7 @@ object CssStyles {
         .message.info { background: var(--msg-info-bg); border-left-color: var(--msg-info-border); }
         .message.schema-error { background: var(--msg-error-bg); border-left-color: var(--msg-error-border); }
         .message-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: var(--overlay-light); font-size: 0.85rem; flex-wrap: wrap; gap: 8px; }
-        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left { display: flex; align-items: baseline; gap: 12px; }
         .header-right { display: flex; align-items: center; gap: 12px; }
         .role-label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--jb-color-comment); }
         .user .role-label { color: var(--msg-user-label); }
@@ -157,6 +157,23 @@ object CssStyles {
         .type-badge.thinking { color: var(--msg-thinking-label); }
         .type-badge.info { color: var(--msg-info-label); }
         .type-badge.schema-error { color: var(--msg-error-label); }
+
+        /* Repeated tool call groups */
+        .tool-call-group { --tool-call-group-gap: 12px; margin: 2px 0 var(--tool-call-group-gap) 0; }
+        .tool-call-group-toggle { display: flex; align-items: center; gap: 12px; width: 100%; padding: 5px 0; border: 0; background: transparent; color: var(--jb-color-comment); font: inherit; cursor: pointer; }
+        .tool-call-group-line { flex: 1 1 auto; height: 1px; background: var(--jb-color-border); opacity: 0.75; }
+        .tool-call-group-label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 5px; white-space: nowrap; transition: background 0.15s ease; }
+        .tool-call-group-toggle:hover .tool-call-group-label { background: var(--overlay-light); }
+        .tool-call-group-toggle:focus-visible { outline: none; }
+        .tool-call-group-toggle:focus-visible .tool-call-group-label { outline: 1px solid var(--jb-color-accent); outline-offset: 2px; }
+        .tool-call-group-text { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
+        .tool-call-group-count { color: var(--jb-color-foreground); font-size: 12px; font-weight: 600; line-height: 1.2; }
+        .tool-call-group-names { color: var(--jb-color-comment); font-size: 10px; font-weight: 400; line-height: 1.2; }
+        .tool-call-group-icon { display: inline-flex; align-items: center; color: var(--msg-tool-use-label); transition: transform 0.2s ease; }
+        .tool-call-group.collapsed .tool-call-group-items { display: none; }
+        .tool-call-group.expanded .tool-call-group-items { display: block; padding-top: var(--tool-call-group-gap); }
+        .tool-call-group.expanded .tool-call-group-icon { transform: rotate(180deg); }
+        .tool-call-group-items .message:last-child { margin-bottom: 0; }
     """.trimIndent()
 
     val CODE_BLOCK = """
