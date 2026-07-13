@@ -32,6 +32,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import kotlin.math.roundToLong
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.ButtonGroup
@@ -422,19 +423,8 @@ class CodexUsageProvider : UsageProvider {
         includeSparkPrimaryWindow: Boolean
     ): UsageFetchResult {
         val rateLimit = root.getObjectOrNull("rate_limit")
-        val primaryWindow = rateLimit?.getObjectOrNull("primary_window")
-        val secondaryWindow = rateLimit?.getObjectOrNull("secondary_window")
-        val primaryWindowLabel = labelForWindow(primaryWindow, PRIMARY_WINDOW_LABEL)
-
-        val primaryEntry = parseWindowEntry(
-            primaryWindow,
-            headerPercent,
-            primaryWindowLabel
-        ) ?: return UsageFetchResult.error("No usage data found in response")
-
-        val entries = mutableListOf(primaryEntry)
-        entries += parseWindowEntry(secondaryWindow, null, WEEKLY_WINDOW_LABEL)
-            ?: unavailableEntry(WEEKLY_WINDOW_LABEL)
+        val entries = parseRateLimitWindowEntries(rateLimit, headerPercent)?.toMutableList()
+            ?: return UsageFetchResult.error("No usage data found in response")
 
         if (includeSparkPrimaryWindow) {
             entries += parseSparkWindowEntries(root)
@@ -473,22 +463,59 @@ class CodexUsageProvider : UsageProvider {
             )
         }
 
-        val primaryWindow = sparkRateLimit.getObjectOrNull("primary_window")
-        val secondaryWindow = sparkRateLimit.getObjectOrNull("secondary_window")
-        val primaryWindowLabel = "$SPARK_SHORT_LABEL ${labelForWindow(primaryWindow, PRIMARY_WINDOW_LABEL)}"
-        val secondaryWindowLabel = "$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL"
+        return parseRateLimitWindowEntries(sparkRateLimit, labelPrefix = SPARK_SHORT_LABEL)
+            ?: listOf(
+                unavailableEntry("$SPARK_SHORT_LABEL $PRIMARY_WINDOW_LABEL"),
+                unavailableEntry("$SPARK_SHORT_LABEL $WEEKLY_WINDOW_LABEL")
+            )
+    }
+
+    /** Builds two stable UI entries with labels derived from `limit_window_seconds`. */
+    private fun parseRateLimitWindowEntries(
+        rateLimit: JsonObject?,
+        headerPercent: Double? = null,
+        labelPrefix: String? = null
+    ): List<UsageEntry>? {
+        val primaryWindow = rateLimit?.getObjectOrNull("primary_window")
+        val secondaryWindow = rateLimit?.getObjectOrNull("secondary_window")
+        val windows = listOfNotNull(
+            if (primaryWindow != null || headerPercent != null) {
+                WindowCandidate(primaryWindow, headerPercent)
+            } else {
+                null
+            },
+            secondaryWindow?.let { WindowCandidate(it, null) }
+        ).filter { candidate ->
+            candidate.headerPercent != null || candidate.window?.getDoubleOrNull("used_percent") != null
+        }
+
+        if (windows.isEmpty()) {
+            return null
+        }
+
+        val weeklyIndex = windows.indexOfFirst { labelForWindow(it.window) == WEEKLY_WINDOW_LABEL }
+        val firstIndex = if (weeklyIndex >= 0) {
+            windows.indices.firstOrNull { labelForWindow(windows[it].window) != WEEKLY_WINDOW_LABEL }
+        } else {
+            windows.indices.firstOrNull()
+        }
+        val secondIndex = if (weeklyIndex >= 0) {
+            weeklyIndex
+        } else {
+            windows.indices.firstOrNull { it != firstIndex }
+        }
+
+        fun entryAt(index: Int?, unavailableLabel: String): UsageEntry {
+            val candidate = index?.let(windows::get)
+                ?: return unavailableEntry(prefixedLabel(labelPrefix, unavailableLabel))
+            val label = prefixedLabel(labelPrefix, labelForWindow(candidate.window))
+            return parseWindowEntry(candidate.window, candidate.headerPercent, label)
+                ?: unavailableEntry(label)
+        }
 
         return listOf(
-            parseWindowEntry(
-                primaryWindow,
-                null,
-                primaryWindowLabel
-            ) ?: unavailableEntry(primaryWindowLabel),
-            parseWindowEntry(
-                secondaryWindow,
-                null,
-                secondaryWindowLabel
-            ) ?: unavailableEntry(secondaryWindowLabel)
+            entryAt(firstIndex, PRIMARY_WINDOW_LABEL),
+            entryAt(secondIndex, WEEKLY_WINDOW_LABEL)
         )
     }
 
@@ -531,12 +558,25 @@ class CodexUsageProvider : UsageProvider {
         return UsageFormatUtils.formatSecondsUntilReset(secondsUntil)
     }
 
-    private fun labelForWindow(window: JsonObject?, fallback: String): String {
-        val seconds = window?.getDoubleOrNull("limit_window_seconds")?.toLong() ?: return fallback
-        return when {
-            seconds in MONTHLY_WINDOW_SECONDS_RANGE -> MONTHLY_WINDOW_LABEL
-            else -> fallback
+    private fun labelForWindow(window: JsonObject?): String {
+        val seconds = window?.getDoubleOrNull("limit_window_seconds")?.toLong()
+            ?: return UNKNOWN_WINDOW_LABEL
+
+        val roundedHours = (seconds.toDouble() / SECONDS_PER_HOUR).roundToLong().coerceAtLeast(1)
+        if (roundedHours < HOURS_PER_DAY) {
+            return "${roundedHours}h"
         }
+
+        val roundedDays = (seconds.toDouble() / SECONDS_PER_DAY).roundToLong().coerceAtLeast(1)
+        return when {
+            roundedDays == WEEKLY_WINDOW_DAYS -> WEEKLY_WINDOW_LABEL
+            roundedDays in MONTHLY_WINDOW_DAYS_RANGE -> MONTHLY_WINDOW_LABEL
+            else -> "${roundedDays}d"
+        }
+    }
+
+    private fun prefixedLabel(prefix: String?, label: String): String {
+        return if (prefix == null) label else "$prefix $label"
     }
 
     private fun JsonObject.getObjectOrNull(memberName: String): JsonObject? {
@@ -630,8 +670,18 @@ class CodexUsageProvider : UsageProvider {
         private const val PRIMARY_WINDOW_LABEL = "5h"
         private const val WEEKLY_WINDOW_LABEL = "Weekly"
         private const val MONTHLY_WINDOW_LABEL = "Monthly"
-        private val MONTHLY_WINDOW_SECONDS_RANGE = (28L * 24 * 60 * 60)..(31L * 24 * 60 * 60)
+        private const val UNKNOWN_WINDOW_LABEL = "Unknown"
+        private const val SECONDS_PER_HOUR = 60L * 60
+        private const val HOURS_PER_DAY = 24L
+        private const val SECONDS_PER_DAY = HOURS_PER_DAY * SECONDS_PER_HOUR
+        private const val WEEKLY_WINDOW_DAYS = 7L
+        private val MONTHLY_WINDOW_DAYS_RANGE = 28L..31L
     }
+
+    private data class WindowCandidate(
+        val window: JsonObject?,
+        val headerPercent: Double?
+    )
 
     private data class Credentials(
         val accessToken: String,

@@ -16,10 +16,12 @@ class CodexUsageProviderTest {
                 "rate_limit": {
                     "primary_window": {
                         "used_percent": 45.5,
+                        "limit_window_seconds": 18000,
                         "reset_at": 1741440000.0
                     },
                     "secondary_window": {
                         "used_percent": 12.0,
+                        "limit_window_seconds": 604800,
                         "reset_at": 1741880000.0
                     }
                 }
@@ -188,10 +190,12 @@ class CodexUsageProviderTest {
                 "rate_limit": {
                     "primary_window": {
                         "used_percent": 15.5,
+                        "limit_window_seconds": 18000,
                         "reset_at": 1741443600.0
                     },
                     "secondary_window": {
                         "used_percent": 22.5,
+                        "limit_window_seconds": 604800,
                         "reset_at": 1741880000.0
                     }
                 },
@@ -201,10 +205,12 @@ class CodexUsageProviderTest {
                         "rate_limit": {
                             "primary_window": {
                                 "used_percent": 7.0,
+                                "limit_window_seconds": 18000,
                                 "reset_at": 1741447200.0
                             },
                             "secondary_window": {
                                 "used_percent": 13.0,
+                                "limit_window_seconds": 604800,
                                 "reset_at": 1741887200.0
                             }
                         }
@@ -261,6 +267,7 @@ class CodexUsageProviderTest {
                 "rate_limit": {
                     "primary_window": {
                         "used_percent": 15.5,
+                        "limit_window_seconds": 18000,
                         "reset_at": 1741443600.0
                     }
                 }
@@ -274,6 +281,89 @@ class CodexUsageProviderTest {
         assertEquals(15.5f, result.data!!.entries[0].percentageUsed, 0.1f)
         assertEquals(0f, result.data!!.entries[1].percentageUsed, 0.1f)
         assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+    }
+
+    @Test
+    fun `parseResponseBody should assign primary weekly window by duration and keep fixed slots`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 0,
+                        "limit_window_seconds": 604800,
+                        "reset_after_seconds": 604748,
+                        "reset_at": 1784559469
+                    },
+                    "secondary_window": null
+                },
+                "additional_rate_limits": [
+                    {
+                        "limit_name": "GPT-5.3-Codex-Spark",
+                        "rate_limit": {
+                            "primary_window": {
+                                "used_percent": 0,
+                                "limit_window_seconds": 604800,
+                                "reset_after_seconds": 604800,
+                                "reset_at": 1784559521
+                            },
+                            "secondary_window": null
+                        }
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json, includeSparkPrimaryWindow = true)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals(4, result.data!!.entries.size)
+        assertEquals("5h · n/a", result.data!!.entries[0].subtitle)
+        assertTrue(result.data!!.entries[1].subtitle?.startsWith("Weekly · Resets in") == true)
+        assertEquals("Spark 5h · n/a", result.data!!.entries[2].subtitle)
+        assertTrue(result.data!!.entries[3].subtitle?.startsWith("Spark Weekly · Resets in") == true)
+    }
+
+    @Test
+    fun `parseResponseBody should use unknown label when duration is missing`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 15.5
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals("Unknown", result.data!!.entries[0].subtitle)
+        assertEquals("Weekly · n/a", result.data!!.entries[1].subtitle)
+    }
+
+    @Test
+    fun `parseResponseBody should round window duration and generate labels`() {
+        val json = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 15.5,
+                        "limit_window_seconds": 20160
+                    },
+                    "secondary_window": {
+                        "used_percent": 7.5,
+                        "limit_window_seconds": 108000
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals("6h", result.data!!.entries[0].subtitle)
+        assertEquals("1d", result.data!!.entries[1].subtitle)
     }
 
     @Test
