@@ -1,6 +1,16 @@
 Changelog
 =========
 
+# 0.16.0
+* Optimize Junie session parsing by reducing memory usage, improving event filtering, and simplifying project directory extraction logic. (Daniel Espendiller)
+* Rename "tool call group" to "message group" throughout session detail functionality, including CSS, JS, and tests, and add grouping logic for consecutive messages. (Daniel Espendiller)
+* Enhance assistant text parsing by adding styling and display type support based on "finish" reason, and update tests accordingly. (Daniel Espendiller)
+* Group consecutive tool calls in session detail views with expandable UI, update CSS and JS for toggling functionality, and add corresponding tests. (Daniel Espendiller)
+* Add standalone dependencies, CSS style tests, and improve Codex session parsing logic (Daniel Espendiller)
+* Simplify "usage limit resets" label to "resets" across CodexUsageProvider. (Daniel Espendiller)
+* Support weight-based ordering for usage accounts across providers. (Daniel Espendiller)
+* codex usages: Implement duration-based window labels for rate limits (Daniel Espendiller)
+
 # 0.15.1
 * Add ClinePass usage provider with usage limits (Daniel Espendiller)
 
