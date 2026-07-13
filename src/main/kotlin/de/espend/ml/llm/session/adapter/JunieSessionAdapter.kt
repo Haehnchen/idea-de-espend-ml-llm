@@ -18,8 +18,7 @@ class JunieSessionAdapter(private val project: Project) {
 
     /**
      * Finds Junie sessions matching the current project.
-     * Extracts the working directory from each session's first terminal cd command
-     * and filters by matching project path.
+     * Uses the stored project directory and filters by matching project path.
      */
     fun findSessions(): List<SessionListItem> {
         val projectPath = project.basePath ?: return emptyList()
@@ -28,14 +27,15 @@ class JunieSessionAdapter(private val project: Project) {
             val sessions = JunieSessionFinder.listSessions()
             if (sessions.isEmpty()) return emptyList()
 
-            // Extract cwd in parallel (lightweight: reads only until first cd command)
+            // Resolve project directories in parallel for legacy index entries.
             val executor = Executors.newFixedThreadPool(4)
             try {
                 val tasks = sessions.map { session ->
                     Callable {
                         try {
-                            val cwd = JunieSessionFinder.extractCwd(session.sessionId)
-                            if (cwd == null || cwd != projectPath) {
+                            val sessionProjectDir = session.projectDir
+                                ?: JunieSessionFinder.extractProjectDir(session.sessionId)
+                            if (sessionProjectDir == null || sessionProjectDir != projectPath) {
                                 return@Callable null
                             }
 

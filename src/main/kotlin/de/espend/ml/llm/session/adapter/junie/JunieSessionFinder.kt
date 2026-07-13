@@ -1,5 +1,10 @@
 package de.espend.ml.llm.session.adapter.junie
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -14,7 +19,7 @@ data class JunieSession(
     val updatedAt: Long,
     val taskName: String?,
     val status: String?,
-    val cwd: String? = null
+    val projectDir: String? = null
 )
 
 /**
@@ -26,6 +31,8 @@ object JunieSessionFinder {
     private const val JUNIE_DIR = ".junie"
     private const val SESSIONS_DIR = "sessions"
     private const val INDEX_FILE = "index.jsonl"
+    private const val PROJECT_DIR_MARKER = "Project root directory:"
+    private val JSON = Json { ignoreUnknownKeys = true }
 
     /**
      * Gets the Junie sessions directory.
@@ -56,9 +63,11 @@ object JunieSessionFinder {
         if (!indexFile.exists()) return emptyList()
 
         return try {
-            indexFile.toFile().readLines()
-                .filter { it.isNotBlank() }
-                .mapNotNull { line -> parseIndexLine(line) }
+            indexFile.toFile().bufferedReader().useLines { lines ->
+                lines.filter { it.isNotBlank() }
+                    .mapNotNull { line -> parseIndexLine(line) }
+                    .toList()
+            }
                 .sortedByDescending { it.updatedAt }
         } catch (_: Exception) {
             emptyList()
@@ -68,42 +77,40 @@ object JunieSessionFinder {
     /**
      * Parses a single line from index.jsonl.
      */
-    private fun parseIndexLine(line: String): JunieSession? {
-        val sessionId = extractJsonStringField(line, "sessionId") ?: return null
-        val createdAt = extractJsonNumericField(line, "createdAt")?.toLongOrNull() ?: 0L
-        val updatedAt = extractJsonNumericField(line, "updatedAt")?.toLongOrNull() ?: 0L
-        val taskName = extractJsonStringField(line, "taskName")
-        val status = extractJsonStringField(line, "status")
+    internal fun parseIndexLine(line: String): JunieSession? {
+        val json = try {
+            JSON.parseToJsonElement(line).jsonObject
+        } catch (_: Exception) {
+            return null
+        }
+        val sessionId = json["sessionId"]?.jsonPrimitive?.contentOrNull ?: return null
+        val createdAt = json["createdAt"]?.jsonPrimitive?.longOrNull ?: 0L
+        val updatedAt = json["updatedAt"]?.jsonPrimitive?.longOrNull ?: 0L
+        val taskName = json["taskName"]?.jsonPrimitive?.contentOrNull
+        val status = json["status"]?.jsonPrimitive?.contentOrNull
+        val projectDir = json["projectDir"]?.jsonPrimitive?.contentOrNull
 
         return JunieSession(
             sessionId = sessionId,
             createdAt = createdAt,
             updatedAt = updatedAt,
             taskName = taskName,
-            status = status
+            status = status,
+            projectDir = projectDir
         )
     }
 
     /**
-     * Extracts the working directory from a session.
-     * First tries to read from issue.standalone_project_str_worker (reliable source),
-     * then falls back to parsing events.jsonl for a cd command.
+     * Extracts the project directory from the standalone project worker for
+     * sessions whose index entry predates the projectDir field.
      */
-    fun extractCwd(sessionId: String): String? {
+    fun extractProjectDir(sessionId: String): String? {
         val sessionsDir = getJunieSessionsDir() ?: return null
         val sessionDir = sessionsDir.resolve(sessionId)
         if (!sessionDir.exists()) return null
 
-        // Try reading from issue.standalone_project_str_worker first (fast and reliable)
         val projectDirFile = findProjectWorkerFile(sessionDir.toFile())
-        if (projectDirFile != null) {
-            return extractProjectDirFromFile(projectDirFile)
-        }
-
-        // Fall back to parsing events.jsonl for cd command
-        val eventsFile = sessionDir.resolve("events.jsonl")
-        if (!eventsFile.exists()) return null
-        return extractCwdFromFile(eventsFile.toFile())
+        return projectDirFile?.let { extractProjectDirFromFile(it) }
     }
 
     /**
@@ -119,8 +126,6 @@ object JunieSessionFinder {
         return null
     }
 
-    private val PROJECT_DIR_PATTERN = """Project root directory:\s*(\S+)""".toRegex()
-
     /**
      * Extracts project directory from issue.standalone_project_str_worker file.
      */
@@ -129,7 +134,11 @@ object JunieSessionFinder {
             file.bufferedReader().use { reader ->
                 reader.useLines { lines ->
                     lines.firstNotNullOfOrNull { line ->
-                        PROJECT_DIR_PATTERN.find(line)?.groupValues?.get(1)
+                        val markerIndex = line.indexOf(PROJECT_DIR_MARKER)
+                        if (markerIndex < 0) return@firstNotNullOfOrNull null
+                        line.substring(markerIndex + PROJECT_DIR_MARKER.length)
+                            .trim()
+                            .takeIf { it.isNotEmpty() }
                     }
                 }
             }
@@ -138,41 +147,4 @@ object JunieSessionFinder {
         }
     }
 
-    private val CD_PATTERN = """"command"\s*:\s*"cd\s+(/[^\s"&;\\]+)""".toRegex()
-
-    internal fun extractCwdFromFile(file: File): String? {
-        try {
-            file.bufferedReader().use { reader ->
-                reader.lineSequence().forEach { line ->
-                    // Skip expensive lines
-                    if (line.contains("AgentStateUpdatedEvent")) return@forEach
-                    if (!line.contains("TerminalBlockUpdatedEvent")) return@forEach
-
-                    val match = CD_PATTERN.find(line)
-                    if (match != null) {
-                        return match.groupValues[1]
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            // ignore
-        }
-        return null
-    }
-
-    /**
-     * Extracts a JSON string field value.
-     */
-    private fun extractJsonStringField(json: String, fieldName: String): String? {
-        val pattern = """"$fieldName"\s*:\s*"([^"]*)"""".toRegex()
-        return pattern.find(json)?.groupValues?.get(1)
-    }
-
-    /**
-     * Extracts a JSON numeric field value.
-     */
-    private fun extractJsonNumericField(json: String, fieldName: String): String? {
-        val pattern = """"$fieldName"\s*:\s*(\d+)""".toRegex()
-        return pattern.find(json)?.groupValues?.get(1)
-    }
 }
