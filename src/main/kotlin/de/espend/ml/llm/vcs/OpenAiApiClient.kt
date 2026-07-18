@@ -110,10 +110,11 @@ object OpenAiApiClient {
         return body.toString()
     }
 
-    private fun parseResponse(response: String): ApiResult {
+    internal fun parseResponse(response: String): ApiResult {
         return try {
             val jsonObject = json.parseToJsonElement(response).jsonObject
-            val choice = jsonObject["choices"]?.jsonArray?.firstOrNull()?.jsonObject
+            val responseObject = jsonObject["data"] as? JsonObject ?: jsonObject
+            val choice = responseObject["choices"]?.jsonArray?.firstOrNull()?.jsonObject
                 ?: return ApiResult.Error("No choices in API response")
             val message = choice["message"]?.jsonObject
                 ?: return ApiResult.Error("No message in API response")
