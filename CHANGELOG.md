@@ -1,6 +1,9 @@
 Changelog
 =========
 
+# 0.17.1
+* Remove profiles with unknown platforms during reload (Daniel Espendiller)
+
 # 0.17.0
 * build: support PhpStorm 2026.2 AI Assistant (Daniel Espendiller)</li>
 * Handle non-zero exit codes in OpenCodeSessionParser and mark as errors (Daniel Espendiller)</li>
