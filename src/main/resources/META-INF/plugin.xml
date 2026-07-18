@@ -94,6 +94,8 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.vcs</depends>
+    <depends>com.intellij.modules.jcef</depends>
+    <depends>com.intellij.platform.acp</depends>
     <depends>Git4Idea</depends>
     <depends>com.intellij.ml.llm</depends>
     <depends config-file="mcp.xml" optional="true">com.intellij.mcpServer</depends>
