@@ -7,15 +7,15 @@ fun properties(key: String) = project.findProperty(key).toString()
 
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.3.20"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.20"
-    id("org.jetbrains.intellij.platform") version "2.14.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
+    id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
 group = "de.espend.ml.llm"
 
 // Standalone-only dependencies for SessionHtmlDumper; these are not bundled into the plugin.
-val sessionCliRuntime by configurations.creating
+val sessionCliRuntime = configurations.create("sessionCliRuntime")
 
 repositories {
     mavenCentral()
@@ -27,12 +27,21 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        intellijIdeaUltimate("2026.1.3")
+        intellijIdeaUltimate("2026.2")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        bundledModule("intellij.platform.vcs.dvcs")
+        bundledModule("intellij.platform.vcs.dvcs.impl")
         bundledModule("intellij.platform.vcs.impl")
         bundledModule("intellij.platform.vcs.log")
+        bundledModule("intellij.platform.vcs.log.graph")
 
-        bundledPlugins("Git4Idea", "com.intellij.mcpServer", "org.intellij.plugins.markdown")
+        bundledPlugins(
+            "Git4Idea",
+            "com.intellij.mcpServer",
+            "com.intellij.modules.jcef",
+            "com.intellij.platform.acp",
+            "org.intellij.plugins.markdown"
+        )
 
         // AI Assistant plugin (ml.llm) from marketplace
         compatiblePlugins("com.intellij.ml.llm")
@@ -55,8 +64,8 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "261"
-            untilBuild = "261.*"
+            sinceBuild = "262"
+            untilBuild = "262.*"
         }
 
         changeNotes = """
@@ -66,7 +75,7 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            create("IU", "2026.1.3") {
+            create("IU", "2026.2") {
                 useInstaller.set(true)
                 useCache.set(true)
             }
@@ -77,8 +86,8 @@ intellijPlatform {
 tasks {
     // Set the JVM compatibility versions
     withType<JavaCompile> {
-        sourceCompatibility = "21"
-        targetCompatibility = "21"
+        sourceCompatibility = "25"
+        targetCompatibility = "25"
     }
 
     // Disable buildSearchableOptions as it requires exclusive IDEA instance
@@ -100,8 +109,10 @@ tasks {
 }
 
 kotlin {
+    jvmToolchain(25)
+
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
         jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
     }
 }
