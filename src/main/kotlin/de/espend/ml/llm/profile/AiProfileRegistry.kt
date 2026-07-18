@@ -78,6 +78,7 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
     }
 
     fun reloadProfiles() {
+        removeProfilesWithUnknownPlatforms()
         unregisterAllProfiles()
 
         myState.profiles
@@ -91,6 +92,21 @@ class AiProfileRegistry : PersistentStateComponent<AiProfileRegistry.State>, Dis
             }
 
         LOG.info("AI profiles reloaded: ${registeredProfiles.size} active")
+    }
+
+    internal fun removeProfilesWithUnknownPlatforms() {
+        val unknownProfiles = myState.profiles.filter {
+            AiProfilePlatformRegistry.findPlatform(it.platform) == null
+        }
+        if (unknownProfiles.isEmpty()) {
+            return
+        }
+
+        myState.profiles.removeAll(unknownProfiles.toSet())
+        LOG.warn(
+            "Removed AI profiles with unknown platforms: " +
+                unknownProfiles.joinToString { "${it.id} (${it.platform})" }
+        )
     }
 
     private fun registerProfile(profile: AiProfileConfig) {

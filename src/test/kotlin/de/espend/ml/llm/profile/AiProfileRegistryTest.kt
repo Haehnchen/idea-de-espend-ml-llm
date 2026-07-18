@@ -1,5 +1,6 @@
 package de.espend.ml.llm.profile
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,5 +26,23 @@ class AiProfileRegistryTest {
         )
 
         assertTrue(registry.shouldReuseInstalledTransportConfig(profile, AiProfileTransport.CLAUDE_ACP))
+    }
+
+    @Test
+    fun `removeProfilesWithUnknownPlatforms removes legacy profiles from persisted state`() {
+        val supportedProfile = AiProfileConfig(
+            id = "supported",
+            platform = AiProfilePlatformRegistry.PLATFORM_CLAUDE_CODE,
+            isEnabled = false
+        )
+        registry.currentState.profiles = mutableListOf(
+            supportedProfile,
+            AiProfileConfig(id = "legacy-gemini", platform = "gemini"),
+            AiProfileConfig(id = "legacy-provider", platform = "removed-provider", isEnabled = false)
+        )
+
+        registry.removeProfilesWithUnknownPlatforms()
+
+        assertEquals(listOf(supportedProfile), registry.currentState.profiles)
     }
 }
