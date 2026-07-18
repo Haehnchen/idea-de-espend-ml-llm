@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.17.0
+* build: support PhpStorm 2026.2 AI Assistant (Daniel Espendiller)</li>
+* Handle non-zero exit codes in OpenCodeSessionParser and mark as errors (Daniel Espendiller)</li>
+
 # 0.16.0
 * Optimize Junie session parsing by reducing memory usage, improving event filtering, and simplifying project directory extraction logic. (Daniel Espendiller)
 * Rename "tool call group" to "message group" throughout session detail functionality, including CSS, JS, and tests, and add grouping logic for consecutive messages. (Daniel Espendiller)
