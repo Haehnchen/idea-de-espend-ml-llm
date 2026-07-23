@@ -29,6 +29,23 @@ class JunieUsageProviderTest {
     }
 
     @Test
+    fun `parseResponseBody should map TRIAL license type`() {
+        val json = """
+            {
+                "balanceLeft": 39.91332125,
+                "balanceUnit": "USD",
+                "licenseType": "TRIAL",
+                "active": true
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(json)
+
+        val data = result.data ?: error("Expected success")
+        assertEquals("Trial · $39.91", data.lines[0].text)
+    }
+
+    @Test
     fun `parseResponseBody should fall back to raw license type when unknown`() {
         val json = """
             {

@@ -288,6 +288,7 @@ class JunieUsageProvider : UsageProvider {
     private fun getLicenseDisplayName(licenseType: String?): String? {
         return when (licenseType) {
             "JUNP" -> "EAP"
+            "TRIAL" -> "Trial"
             "AIF" -> "Free"
             "AIP" -> "Pro"
             "AIU" -> "Ultimate"
