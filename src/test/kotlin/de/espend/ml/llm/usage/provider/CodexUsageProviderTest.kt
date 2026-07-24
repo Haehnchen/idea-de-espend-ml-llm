@@ -446,6 +446,84 @@ class CodexUsageProviderTest {
     }
 
     @Test
+    fun `parseResponseBody should show next reset credit expiry`() {
+        val usageJson = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 10
+                    }
+                },
+                "rate_limit_reset_credits": {
+                    "available_count": 2
+                }
+            }
+        """.trimIndent()
+        val resetCreditsJson = """
+            {
+                "credits": [
+                    {
+                        "id": "RateLimitResetCredit_test-first",
+                        "reset_type": "codex_rate_limits",
+                        "is_supported_by_plan": true,
+                        "status": "available",
+                        "granted_at": "2030-01-01T00:00:00Z",
+                        "expires_at": "2030-01-15T12:00:00Z",
+                        "redeem_started_at": null,
+                        "redeemed_at": null,
+                        "profile_image_url": "https://example.test/codex-icon.png",
+                        "profile_user_id": "test-user",
+                        "title": "Test reset",
+                        "description": "First test credit."
+                    },
+                    {
+                        "id": "RateLimitResetCredit_test-second",
+                        "reset_type": "codex_rate_limits",
+                        "is_supported_by_plan": true,
+                        "status": "available",
+                        "granted_at": "2030-01-05T00:00:00Z",
+                        "expires_at": "2030-01-30T12:00:00Z",
+                        "redeem_started_at": null,
+                        "redeemed_at": null,
+                        "profile_image_url": "https://example.test/codex-icon.png",
+                        "profile_user_id": "test-user",
+                        "title": "Test reset",
+                        "description": "Second test credit."
+                    }
+                ],
+                "available_count": 2,
+                "total_earned_count": 0
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(usageJson, resetCreditsBody = resetCreditsJson)
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals("2 resets · next expiry 15 Jan", result.data!!.lines[0].text)
+    }
+
+    @Test
+    fun `parseResponseBody should keep reset count when reset credit response is malformed`() {
+        val usageJson = """
+            {
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 10
+                    }
+                },
+                "rate_limit_reset_credits": {
+                    "available_count": 3
+                }
+            }
+        """.trimIndent()
+
+        val result = provider.parseResponseBody(usageJson, resetCreditsBody = "not json")
+
+        assertTrue("Should be success", result.data != null)
+        assertEquals("3 resets available", result.data!!.lines[0].text)
+    }
+
+    @Test
     fun `parseResponseBody should use singular reset credit label`() {
         val json = """
             {

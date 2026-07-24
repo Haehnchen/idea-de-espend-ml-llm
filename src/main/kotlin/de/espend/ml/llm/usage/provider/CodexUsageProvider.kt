@@ -19,6 +19,8 @@ import de.espend.ml.llm.usage.UsagePlatformRegistry
 import de.espend.ml.llm.usage.UsageProvider
 import de.espend.ml.llm.usage.ui.UsageFormPanel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.awt.Component
@@ -32,6 +34,10 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.roundToLong
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -43,8 +49,9 @@ import javax.swing.JRadioButton
 /**
  * Usage provider for OpenAI Codex.
  *
- * Fetches rate-limit quota from the ChatGPT backend:
+ * Fetches rate-limit quota and reset credits from the ChatGPT backend:
  *   GET https://chatgpt.com/backend-api/wham/usage
+ *   GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits
  *
  * Two credential modes:
  *  - auto:   reads OAuth tokens from ~/.codex/auth.json (same format Codex CLI writes)
@@ -263,9 +270,9 @@ class CodexUsageProvider : UsageProvider {
 
         // Try the existing access_token first (if present)
         if (creds.accessToken.isNotEmpty()) {
-            val response = fetchUsageHttp(creds.accessToken)
-            if (response.statusCode() != 401 && response.statusCode() != 403) {
-                return parseUsageResponse(response, config.showSparkPrimaryWindow)
+            val responses = fetchUsageResponses(creds.accessToken)
+            if (responses.usage.statusCode() != 401 && responses.usage.statusCode() != 403) {
+                return parseUsageResponse(responses.usage, responses.resetCredits, config.showSparkPrimaryWindow)
             }
         }
 
@@ -282,8 +289,8 @@ class CodexUsageProvider : UsageProvider {
         // Persist the rotated token chain before retrying. Refresh tokens are single-use.
         persistCachedCredentials(config, refreshed)
 
-        val response = fetchUsageHttp(refreshed.accessToken)
-        return parseUsageResponse(response, config.showSparkPrimaryWindow)
+        val responses = fetchUsageResponses(refreshed.accessToken)
+        return parseUsageResponse(responses.usage, responses.resetCredits, config.showSparkPrimaryWindow)
     }
 
     private fun persistCachedCredentials(
@@ -307,10 +314,16 @@ class CodexUsageProvider : UsageProvider {
         )
     }
 
-    private suspend fun fetchUsageHttp(accessToken: String): HttpResponse<String> {
+    private suspend fun fetchUsageResponses(accessToken: String): UsageResponses = coroutineScope {
+        val usage = async { fetchUsageHttp(USAGE_URL, accessToken) }
+        val resetCredits = async { runCatching { fetchUsageHttp(RESET_CREDITS_URL, accessToken) }.getOrNull() }
+        UsageResponses(usage.await(), resetCredits.await())
+    }
+
+    private suspend fun fetchUsageHttp(url: String, accessToken: String): HttpResponse<String> {
         return withContext(Dispatchers.IO) {
             val builder = HttpRequest.newBuilder()
-                .uri(URI.create(USAGE_URL))
+                .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(15))
                 .header("Authorization", "Bearer $accessToken")
                 .header("Accept", "application/json")
@@ -366,11 +379,12 @@ class CodexUsageProvider : UsageProvider {
 
     private fun parseUsageResponse(
         response: HttpResponse<String>,
+        resetCreditsResponse: HttpResponse<String>? = null,
         includeSparkPrimaryWindow: Boolean = false
     ): UsageFetchResult {
         return when (response.statusCode()) {
             401, 403 -> UsageFetchResult.error("Authentication failed — re-authenticate with Codex CLI")
-            200 -> parseBodyWithHeaders(response.body(), response.headers(), includeSparkPrimaryWindow)
+            200 -> parseBodyWithHeaders(response.body(), response.headers(), includeSparkPrimaryWindow, resetCreditsResponse)
             else -> UsageFetchResult.error("HTTP ${response.statusCode()} from Codex usage API")
         }
     }
@@ -386,13 +400,14 @@ class CodexUsageProvider : UsageProvider {
     fun parseResponseBody(
         body: String?,
         headerPercent: Double? = null,
-        includeSparkPrimaryWindow: Boolean = false
+        includeSparkPrimaryWindow: Boolean = false,
+        resetCreditsBody: String? = null
     ): UsageFetchResult {
         body ?: return UsageFetchResult.error("Empty response body")
 
         return try {
             val root = JsonParser.parseString(body).asJsonObject
-            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow)
+            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow, parseResetCreditsBody(resetCreditsBody))
         } catch (e: Exception) {
             UsageFetchResult.error("Parse error: ${e.message}")
         }
@@ -401,7 +416,8 @@ class CodexUsageProvider : UsageProvider {
     private fun parseBodyWithHeaders(
         body: String?,
         headers: java.net.http.HttpHeaders,
-        includeSparkPrimaryWindow: Boolean
+        includeSparkPrimaryWindow: Boolean,
+        resetCreditsResponse: HttpResponse<String>?
     ): UsageFetchResult {
         body ?: return UsageFetchResult.error("Empty response body")
 
@@ -411,7 +427,11 @@ class CodexUsageProvider : UsageProvider {
                 .firstValue("x-codex-primary-used-percent")
                 .map { it.toDoubleOrNull() }
                 .orElse(null)
-            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow)
+            val resetCredits = resetCreditsResponse
+                ?.takeIf { it.statusCode() == 200 }
+                ?.body()
+                ?.let(::parseResetCreditsBody)
+            parseUsageEntries(root, headerPercent, includeSparkPrimaryWindow, resetCredits)
         } catch (e: Exception) {
             UsageFetchResult.error("Parse error: ${e.message}")
         }
@@ -420,7 +440,8 @@ class CodexUsageProvider : UsageProvider {
     private fun parseUsageEntries(
         root: JsonObject,
         headerPercent: Double?,
-        includeSparkPrimaryWindow: Boolean
+        includeSparkPrimaryWindow: Boolean,
+        resetCredits: JsonObject? = null
     ): UsageFetchResult {
         val rateLimit = root.getObjectOrNull("rate_limit")
         val entries = parseRateLimitWindowEntries(rateLimit, headerPercent)?.toMutableList()
@@ -433,18 +454,45 @@ class CodexUsageProvider : UsageProvider {
         return UsageFetchResult.success(
             UsageData(
                 entries = entries,
-                lines = parseResetCreditLines(root)
+                lines = parseResetCreditLines(root, resetCredits)
             )
         )
     }
 
-    private fun parseResetCreditLines(root: JsonObject): List<UsageLine> {
+    private fun parseResetCreditLines(root: JsonObject, resetCredits: JsonObject?): List<UsageLine> {
         val availableCount = root.getObjectOrNull("rate_limit_reset_credits")
             ?.getIntOrNull("available_count")
             ?: return emptyList()
 
         val resetLabel = if (availableCount == 1) "reset" else "resets"
-        return listOf(UsageLine("$availableCount $resetLabel available"))
+        val nextExpiry = resetCredits
+            ?.getArrayOrNull("credits")
+            ?.mapNotNull { it.asObjectOrNull() }
+            ?.filter { it.getStringOrNull("status") == "available" }
+            ?.mapNotNull { it.getStringOrNull("expires_at")?.let(::parseInstantOrNull) }
+            ?.minOrNull()
+
+        return listOf(
+            UsageLine(
+                if (availableCount > 0 && nextExpiry != null) {
+                    "$availableCount $resetLabel · next expiry ${RESET_EXPIRY_FORMATTER.format(nextExpiry)}"
+                } else {
+                    "$availableCount $resetLabel available"
+                }
+            )
+        )
+    }
+
+    private fun parseResetCreditsBody(body: String?): JsonObject? = try {
+        body?.let { JsonParser.parseString(it).asJsonObject }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun parseInstantOrNull(value: String): Instant? = try {
+        Instant.parse(value)
+    } catch (_: Exception) {
+        null
     }
 
     private fun parseSparkWindowEntries(root: JsonObject): List<UsageEntry> {
@@ -663,6 +711,7 @@ class CodexUsageProvider : UsageProvider {
         const val PROVIDER_ID = "codex"
         const val PROVIDER_NAME = "Codex"
         private const val USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+        private const val RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
         private const val REFRESH_URL = "https://auth.openai.com/oauth/token"
         private const val CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
         private const val SPARK_LIMIT_INDICATOR = "spark"
@@ -676,11 +725,18 @@ class CodexUsageProvider : UsageProvider {
         private const val SECONDS_PER_DAY = HOURS_PER_DAY * SECONDS_PER_HOUR
         private const val WEEKLY_WINDOW_DAYS = 7L
         private val MONTHLY_WINDOW_DAYS_RANGE = 28L..31L
+        private val RESET_EXPIRY_FORMATTER = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
+            .withZone(ZoneId.systemDefault())
     }
 
     private data class WindowCandidate(
         val window: JsonObject?,
         val headerPercent: Double?
+    )
+
+    private data class UsageResponses(
+        val usage: HttpResponse<String>,
+        val resetCredits: HttpResponse<String>?
     )
 
     private data class Credentials(
