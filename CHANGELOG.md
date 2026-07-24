@@ -1,6 +1,11 @@
 Changelog
 =========
 
+# 0.18.0
+* Add support for reset credit parsing and display next expiry in `CodexUsageProvider` (Daniel Espendiller)
+* Add support for TRIAL license type name parsing (Daniel Espendiller)
+* Add tests for `OpenAiApiClient` response parsing and support wrapped JSON structure (Daniel Espendiller)
+
 # 0.17.1
 * Remove profiles with unknown platforms during reload (Daniel Espendiller)
 
