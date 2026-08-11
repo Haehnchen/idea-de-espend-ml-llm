@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.19.0
+* workaround ui: remove core feedback link from AI Assistant chat footer (Daniel Espendiller)
+* update build (Daniel Espendiller)
+
 # 0.18.0
 * Add support for reset credit parsing and display next expiry in `CodexUsageProvider` (Daniel Espendiller)
 * Add support for TRIAL license type name parsing (Daniel Espendiller)
