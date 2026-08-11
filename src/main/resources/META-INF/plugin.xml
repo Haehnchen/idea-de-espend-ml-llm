@@ -120,6 +120,7 @@
                                  groupWeight="15"/>
 
         <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
+        <postStartupActivity implementation="de.espend.ml.llm.ui.AiAssistantFeedbackLinkHiderActivity"/>
 
         <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
         <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>
