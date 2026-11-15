@@ -9,7 +9,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.4.10"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
-    id("org.jetbrains.intellij.platform") version "2.18.1"
+    id("org.jetbrains.intellij.platform") version "2.20.1"
 }
 
 group = "de.espend.ml.llm"
@@ -27,24 +27,13 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        intellijIdeaUltimate("2026.2.1")
+        intellijIdeaUltimate("2026.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-        bundledModule("intellij.platform.vcs.dvcs")
-        bundledModule("intellij.platform.vcs.dvcs.impl")
-        bundledModule("intellij.platform.vcs.impl")
-        bundledModule("intellij.platform.vcs.log")
-        bundledModule("intellij.platform.vcs.log.graph")
-
         bundledPlugins(
-            "Git4Idea",
             "com.intellij.mcpServer",
             "com.intellij.modules.jcef",
-            "com.intellij.platform.acp",
             "org.intellij.plugins.markdown"
         )
-
-        // AI Assistant plugin (ml.llm) from marketplace
-        compatiblePlugins("com.intellij.ml.llm")
     }
 
     // Kotlinx Serialization for JSON parsing
@@ -64,8 +53,8 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "262"
-            untilBuild = "262.9999.*"
+            sinceBuild = "263"
+            untilBuild = "263.*"
         }
 
         changeNotes = """
@@ -75,7 +64,7 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            create("IU", "2026.2.1") {
+            create("IU", "2026.3") {
                 useInstaller.set(true)
                 useCache.set(true)
             }

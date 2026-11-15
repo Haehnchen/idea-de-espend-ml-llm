@@ -4,11 +4,11 @@ This file provides guidance when working with code in this repository.
 
 ### Project Overview
 
-This is an **IntelliJ Platform plugin** that extends the built-in AI Assistant with multiple AI provider support. It acts as a bridge between IntelliJ's AI chat interface and various AI providers through an Anthropic-compatible API layer and others.
+This is an **IntelliJ Platform plugin** for browsing external AI chat sessions, exposing sessions through MCP, and monitoring AI provider quotas. It also displays RTK savings and Tokscale usage statistics.
 
 **Plugin ID**: `de.espend.ml.llm`
 
-**Key Dependencies**: Requires the AI Assistant plugin (`com.intellij.ml.llm`)
+**Key Dependencies**: Requires JCEF and the bundled Markdown plugin. The built-in MCP Server is optional. The plugin runs independently of AI Assistant; agent profiles and profile-based commit generation have been removed.
 
 ### Running Tests
 
@@ -43,13 +43,15 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 
 - **Language**: Kotlin 2.4.10 with JVM 25 target
 - **Build System**: Gradle with IntelliJ Platform Plugin
+- **Target IDE**: IntelliJ IDEA 2026.3 (build 263), Gradle 9.9.1, IntelliJ Platform Gradle Plugin 2.20.1
 
 ### Adding a New Provider
 
-1. Add provider constant to `ProviderConfig.kt`
-2. Create `ProviderInfo` entry with metadata (label, icon, base URL, models)
-3. Update `AgentSettingsConfigurable.kt` to add UI panel for the provider
-4. Add executable detection logic in `CommandPathUtils.kt` if CLI-based
+1. Implement `UsageProvider` in `usage/provider/`, including `ProviderInfo` and credential fields
+2. Register the provider in `ProviderUsageService.kt`
+3. Add parsing tests in `src/test/kotlin/de/espend/ml/llm/usage/provider/`
+
+Usage accounts are configured under **Settings → Tools → Account Usage Toolbar**.
 
 #### Icon Requirements
 
@@ -57,12 +59,6 @@ IJ_TOKEN=yourtoken ./gradlew clean buildPlugin publishPlugin
 - **Size**: 32x32 pixels
 - **Format**: PNG with transparency support
 - **Add to PluginIcons.kt**: `val PROVIDER_NAME: Icon = IconLoader.getIcon("/icons/provider-name.png", PluginIcons::class.java)`
-
-#### Path Detection for CLI-based Providers
-
-For CLI-based providers (like OpenCode, Cursor, Kilo Code), add a detection function to `CommandPathUtils.kt`:
-
-**Search order**: PATH → `/usr/bin` → `$HOME/bin` → `$HOME/.local/bin` → provider-specific directory (e.g., `$HOME/.opencode/bin`)
 
 ### Session Explorer
 

@@ -1,6 +1,10 @@
 Changelog
 =========
 
+# 0.20.0
+* Target IntelliJ IDEA 2026.3 (build 263), update Gradle to 9.9.1 and the IntelliJ Platform Gradle Plugin to 2.20.1.
+* Remove the AI Assistant dependency, Agent Profiles, ACP agent registration, and profile-based commit message generation.
+
 # 0.19.0
 * workaround ui: remove core feedback link from AI Assistant chat footer (Daniel Espendiller)
 * update build (Daniel Espendiller)

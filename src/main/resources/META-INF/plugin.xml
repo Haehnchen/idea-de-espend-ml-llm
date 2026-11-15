@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
     <id>de.espend.ml.llm</id>
-    <version>0.19.0</version>
+    <version>0.20.0</version>
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
@@ -14,24 +14,21 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>Configure and use multiple AI providers inside IntelliJ IDEA's AI Assistant chat Agent and commit message generation. Includes a Session Browser with MCP for viewing / search chat sessions from external AI tools, and a Usage Toolbar to monitor AI provider quotas.</p>
-
-        <h2>Agent Profiles</h2>
-        <p>Configure multiple AI providers through **Settings → AI Assistant → Agent Profiles**.</p>
+        <p>Browse and search chat sessions from external AI tools, expose conversations through MCP, and monitor AI provider quotas from the toolbar and status bar. Works independently of the AI Assistant plugin.</p>
 
         <h2>Session Browser</h2>
         <p>Browse and view chat sessions from external AI tools directly in the IDE.</p>
 
-        <h2>Provider Usage Toolbar</h3>
+        <h2>Provider Usage Toolbar</h2>
         <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar</p>
 
-        <h2>Supported Session Sources</h3>
-        <p>The Session Browser is available in the AI Assistant chat toolbar and in the right sidebar.</p>
+        <h2>Supported Session Sources</h2>
+        <p>The Session Browser is available through <b>Tools → AI Session Browser</b> and in the right sidebar.</p>
 
         <table>
             <tr><th>Source</th><th>Description</th></tr>
             <tr><td><b>Claude Code</b></td><td>Chat sessions from Claude Code CLI</td></tr>
-            <tr><td><b>Codex CLI</b></td><td>Chat sessions from JetBrains AI Assistant CLI</td></tr>
+            <tr><td><b>Codex CLI</b></td><td>Chat sessions from Codex CLI, including sessions created through JetBrains AI Assistant</td></tr>
             <tr><td><b>OpenCode</b></td><td>Chat sessions from OpenCode CLI</td></tr>
             <tr><td><b>Amp</b></td><td>Chat sessions from ampcode.com</td></tr>
             <tr><td><b>Junie</b></td><td>Chat sessions from Junie CLI (JetBrains)</td></tr>
@@ -39,7 +36,7 @@
             <tr><td><b>Kilo Code</b></td><td>Chat sessions from Kilo Code CLI</td></tr>
         </table>
 
-        <h2>MCP Integration (IntelliJ Built-in MCP Server)</h3>
+        <h2>MCP Integration (IntelliJ Built-in MCP Server)</h2>
         <p>The plugin exposes AI session data via IntelliJ's built-in MCP server, allowing any MCP client to search and retrieve past coding sessions.</p>
         <p><b>Requirement:</b> The <code>com.intellij.mcpServer</code> plugin must be enabled in your IDE.</p>
         <table>
@@ -55,22 +52,7 @@
             <tr><td><b>RTK Savings</b></td><td>Token savings statistics from RTK (Rust Token Killer) CLI. Shows yesterday, today, and 7-day totals in the Usage popup.</td></tr>
         </table>
 
-        <h2>Using AI Providers</h3>
-        <ol>
-            <li>Go to <b>File → Settings → AI Assistant → Agent Profiles</b></li>
-            <li>Configure API keys and base URLs as needed</li>
-            <li>Click <b>Apply</b> to register the agents</li>
-            <li>For CLI-based providers: install the corresponding npm package</li>
-            <li><b>Important</b>: To use providers for core AI features (commit generation, AI actions):
-                <ul>
-                    <li>Go to <b>Settings → Tools → AI Assistant → "Models & API keys"</b></li>
-                    <li>Select <b>"Agent Profiles"</b> from the provider dropdown</li>
-                    <li>Select a model from the model dropdown</li>
-                </ul>
-            </li>
-        </ol>
-
-        <h2>Provider Usage Toolbar & Status Bar</h3>
+        <h2>Provider Usage Toolbar & Status Bar</h2>
         <p>Monitor your AI provider quota usage across multiple accounts directly from the toolbar or status bar. Click the usage icon to see current usage percentages and reset times.</p>
         <p><b>Locations</b>:</p>
         <ul>
@@ -93,37 +75,18 @@
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
-    <depends>com.intellij.modules.vcs</depends>
     <depends>com.intellij.modules.jcef</depends>
-    <depends>com.intellij.platform.acp</depends>
-    <depends>Git4Idea</depends>
-    <depends>com.intellij.ml.llm</depends>
+    <depends>org.intellij.plugins.markdown</depends>
     <depends config-file="mcp.xml" optional="true">com.intellij.mcpServer</depends>
 
     <!-- Extensions defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- AI Provider Agent Registry - dynamic agent registration -->
-        <applicationService serviceImplementation="de.espend.ml.llm.profile.AiProfileRegistry"/>
-
-        <!-- Settings for AI providers - placed under AI Assistant -->
-        <applicationConfigurable parentId="ml.llm.LLMConfigurable"
-                                 id="de.espend.ml.llm.AgentSettings"
-                                 instance="de.espend.ml.llm.profile.ui.AiProfilesSettingsConfigurable"
-                                 displayName="Agent Profiles"
-                                 groupWeight="10"/>
-
-        <applicationConfigurable parentId="de.espend.ml.llm.AgentSettings"
+        <applicationConfigurable parentId="tools"
                                  id="de.espend.ml.llm.usage.UsageSettings"
                                  instance="de.espend.ml.llm.usage.ui.UsageSettingsConfigurable"
                                  displayName="Account Usage Toolbar"
                                  groupWeight="15"/>
-
-        <postStartupActivity implementation="de.espend.ml.llm.profile.AiProfileStartupActivity"/>
-        <postStartupActivity implementation="de.espend.ml.llm.ui.AiAssistantFeedbackLinkHiderActivity"/>
-
-        <!-- Agent Popup Enhancement - adds Agent Profiles to agent dropdown -->
-        <ml.llm.core.chat.ui.agentPopupEnhancementProvider implementation="de.espend.ml.llm.profile.AiProfilePopupEnhancementProvider"/>
 
         <!-- Status bar widget for AI provider usage -->
         <statusBarWidgetFactory implementation="de.espend.ml.llm.usage.action.ProviderUsageStatusBarWidgetFactory"
@@ -138,27 +101,14 @@
 
     </extensions>
 
-    <extensions defaultExtensionNs="com.intellij.ml.llm">
-        <agents.acp.chatAgentExtension
-            implementation="de.espend.ml.llm.profile.AiProfileAcpChatAgentExtension"/>
-    </extensions>
-
-    <!-- Actions for AI Provider plugin -->
+    <!-- Actions for session browsing and provider usage -->
     <actions>
-        <!-- Action to open Agent Profiles settings from chat toolbar -->
-        <action id="de.espend.ml.llm.OpenAiProfilesSettings"
-                class="de.espend.ml.llm.profile.OpenAiProfilesSettingsAction"
-                text="Agent Profiles"
-                description="Open Agent Profiles settings">
-            <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
-        </action>
-
         <!-- Action to open Session Browser from Tools menu -->
         <action id="de.espend.ml.llm.OpenSessionBrowser"
                 class="de.espend.ml.llm.session.OpenSessionBrowserAction"
                 text="AI Session Browser"
                 description="Browse AI chat sessions">
-            <add-to-group group-id="AIAssistant.ToolWindow.Chat.SecondaryGearActions" anchor="after" relative-to-action="Acp.OpenConfiguration"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
         <!-- Provider Usage Action - shows usage in main toolbar -->
@@ -167,14 +117,6 @@
                 text="Usage"
                 description="View provider usage and quota">
             <add-to-group group-id="MainToolbarRight" anchor="last"/>
-        </action>
-
-        <!-- Commit Message Generator Action -->
-        <action id="de.espend.ml.llm.ProviderCommitMessageAction"
-                class="de.espend.ml.llm.vcs.ProviderCommitMessageAction"
-                text="Generate with Agent Provider"
-                description="Generate commit message using configured AI providers">
-            <add-to-group group-id="Vcs.MessageActionGroup" anchor="after" relative-to-action="Vcs.LLMCommitMessageAction"/>
         </action>
     </actions>
 </idea-plugin>
